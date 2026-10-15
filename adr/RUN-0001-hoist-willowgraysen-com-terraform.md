@@ -127,6 +127,34 @@ never commented on it. DEV-0130's "empty the old location's state" must not be
 followed here, because the old location and the new one are the same object
 (DEV-0163 §5).
 
+### 6. One leaf's state was ahead of its config, and is caught up rather than destroyed
+
+`pigeon-cli/bucket/pigeon/deduplicate`'s state held three resources that no
+committed config described. A worktree that was never committed had applied
+them, and a locally running deduplicate job is using the key:
+
+- an IAM policy granting Object Storage access on this project to `pigeon-cli`'s
+  shared IAM application;
+- an API key for that application;
+- the key's `time_static` creation timestamp.
+
+Planned against the committed config, all three were orphans scheduled for
+**destruction**. That would have revoked the running job's credentials.
+
+The fix is configuration, not an `import`, because the resources were already in
+state. The leaf gains `iam.tf` (`iam-policy/v4.0.0` and `iam-api-key/v0.2.0`)
+and `outputs.tf` (the key's `access_key` and `secret_key`, sensitive). It plans
+`No changes.`, which proves the config describes exactly what exists.
+
+The application and project are taken from the existing
+`ENV_SW_PIGEON_CLI_IAM_APPLICATION_ID` and `SCALEWAY_PROJECT_ID` secrets, so no
+identifier is written into this public repo. The key expires 30 days after its
+creation, the module's default. Renewing it is a replace of `module.iam_api_key`.
+
+The same plan had been failing in CI with
+`scaleway-sdk-go: denied authentication: invalid API key format or empty value`.
+With the config added, it no longer fails.
+
 ## Consequences
 
 - **This repo now holds the family's most valuable infrastructure.** The apply
@@ -156,8 +184,14 @@ followed here, because the old location and the new one are the same object
    `noisypigeon@219706e:willowgraysen.com/terraform/` differs only in
    `secrets.enc`'s location and the excluded `state/iam/`, `cmp` of the two
    `secrets.enc` files is silent, and the repo has no tags.
-3. **The plan is a no-op:** `No changes.` on all fourteen leaves, locally using
-   `terragrunt-run.yml`'s exact filter construction, and in this PR's CI.
+3. **The plan is a no-op apart from earlier drift:**
+   - `No changes.` on thirteen leaves, locally (using `terragrunt-run.yml`'s exact
+     filter construction) and in this PR's CI. That includes `deduplicate`, after
+     §6.
+   - `pigeon-cli/shared/grafana` plans one in-place update to the `overview`
+     dashboard. It plans identically under the monorepo's layout, so the hoist
+     did not cause it, and it is left for its own PR.
+   - No leaf plans a destroy.
 4. **After `noisypigeon`'s deletion merges:**
    - `willowgraysen.com/terraform/state/iam` plans clean there.
    - `https://willowgraysen.com` still redirects to `noisypigeon.com`.
