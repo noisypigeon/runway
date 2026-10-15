@@ -21,3 +21,7 @@ RUN-0001 keep their earlier history in git; changelog entries from before then
 stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
+
+## 2026-10-15
+
+- [adr] chore(run-0000): bootstrap the repo as a pigeon-lib spoke and open the RUN- domain ([#1](https://github.com/noisypigeon/willowgraysen.com/pull/1))
