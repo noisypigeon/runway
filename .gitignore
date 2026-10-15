@@ -1,0 +1,10 @@
+.DS_Store
+*.env
+# Materialized by fetch-lib.sh
+/.lib-src/
+# Terraform and Terragrunt working state. root.hcl is NOT ignored: it is
+# generated from pigeon-lib's template and committed (LIB-0003).
+.terragrunt-cache/
+.terraform/
+.terraform.lock.hcl
+*.tfstate*
