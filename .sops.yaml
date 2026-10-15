@@ -1,0 +1,7 @@
+# Decrypted by local sops invocations and by pigeon-lib's terragrunt-run.yml
+# (via this repo's SOPS_AGE_KEY secret). Same recipient as the rest of the
+# family -- a deliberate choice, RUN-0000 §1 -- where this file lived as
+# willowgraysen.com/secrets.enc until RUN-0001 (ADR-0131).
+creation_rules:
+  - path_regex: ^terraform/secrets\.enc$
+    age: age1cx0hla738df54dk9kjnecv987uwvlh6f8wjy08ps5rxh68w9zgas90l5jh

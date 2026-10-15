@@ -31,13 +31,18 @@ repo is **public** (RUN-0000 records why and what that accepts), so:
 CHANGELOG.md                    one line per merged PR, by CI -- see "Changelog"
 .lib-version                    the pigeon-lib ref everything below consumes
 .mise.toml                      terraform/terragrunt/sops versions and tasks
+.sops.yaml                      sops/age recipient for terraform/secrets.enc
 fetch-lib.sh                    clones pigeon-lib into .lib-src/ at /.lib-version
+root.hcl                        GENERATED Terragrunt root -- see "Terraform"; never edit
+spoke.hcl                       root.hcl template version + this spoke's instance values
+terraform/                      the domain's Terraform leaves -- see "Terraform"
+  secrets.enc                   sops/age-encrypted dotenv
 adr/                            decision records, RUN-NNNN -- see "Decision records"
 .github/workflows/              thin callers into pigeon-lib -- see "CI"
 ```
 
-`/.lib-src/` and every `.terragrunt-cache/` are generated and gitignored. The Terraform leaves,
-`root.hcl`, `spoke.hcl`, `.sops.yaml` and `terraform/secrets.enc` arrive with RUN-0001.
+`/.lib-src/` and every `.terragrunt-cache/` are generated and gitignored. `root.hcl` is generated
+too, but committed — see "Terraform".
 
 ## Where the dependencies are
 
@@ -49,12 +54,56 @@ adr/                            decision records, RUN-NNNN -- see "Decision reco
 | CI job bodies | `noisypigeon/pigeon-lib`, at `.github/workflows/` | reusable workflows, called at the `workflows/vX.Y.Z` tag `/.lib-version` names |
 | `root-changelog.sh`, `resolve-root-hcl.sh` | `noisypigeon/pigeon-lib`, at `.github/scripts/` | run out of `/.lib-src/`, which `fetch-lib.sh` materializes |
 | Terraform modules | `noisypigeon/pigeon-lib`, at `terraform/` | `source = "https://pigeon.dev/modules/<provider>/<module>/vX.Y.Z"` |
+| Terragrunt `root.hcl` | `noisypigeon/pigeon-lib`, at `terragrunt/root-hcl/` | `resolve-root-hcl.sh` copies it at the version `spoke.hcl` pins; committed here |
 
 `/.lib-version` decides which library code runs; bump it, and the `@workflows/…` refs in every
 caller, to take a hub change — never track a branch (LIB-0001 invariant 2). To change a module, the
 CI, or any script, send a PR to `noisypigeon/pigeon-lib`, then bump the pin here. For local
 iteration across both, point `LIB_SRC` at a `pigeon-lib` checkout and `fetch-lib.sh` leaves it
 alone. `fetch-lib.sh` is the one script this repo keeps — a spoke cannot fetch its own fetcher.
+
+## Terraform
+
+`terraform/` holds fourteen leaves in four groups. They were hoisted from `noisypigeon/noisypigeon`'s
+`willowgraysen.com/terraform/` with their history (RUN-0001), and kept their state: `root.hcl` sits
+at this repo's root, so each leaf's key is still `terraform/<leaf>/terraform.tfstate` in this
+domain's own bucket (LIB-0001 invariant 4). **Moving `root.hcl` or a leaf changes its state key** —
+don't, without a state-move runbook (DEV-0106).
+
+- **`cold/*`** — Backblaze B2 cold-storage buckets (and their commented-out key leaves). **Custodial
+  and archival data: destroying one is unrecoverable.** Each opts into the Backblaze provider with
+  a sibling `backblaze_config.hcl`.
+- **`pigeon-cli/*`** — `pigeon-cli`'s infrastructure: per-job buckets under `bucket/`, the job
+  `cluster` (its module is currently commented out), and `shared/` — observability (`cockpit`,
+  `grafana`, whose dashboards are the JSON under `dashboards/`), the CLI's IAM application, and the
+  per-phase report buckets.
+- **`redirect/dns`** — the Cloudflare rule that sends the domain to `noisypigeon.com`. It is the
+  only thing here reachable from the web.
+- **`project`, `state/bucket`** — the Scaleway project and this domain's Terraform state bucket.
+
+Mechanics, the same as the other spokes:
+
+- **`root.hcl` is generated — never edit it.** It is pigeon-lib's `terragrunt/root-hcl` template at
+  the version `spoke.hcl` pins (`root_hcl_version`), copied by
+  `.lib-src/.github/scripts/resolve-root-hcl.sh` and committed, because Terragrunt's git filter
+  plans inside git worktrees, which only hold tracked files (LIB-0003). CI runs the resolver with
+  `--check` and fails on drift. To take a template change, bump `root_hcl_version`, run
+  `mise run terraform-prepare`, commit the diff.
+- **`spoke.hcl`** holds the template version, `state_bucket_secret`
+  (`WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME`), `backblaze = true`, and the `grafana` provider
+  requirement (template `v1.1.0`).
+- **Secrets** are in `terraform/secrets.enc` (sops/age, dotenv; `.sops.yaml` has the recipient).
+  Edit with `mise run secrets-edit` — never decrypt to a file. CI decrypts with `SOPS_AGE_KEY`.
+- **`state/iam` is not here.** It mints the deploy key these leaves authenticate with, and must not
+  depend on that key, so it stays in `noisypigeon/noisypigeon` on that repo's shared root and
+  shared state bucket (LIB-0001 §8; DEV-0133; RUN-0001). Rotating the deploy key is a PR *there*,
+  then a `secrets-edit` here.
+
+A Terraform PR is planned by `terragrunt-plan.yml` and applied by commenting `terragrunt apply` on it
+(`terragrunt-apply.yml`; ADR-0124/0129) — only an OWNER, MEMBER or COLLABORATOR's comment counts. A
+successful apply sets the `terragrunt/apply` status `main`'s ruleset requires; its auto-merge
+currently fails (noisypigeon/noisypigeon#310), so merge by hand once the status is green. Never merge
+a Terraform PR any other way. **The plan comment is public** — CI masks secret values, not names.
 
 ## Changelog
 
@@ -74,6 +123,12 @@ All workflows are thin callers into `pigeon-lib`, so **that is where their behav
   write access here.
 - `interaction-limits-renew.yml` → `interaction-limits-renew.yml`, monthly, re-applying a
   `contributors_only` interaction limit. Needs `GH_ADMIN_TOKEN`.
+- `terragrunt-plan.yml` / `terragrunt-apply.yml` → `terragrunt-detect.yml` and `terragrunt-run.yml`;
+  see "Terraform" above.
+
+`main` has a ruleset (RUN-0001, copied from `noisypigeon`'s ADR-0129): no force-push, and the
+`terragrunt/apply` status is required — the detect job sets it to success straight away for a PR
+touching no Terraform.
 
 This repo cuts no releases and has no `release:*` labels; every versioned asset is in
 `pigeon-lib`. A change spanning the hub and this repo is two PRs, hub first, then a pin bump.
@@ -86,7 +141,8 @@ number appended by squash merge: `fix(terraform): … (#12)`. There is no human 
 ## Decision records
 
 This repo's ADRs live flat in `adr/`, as `RUN-NNNN-<slug>.md`, numbered from `0000` within that
-directory. `RUN-0000` opened the domain and bootstrapped this repo. Read them before changing the
+directory. `RUN-0000` opened the domain and bootstrapped this repo; `RUN-0001` hoisted
+the Terraform here. Read them before changing the
 Terraform layout, the CI wiring, or the repo's settings; if a change would contradict one, write a
 new ADR rather than silently diverging.
 
