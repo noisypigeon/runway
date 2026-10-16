@@ -1,5 +1,5 @@
 # The grafana provider and the scaleway_cockpit_grafana data source come from
-# the root template (grafana_config.hcl); they authenticate with this key.
+# the root template (spoke.hcl's providers map); they authenticate with this key.
 locals {
   grafana_auth_token = var.grafana_auth_token
 }

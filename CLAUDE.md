@@ -73,7 +73,7 @@ invariant 4). **Moving `root.hcl` or a leaf changes its state key** — don't, w
 runbook (LIB-0004 §3; DEV-0106).
 
 - **`backblaze/bucket/*`** — B2 cold-storage buckets. **Custodial and archival data: destroying one
-  is unrecoverable.** Each opts into the Backblaze provider with a sibling `backblaze_config.hcl`.
+  is unrecoverable.** They get the Backblaze provider from `spoke.hcl`'s `providers` map.
   Their keys are commented out in place; enabling one means a new `backblaze/api-key/<name>` leaf.
 - **`scaleway/object-bucket/*`** — `pigeon-cli`'s per-job and per-phase report buckets, and this
   domain's Terraform state bucket (`terraform-state`).
@@ -107,10 +107,10 @@ Mechanics, the same as the other spokes:
   `--check` and fails on drift. To take a template change, bump `root_hcl_version`, run
   `mise run terraform-prepare`, commit the diff.
 - **`spoke.hcl`** holds the template version, `state_bucket_secret`
-  (`WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME`), `backblaze = true` and `grafana = true`. Both
-  providers are latent: a leaf opts in with a sibling `backblaze_config.hcl` or
-  `grafana_config.hcl` (`enabled = true`). A Grafana leaf must define `local.grafana_auth_token`,
-  the Cockpit API key secret the generated provider authenticates with (template `v1.2.0`).
+  (`WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME`) and the `providers` map (LIB-0005).
+  `cloudflare` and `scaleway` are on for every leaf; `backblaze` and `grafana` only for the leaves
+  under their `leaves` prefixes. A Grafana leaf must define `local.grafana_auth_token`, the Cockpit
+  API key secret the generated provider authenticates with.
 - **Secrets** are in `terraform/secrets.enc` (sops/age, dotenv; `.sops.yaml` has the recipient).
   Edit with `mise run secrets-edit` — never decrypt to a file. CI decrypts with `SOPS_AGE_KEY`.
 - **`state/iam` is not here.** It mints the deploy key these leaves authenticate with, and must not
