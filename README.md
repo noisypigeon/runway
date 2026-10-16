@@ -3,7 +3,8 @@
 Terraform for `willowgraysen.com`, the namespace for
 [`pigeon-cli`](https://github.com/noisypigeon/pigeon-cli) and data-ops infrastructure: object
 storage, the job cluster, observability, and the IAM that ties them together. **There is no
-website** — the domain redirects to [noisypigeon.com](https://noisypigeon.com).
+website** — the domain redirects to [noisypigeon.com](https://noisypigeon.com), and that
+redirect is managed in [`noisypigeon/noisypigeon.com`](https://github.com/noisypigeon/noisypigeon.com).
 
 This repo is a spoke of [`noisypigeon/pigeon-lib`](https://github.com/noisypigeon/pigeon-lib),
 which holds the Terraform modules, the shared Terragrunt root template and the CI this repo calls
