@@ -9,7 +9,7 @@
 # default, pinned by its time_static); a fresh one is a replace of
 # module.iam_api_key, then hand the new outputs to the job.
 module "iam_api_key" {
-  source = "https://pigeon.dev/modules/scaleway/iam-api-key/v0.2.0"
+  source = "https://noisypigeon.garden/terraform/scaleway/iam-api-key/v0.2.0"
 
   application_id     = local.pigeon_cli_iam_application_id
   default_project_id = local.scaleway_project_id

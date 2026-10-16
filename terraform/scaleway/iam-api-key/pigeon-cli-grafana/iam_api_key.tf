@@ -1,5 +1,5 @@
 module "iam_api_key" {
-  source = "https://pigeon.dev/modules/scaleway/iam-api-key/v0.2.0"
+  source = "https://noisypigeon.garden/terraform/scaleway/iam-api-key/v0.2.0"
 
   application_id     = var.application_id
   default_project_id = local.scaleway_project_id

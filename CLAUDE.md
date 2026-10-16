@@ -53,7 +53,7 @@ too, but committed — see "Terraform".
 | Terraform 1.16.3, Terragrunt 1.1.6, sops 3.13.3 | pinned in `.mise.toml` | `mise install` |
 | CI job bodies | `noisypigeon/pigeon-lib`, at `.github/workflows/` | reusable workflows, called at the `workflows/vX.Y.Z` tag `/.lib-version` names |
 | `root-changelog.sh`, `resolve-root-hcl.sh` | `noisypigeon/pigeon-lib`, at `.github/scripts/` | run out of `/.lib-src/`, which `fetch-lib.sh` materializes |
-| Terraform modules | `noisypigeon/pigeon-lib`, at `terraform/` | `source = "https://pigeon.dev/modules/<provider>/<module>/vX.Y.Z"` |
+| Terraform modules | `noisypigeon/pigeon-lib`, at `terraform/` | `source = "https://noisypigeon.garden/terraform/<provider>/<module>/vX.Y.Z"` |
 | Terragrunt `root.hcl` | `noisypigeon/pigeon-lib`, at `terragrunt/root-hcl/` | `resolve-root-hcl.sh` copies it at the version `spoke.hcl` pins; committed here |
 
 `/.lib-version` decides which library code runs; bump it, and the `@workflows/…` refs in every

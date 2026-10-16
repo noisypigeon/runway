@@ -1,5 +1,5 @@
 module "cockpit" {
-  source = "https://pigeon.dev/modules/scaleway/cockpit-observability/v0.1.0"
+  source = "https://noisypigeon.garden/terraform/scaleway/cockpit-observability/v0.1.0"
 
   name       = local.name
   project_id = local.scaleway_project_id

@@ -1,5 +1,5 @@
 module "project" {
-  source = "https://pigeon.dev/modules/scaleway/project/v2.0.0"
+  source = "https://noisypigeon.garden/terraform/scaleway/project/v2.0.0"
   name   = "willowgraysen"
   ssh_key = {
     alias = "noisypigeon"
