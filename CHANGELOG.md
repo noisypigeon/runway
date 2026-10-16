@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-16
 
+- [terraform] docs: name noisypigeon/garden, not pigeon.dev, and take root.hcl v2.2.1 ([#14](https://github.com/noisypigeon/willowgraysen/pull/14))
 - [terraform] chore(terraform): source modules from noisypigeon.garden (LIB-0009) ([#13](https://github.com/noisypigeon/willowgraysen/pull/13))
 - [terraform] chore(terraform): hand the redirect to noisypigeon.com and turn Cloudflare off ([#12](https://github.com/noisypigeon/willowgraysen/pull/12))
 
