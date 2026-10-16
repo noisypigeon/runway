@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-15
 
+- [terraform] fix(terraform): stop the overview dashboard planning a change every run ([#4](https://github.com/noisypigeon/willowgraysen.com/pull/4))
 - [terraform] fix(terraform): point the state bucket output at terraform/secrets.enc ([#3](https://github.com/noisypigeon/willowgraysen.com/pull/3))
 - [terraform] feat(run-0001)!: run willowgraysen.com's Terraform from this repo ([#2](https://github.com/noisypigeon/willowgraysen.com/pull/2))
 - [adr] chore(run-0000): bootstrap the repo as a pigeon-lib spoke and open the RUN- domain ([#1](https://github.com/noisypigeon/willowgraysen.com/pull/1))
