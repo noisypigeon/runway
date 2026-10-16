@@ -6,16 +6,18 @@
 locals {
   # pigeon-lib tag terragrunt/root-hcl/v<version>, or "main" for the fetched
   # clone's working tree. Bumping it is how this repo takes a template change.
-  root_hcl_version = "1.2.0"
+  root_hcl_version = "2.0.0"
 
   # terraform/secrets.enc key naming this spoke's own state bucket (ADR-0133).
   state_bucket_secret = "WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME"
 
-  # DEV-0148's latent Backblaze B2 provider; a leaf opts in with a sibling
-  # backblaze_config.hcl setting `enabled = true` (the cold/* leaves do).
-  backblaze = true
-
-  # The template's latent Scaleway Cockpit Grafana provider (v1.2.0); a leaf
-  # opts in with grafana_config.hcl and defines local.grafana_auth_token.
-  grafana = true
+  # Which providers this spoke's leaves get (LIB-0005). A provider absent from
+  # the map is off; `leaves` scopes one to path prefixes ending in "/". A
+  # Grafana leaf must define local.grafana_auth_token.
+  providers = {
+    cloudflare = {}
+    scaleway   = {}
+    backblaze  = { leaves = ["terraform/backblaze/bucket/"] }
+    grafana    = { leaves = ["terraform/scaleway/grafana-dashboard/"] }
+  }
 }
