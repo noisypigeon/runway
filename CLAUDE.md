@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-This is `willowgraysen.com`: the Terraform for the namespace that holds `pigeon-cli`'s and the
+This is `noisypigeon/willowgraysen`: the Terraform for `willowgraysen.com`, the namespace that holds `pigeon-cli`'s and the
 data-ops projects' infrastructure. **There is no website** — the domain's HTTPS endpoint is a
-Cloudflare redirect to `noisypigeon.com`. It is a **spoke** in LIB-0001's hub-and-spoke
+Cloudflare redirect to `noisypigeon.com`, which the `noisypigeon/noisypigeon.com` repo runs (COM-0006). It is a **spoke** in LIB-0001's hub-and-spoke
 architecture: infrastructure only, consuming every reusable asset from `noisypigeon/pigeon-lib` by
 pinned version (RUN-0000).
 
@@ -64,7 +64,7 @@ alone. `fetch-lib.sh` is the one script this repo keeps — a spoke cannot fetch
 
 ## Terraform
 
-`terraform/` holds twenty leaves laid out as `terraform/<provider>/<module>/<instance>/`, where
+`terraform/` holds eighteen leaves laid out as `terraform/<provider>/<module>/<instance>/`, where
 `<provider>/<module>` is exactly the pigeon-lib module the leaf calls and each leaf calls one
 (LIB-0004). They were hoisted from `noisypigeon/noisypigeon` with their history (RUN-0001) and
 re-laid-out with state moves (LIB-0004, #314). `root.hcl` sits at this repo's root, so each leaf's
@@ -86,8 +86,6 @@ runbook (LIB-0004 §3; DEV-0106).
   `grafana/dashboard/pigeon-cli`** — the identity and dashboards for pigeon-cli's managed
   Grafana. The dashboard JSON is not here: it is versioned in pigeon-lib's
   `grafana-dashboards/pigeon-cli` track and fetched by its tag URL.
-- **`cloudflare/dns-record/redirect`, `cloudflare/ruleset/noisypigeon-com-redirect`** — the records
-  and rule that send the domain to `noisypigeon.com`. The only thing here reachable from the web.
 - **`scaleway/project/com`** — the Scaleway project.
 
 Where one leaf needs another's value, it reads it with a Terragrunt `dependency` block, which reads
@@ -108,7 +106,8 @@ Mechanics, the same as the other spokes:
   `mise run terraform-prepare`, commit the diff.
 - **`spoke.hcl`** holds the template version, `state_bucket_secret`
   (`WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME`) and the `providers` map (LIB-0005).
-  `cloudflare` and `scaleway` are on for every leaf; `backblaze` and `grafana` only for the leaves
+  `scaleway` is on for every leaf, and `cloudflare` is off: its two leaves moved to
+  `noisypigeon.com` (COM-0006); `backblaze` and `grafana` only for the leaves
   under their `leaves` prefixes. A Grafana leaf must define `local.grafana_auth_token`, the Cockpit
   API key secret the generated provider authenticates with.
 - **Secrets** are in `terraform/secrets.enc` (sops/age, dotenv; `.sops.yaml` has the recipient).

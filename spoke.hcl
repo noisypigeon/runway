@@ -15,9 +15,8 @@ locals {
   # the map is off; `leaves` scopes one to path prefixes ending in "/". A
   # Grafana leaf must define local.grafana_auth_token.
   providers = {
-    cloudflare = {}
-    scaleway   = {}
-    backblaze  = { leaves = ["terraform/backblaze/bucket/"] }
-    grafana    = { leaves = ["terraform/grafana/dashboard/"] }
+    scaleway  = {}
+    backblaze = { leaves = ["terraform/backblaze/bucket/"] }
+    grafana   = { leaves = ["terraform/grafana/dashboard/"] }
   }
 }
