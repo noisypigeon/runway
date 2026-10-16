@@ -64,22 +64,39 @@ alone. `fetch-lib.sh` is the one script this repo keeps — a spoke cannot fetch
 
 ## Terraform
 
-`terraform/` holds fourteen leaves in four groups. They were hoisted from `noisypigeon/noisypigeon`'s
-`willowgraysen.com/terraform/` with their history (RUN-0001), and kept their state: `root.hcl` sits
-at this repo's root, so each leaf's key is still `terraform/<leaf>/terraform.tfstate` in this
-domain's own bucket (LIB-0001 invariant 4). **Moving `root.hcl` or a leaf changes its state key** —
-don't, without a state-move runbook (DEV-0106).
+`terraform/` holds twenty leaves laid out as `terraform/<provider>/<module>/<instance>/`, where
+`<provider>/<module>` is exactly the pigeon-lib module the leaf calls and each leaf calls one
+(LIB-0004). They were hoisted from `noisypigeon/noisypigeon` with their history (RUN-0001) and
+re-laid-out with state moves (LIB-0004, #314). `root.hcl` sits at this repo's root, so each leaf's
+state key is `terraform/<leaf path>/terraform.tfstate` in this domain's own bucket (LIB-0001
+invariant 4). **Moving `root.hcl` or a leaf changes its state key** — don't, without a state-move
+runbook (LIB-0004 §3; DEV-0106).
 
-- **`cold/*`** — Backblaze B2 cold-storage buckets (and their commented-out key leaves). **Custodial
-  and archival data: destroying one is unrecoverable.** Each opts into the Backblaze provider with
-  a sibling `backblaze_config.hcl`.
-- **`pigeon-cli/*`** — `pigeon-cli`'s infrastructure: per-job buckets under `bucket/`, the job
-  `cluster` (its module is currently commented out), and `shared/` — observability (`cockpit`,
-  `grafana`, whose dashboards are the JSON under `dashboards/`), the CLI's IAM application, and the
-  per-phase report buckets.
-- **`redirect/dns`** — the Cloudflare rule that sends the domain to `noisypigeon.com`. It is the
-  only thing here reachable from the web.
-- **`project`, `state/bucket`** — the Scaleway project and this domain's Terraform state bucket.
+- **`backblaze/bucket/*`** — B2 cold-storage buckets. **Custodial and archival data: destroying one
+  is unrecoverable.** Each opts into the Backblaze provider with a sibling `backblaze_config.hcl`.
+  Their keys are commented out in place; enabling one means a new `backblaze/api-key/<name>` leaf.
+- **`scaleway/object-bucket/*`** — `pigeon-cli`'s per-job and per-phase report buckets, and this
+  domain's Terraform state bucket (`terraform-state`).
+- **`scaleway/iam-application/pigeon-cli`, `scaleway/cockpit-observability/pigeon-cli`,
+  `scaleway/pigeon-cluster/pigeon-cli`** — the CLI's shared IAM application, its observability, and
+  its job cluster (whose module is currently commented out).
+- **`scaleway/{iam-policy,iam-api-key}/pigeon-deduplicate-local-key`** — a scoped key for running
+  the deduplicate phase locally. Its outputs are sensitive; never print them.
+- **`scaleway/{iam-application,iam-policy,iam-api-key}/pigeon-cli-grafana`,
+  `scaleway/grafana-dashboard/pigeon-cli`** — the identity and dashboards for pigeon-cli's managed
+  Grafana. The dashboard JSON is not here: it is versioned in pigeon-lib's
+  `grafana-dashboards/pigeon-cli` track and fetched by its tag URL.
+- **`cloudflare/dns-record/redirect`, `cloudflare/ruleset/noisypigeon-com-redirect`** — the records
+  and rule that send the domain to `noisypigeon.com`. The only thing here reachable from the web.
+- **`scaleway/project/com`** — the Scaleway project.
+
+Where one leaf needs another's value, it reads it with a Terragrunt `dependency` block, which reads
+the upstream leaf's **outputs from state**: the upstream leaf declares an `output`, the dependent
+passes `dependency.<name>.outputs.<output>` as an `inputs` entry and declares a matching
+`variable` (marked `sensitive` for a secret). The `pigeon-cli-grafana` leaves are the example —
+policy, key and dashboard depend on the application's `id`, and the dashboard leaf on the key's
+`secret_key`. A brand-new upstream leaf must be applied before its dependents can plan, and a
+leaf whose state arrived by a state move needs a refresh-only apply to record its outputs.
 
 Mechanics, the same as the other spokes:
 
@@ -90,8 +107,10 @@ Mechanics, the same as the other spokes:
   `--check` and fails on drift. To take a template change, bump `root_hcl_version`, run
   `mise run terraform-prepare`, commit the diff.
 - **`spoke.hcl`** holds the template version, `state_bucket_secret`
-  (`WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME`), `backblaze = true`, and the `grafana` provider
-  requirement (template `v1.1.0`).
+  (`WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME`), `backblaze = true` and `grafana = true`. Both
+  providers are latent: a leaf opts in with a sibling `backblaze_config.hcl` or
+  `grafana_config.hcl` (`enabled = true`). A Grafana leaf must define `local.grafana_auth_token`,
+  the Cockpit API key secret the generated provider authenticates with (template `v1.2.0`).
 - **Secrets** are in `terraform/secrets.enc` (sops/age, dotenv; `.sops.yaml` has the recipient).
   Edit with `mise run secrets-edit` — never decrypt to a file. CI decrypts with `SOPS_AGE_KEY`.
 - **`state/iam` is not here.** It mints the deploy key these leaves authenticate with, and must not
