@@ -1,7 +1,7 @@
 # The grafana provider and the scaleway_cockpit_grafana data source come from
 # the root template (grafana_config.hcl); they authenticate with this key.
 locals {
-  grafana_auth_token = module.iam_api_key.secret_key
+  grafana_auth_token = var.grafana_auth_token
 }
 
 # Dashboards are versioned in pigeon-lib's grafana-dashboards/pigeon-cli track
@@ -19,7 +19,7 @@ module "grafana_dashboard" {
 
   first_access = {
     grafana_url = data.scaleway_cockpit_grafana.grafana.grafana_url
-    trigger     = module.iam_application.id
+    trigger     = var.application_id
   }
   first_access_auth_token = local.grafana_auth_token
 }
