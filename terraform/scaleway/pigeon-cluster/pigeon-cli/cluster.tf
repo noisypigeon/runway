@@ -1,5 +1,5 @@
 # Re-enabling this needs pigeon-cluster v3.0.1 or later: every earlier tag
-# nests pigeon.dev/modules/... sources, which no longer resolve (LIB-0009 §2).
+# nests module short URLs that no longer resolve (LIB-0009 §2).
 # v3.0.0 also composes cloud-init, volumes and IPs at the cluster level, so
 # read its CHANGELOG before uncommenting.
 # module "cluster" {

@@ -174,7 +174,7 @@ Filing one, by hand:
 - **Author is always** `Willow Graysen ([@noisypigeon](https://github.com/noisypigeon)).`
 - **Sections**: `## Context` / `## Decision` / `## Consequences` / `## Out of scope`, optionally
   then `## Verification`. No YAML frontmatter, and no index.
-- Cite `RUN-NNNN` for this domain, `LIB-NNNN` for `pigeon-lib`'s, `DEV-NNNN` for `pigeon.dev`'s
+- Cite `RUN-NNNN` for this domain, `LIB-NNNN` for `pigeon-lib`'s, `DEV-NNNN` for `noisypigeon/garden`'s
   and `COM-NNNN` for `noisypigeon.com`'s. Bare `ADR-NNNN` in older prose means the `DEV-` corpus.
 - Genuinely-deferred `## Out of scope` items get a GitHub issue against `noisypigeon/noisypigeon`
   (ADR-0031); permanent design boundaries do not.
