@@ -1,5 +1,5 @@
 module "iam_policy" {
-  source = "https://pigeon.dev/modules/scaleway/iam-policy/v4.0.0"
+  source = "https://noisypigeon.garden/terraform/scaleway/iam-policy/v4.0.0"
   name   = "pigeon-cli-grafana-policy"
 
   application_id          = var.application_id

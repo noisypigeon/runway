@@ -5,7 +5,7 @@
 # LIB-0004: this policy and its key are separate leaves that need no dependency,
 # since both take the application from the shared pigeon-cli secret.
 module "iam_policy" {
-  source = "https://pigeon.dev/modules/scaleway/iam-policy/v4.0.0"
+  source = "https://noisypigeon.garden/terraform/scaleway/iam-policy/v4.0.0"
   name   = "pigeon-deduplicate-local-key"
 
   application_id          = local.pigeon_cli_iam_application_id
