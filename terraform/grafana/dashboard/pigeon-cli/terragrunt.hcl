@@ -7,11 +7,11 @@ terraform {
 }
 
 dependency "iam_application" {
-  config_path = "../../iam-application/pigeon-cli-grafana"
+  config_path = "../../../scaleway/iam-application/pigeon-cli-grafana"
 }
 
 dependency "iam_api_key" {
-  config_path = "../../iam-api-key/pigeon-cli-grafana"
+  config_path = "../../../scaleway/iam-api-key/pigeon-cli-grafana"
 }
 
 inputs = {

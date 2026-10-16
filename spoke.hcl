@@ -18,6 +18,6 @@ locals {
     cloudflare = {}
     scaleway   = {}
     backblaze  = { leaves = ["terraform/backblaze/bucket/"] }
-    grafana    = { leaves = ["terraform/scaleway/grafana-dashboard/"] }
+    grafana    = { leaves = ["terraform/grafana/dashboard/"] }
   }
 }

@@ -83,7 +83,7 @@ runbook (LIB-0004 §3; DEV-0106).
 - **`scaleway/{iam-policy,iam-api-key}/pigeon-deduplicate-local-key`** — a scoped key for running
   the deduplicate phase locally. Its outputs are sensitive; never print them.
 - **`scaleway/{iam-application,iam-policy,iam-api-key}/pigeon-cli-grafana`,
-  `scaleway/grafana-dashboard/pigeon-cli`** — the identity and dashboards for pigeon-cli's managed
+  `grafana/dashboard/pigeon-cli`** — the identity and dashboards for pigeon-cli's managed
   Grafana. The dashboard JSON is not here: it is versioned in pigeon-lib's
   `grafana-dashboards/pigeon-cli` track and fetched by its tag URL.
 - **`cloudflare/dns-record/redirect`, `cloudflare/ruleset/noisypigeon-com-redirect`** — the records
