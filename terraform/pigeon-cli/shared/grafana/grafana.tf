@@ -1,48 +1,25 @@
-# grafana's required_providers entry lives in willowgraysen.com/root.hcl's
-# generate "provider" block alongside cloudflare/scaleway -- Terraform allows only one
-# required_providers block per module, and that one is already generated into every
-# leaf here (ADR-0135).
-
-data "scaleway_cockpit_grafana" "this" {
-  project_id = local.scaleway_project_id
-}
-
-provider "grafana" {
-  url  = data.scaleway_cockpit_grafana.this.grafana_url
-  auth = "anonymous"
-
-  http_headers = {
-    "X-Auth-Token" = module.iam_api_key.secret_key
-  }
-}
-
-# Scaleway's Grafana lazily provisions an IAM identity's role on its first
-# API access -- there is no Terraform resource for this yet (ADR-0135), so
-# this pings the org endpoint once per IAM application (not per key
-# rotation) before any dashboard is created against it.
-resource "terraform_data" "grafana_first_access" {
-  input = module.iam_api_key.secret_key
-
-  triggers_replace = {
-    application_id = module.iam_application.id
-  }
-
-  provisioner "local-exec" {
-    command = "curl -sf -H \"X-Auth-Token: ${self.input}\" \"${data.scaleway_cockpit_grafana.this.grafana_url}/api/org\" >/dev/null"
-  }
-}
-
+# The grafana provider and the scaleway_cockpit_grafana data source come from
+# the root template (grafana_config.hcl); they authenticate with this key.
 locals {
-  dashboard_files = fileset("${path.module}/dashboards", "*.json")
+  grafana_auth_token = module.iam_api_key.secret_key
 }
 
+# Dashboards are versioned in pigeon-lib's grafana-dashboards/pigeon-cli track
+# and fetched by tag URL -- pigeon-cli's own observability stack ships a copy
+# of the same JSON. The first-access ping Scaleway's Grafana needs before any
+# dashboard (ADR-0135) is the module's first_access, re-run when the IAM
+# application changes.
 module "grafana_dashboard" {
-  source     = "https://pigeon.dev/modules/scaleway/grafana-dashboard/v0.1.0"
-  depends_on = [terraform_data.grafana_first_access]
+  source = "https://pigeon.dev/modules/scaleway/grafana-dashboard/v0.2.0"
 
   folder_title = "pigeon-cli"
   dashboards = {
-    for f in local.dashboard_files :
-    trimsuffix(f, ".json") => { config_json = file("${path.module}/dashboards/${f}") }
+    overview = { url = "https://raw.githubusercontent.com/noisypigeon/pigeon-lib/refs/tags/grafana-dashboards/pigeon-cli/v1.0.0/grafana-dashboards/pigeon-cli/overview.json" }
   }
+
+  first_access = {
+    grafana_url = data.scaleway_cockpit_grafana.grafana.grafana_url
+    trigger     = module.iam_application.id
+  }
+  first_access_auth_token = local.grafana_auth_token
 }
