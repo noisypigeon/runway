@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-15
 
+- [terraform] refactor(terraform): rename the single-module leaves to LIB-0004's layout ([#7](https://github.com/noisypigeon/willowgraysen.com/pull/7))
 - [terraform] refactor(terraform): grafana leaf onto the template's latent provider and a pinned dashboard ([#6](https://github.com/noisypigeon/willowgraysen.com/pull/6))
 - [terraform] refactor(terraform): move the redirect leaf onto the cloudflare wrapper modules ([#5](https://github.com/noisypigeon/willowgraysen.com/pull/5))
 - [terraform] fix(terraform): stop the overview dashboard planning a change every run ([#4](https://github.com/noisypigeon/willowgraysen.com/pull/4))
