@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-15
 
+- [repo] Describe the LIB-0004 layout in CLAUDE.md ([#9](https://github.com/noisypigeon/willowgraysen.com/pull/9))
 - [terraform] Split the three multi-module leaves into one leaf per module ([#8](https://github.com/noisypigeon/willowgraysen.com/pull/8))
 - [terraform] refactor(terraform): rename the single-module leaves to LIB-0004's layout ([#7](https://github.com/noisypigeon/willowgraysen.com/pull/7))
 - [terraform] refactor(terraform): grafana leaf onto the template's latent provider and a pinned dashboard ([#6](https://github.com/noisypigeon/willowgraysen.com/pull/6))
