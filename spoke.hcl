@@ -6,7 +6,7 @@
 locals {
   # pigeon-lib tag terragrunt/root-hcl/v<version>, or "main" for the fetched
   # clone's working tree. Bumping it is how this repo takes a template change.
-  root_hcl_version = "1.1.0"
+  root_hcl_version = "1.2.0"
 
   # terraform/secrets.enc key naming this spoke's own state bucket (ADR-0133).
   state_bucket_secret = "WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME"
@@ -15,8 +15,7 @@ locals {
   # backblaze_config.hcl setting `enabled = true` (the cold/* leaves do).
   backblaze = true
 
-  # pigeon-cli/shared/grafana manages dashboards through the Grafana provider.
-  extra_required_providers = {
-    grafana = { source = "grafana/grafana", version = "~> 4.0" }
-  }
+  # The template's latent Scaleway Cockpit Grafana provider (v1.2.0); a leaf
+  # opts in with grafana_config.hcl and defines local.grafana_auth_token.
+  grafana = true
 }
