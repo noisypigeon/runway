@@ -2,7 +2,7 @@
 
 This is `noisypigeon/willowgraysen`: the Terraform for `willowgraysen.com`, the namespace that holds `pigeon-cli`'s and the
 data-ops projects' infrastructure. **There is no website** — the domain's HTTPS endpoint is a
-Cloudflare redirect to `noisypigeon.com`, which the `noisypigeon/noisypigeon.com` repo runs (COM-0006). It is a **spoke** in LIB-0001's hub-and-spoke
+Cloudflare redirect to `noisypigeon.com`, which the `noisypigeon/blog` repo runs (COM-0006). It is a **spoke** in LIB-0001's hub-and-spoke
 architecture: infrastructure only, consuming every reusable asset from `noisypigeon/pigeon-lib` by
 pinned version (RUN-0000).
 
@@ -107,7 +107,7 @@ Mechanics, the same as the other spokes:
 - **`spoke.hcl`** holds the template version, `state_bucket_secret`
   (`WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME`) and the `providers` map (LIB-0005).
   `scaleway` is on for every leaf, and `cloudflare` is off: its two leaves moved to
-  `noisypigeon.com` (COM-0006); `backblaze` and `grafana` only for the leaves
+  `noisypigeon/blog` (COM-0006); `backblaze` and `grafana` only for the leaves
   under their `leaves` prefixes. A Grafana leaf must define `local.grafana_auth_token`, the Cockpit
   API key secret the generated provider authenticates with.
 - **Secrets** are in `terraform/secrets.enc` (sops/age, dotenv; `.sops.yaml` has the recipient).
@@ -175,7 +175,7 @@ Filing one, by hand:
 - **Sections**: `## Context` / `## Decision` / `## Consequences` / `## Out of scope`, optionally
   then `## Verification`. No YAML frontmatter, and no index.
 - Cite `RUN-NNNN` for this domain, `LIB-NNNN` for `pigeon-lib`'s, `DEV-NNNN` for `noisypigeon/garden`'s
-  and `COM-NNNN` for `noisypigeon.com`'s. Bare `ADR-NNNN` in older prose means the `DEV-` corpus.
+  and `COM-NNNN` for `noisypigeon/blog`'s. Bare `ADR-NNNN` in older prose means the `DEV-` corpus.
 - Genuinely-deferred `## Out of scope` items get a GitHub issue against `noisypigeon/noisypigeon`
   (ADR-0031); permanent design boundaries do not.
 - **An ADR here is public, too.** Describe resources by role ("the cold buckets"), not by name.
