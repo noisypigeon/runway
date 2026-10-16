@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-16
+
+- [terraform] chore(terraform): hand the redirect to noisypigeon.com and turn Cloudflare off ([#12](https://github.com/noisypigeon/willowgraysen/pull/12))
+
 ## 2026-10-15
 
 - [terraform] refactor(terraform): move the Grafana dashboard leaf onto grafana/dashboard ([#11](https://github.com/noisypigeon/willowgraysen.com/pull/11))
