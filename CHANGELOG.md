@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-15
 
+- [terraform] chore(terraform): take root.hcl v2.0.0, with providers named in spoke.hcl ([#10](https://github.com/noisypigeon/willowgraysen.com/pull/10))
 - [repo] Describe the LIB-0004 layout in CLAUDE.md ([#9](https://github.com/noisypigeon/willowgraysen.com/pull/9))
 - [terraform] Split the three multi-module leaves into one leaf per module ([#8](https://github.com/noisypigeon/willowgraysen.com/pull/8))
 - [terraform] refactor(terraform): rename the single-module leaves to LIB-0004's layout ([#7](https://github.com/noisypigeon/willowgraysen.com/pull/7))
