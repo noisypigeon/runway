@@ -1,4 +1,6 @@
-resource "cloudflare_ruleset" "to_noisypigeon_com" {
+module "ruleset" {
+  source = "https://pigeon.dev/modules/cloudflare/ruleset/v0.1.0"
+
   zone_id = local.zone_id_willowgraysen_com
   name    = "willowgraysen.com to noisypigeon.com redirect"
   kind    = "zone"
