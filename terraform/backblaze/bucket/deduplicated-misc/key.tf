@@ -1,5 +1,5 @@
 # Dormant: a Backblaze B2 application key for this bucket. Under LIB-0004 a
-# leaf calls one pigeon-lib module, so enabling it means a new
+# leaf calls one library module, so enabling it means a new
 # terraform/backblaze/api-key/<this bucket's instance>/ leaf (with a dependency
 # on this one for the bucket ID), not uncommenting it here.
 
