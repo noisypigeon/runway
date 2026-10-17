@@ -104,14 +104,18 @@ Mechanics, the same as the other spokes:
   plans inside git worktrees, which only hold tracked files (LIB-0003). CI runs the resolver with
   `--check` and fails on drift. To take a template change, bump `root_hcl_version`, run
   `mise run terraform-prepare`, commit the diff.
-- **`spoke.hcl`** holds the template version, `state_bucket_secret`
-  (`WILLOWGRAYSEN_COM_TERRAFORM_STATE_BUCKET_NAME`) and the `providers` map (LIB-0005).
+- **`spoke.hcl`** holds the template version and the `providers` map (LIB-0005); state stays on
+  the default Scaleway backend.
   `scaleway` is on for every leaf, and `cloudflare` is off: its two leaves moved to
   `noisypigeon/blog` (COM-0006); `backblaze` and `grafana` only for the leaves
   under their `leaves` prefixes. A Grafana leaf must define `local.grafana_auth_token`, the Cockpit
   API key secret the generated provider authenticates with.
 - **Secrets** are in `terraform/secrets.enc` (sops/age, dotenv; `.sops.yaml` has the recipient).
   Edit with `mise run secrets-edit` — never decrypt to a file. CI decrypts with `SOPS_AGE_KEY`.
+  Every key has a fixed name from `/secrets-schema.json` (LIB-0010): `TERRAFORM_STATE_*` for the
+  state bucket (the same Scaleway key as the provider's, held under both names),
+  `SCALEWAY_PROVIDER_*` and `BACKBLAZE_PROVIDER_*` for the providers, and `ENV_<NAME>` for a value a
+  leaf reads as `local.<name>`. `check-secrets.sh` checks the names in CI without decrypting.
 - **`state/iam` is not here.** It mints the deploy key these leaves authenticate with, and must not
   depend on that key, so it stays in `noisypigeon/noisypigeon` on that repo's shared root and
   shared state bucket (LIB-0001 §8; DEV-0133; RUN-0001). Rotating the deploy key is a PR *there*,
