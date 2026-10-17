@@ -6,13 +6,18 @@
 locals {
   # pigeon-lib tag terragrunt/root-hcl/v<version>, or "main" for the fetched
   # clone's working tree. Bumping it is how this repo takes a template change.
-  root_hcl_version = "4.0.0"
+  root_hcl_version = "4.1.0"
 
   # Which providers this spoke's leaves get (LIB-0005). A provider absent from
   # the map is off; `leaves` scopes one to path prefixes ending in "/". A
-  # Grafana leaf must define local.grafana_auth_token.
+  # Grafana leaf must define local.grafana_auth_token. Scaleway's breakglass
+  # (LIB-0014): only the deployer IAM leaf signs in with the hand-made key in
+  # terraform/secrets/scaleway_breakglass.enc -- for both the provider and the
+  # state -- because it manages the key every other leaf uses.
   providers = {
-    scaleway  = {}
+    scaleway = {
+      breakglass = { leaves = ["terraform/scaleway/terraform-deployer-iam/"] }
+    }
     backblaze = { leaves = ["terraform/backblaze/bucket/"] }
     grafana   = { leaves = ["terraform/grafana/dashboard/"] }
   }
