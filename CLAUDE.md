@@ -16,11 +16,11 @@ repo is **public** (RUN-0000 records why and what that accepts), so:
 
 - **Everything pushed here is permanent and public** — commits, branch names, PR titles and
   bodies, issue text, and CI logs. Treat anything you write as published.
-- **Never paste plan output, bucket names, key IDs, or `secrets.enc` contents** into an issue, a
+- **Never paste plan output, bucket names, key IDs, or `terraform/secrets/*.enc` contents** into an issue, a
   PR body, a commit message, or a doc. CI masks decrypted secret *values* in its logs and PR
   comments; it cannot mask what you type.
-- **Never decrypt `terraform/secrets.enc` to a file.** `mise run secrets-edit` edits it in place;
-  `root.hcl` decrypts it in memory. Never commit a plaintext `.env`.
+- **Never decrypt a `terraform/secrets/*.enc` file to a file.** `mise run secrets-edit <file>` edits
+  one in place; `root.hcl` decrypts in memory. Never commit a plaintext `.env`.
 - **Read the whole plan before commenting `terragrunt apply`.** An apply that destroys a cold
   bucket is not recoverable.
 - **Interactions are limited to prior contributors** (`interaction-limits-renew.yml`).
@@ -31,12 +31,12 @@ repo is **public** (RUN-0000 records why and what that accepts), so:
 CHANGELOG.md                    one line per merged PR, by CI -- see "Changelog"
 .lib-version                    the pigeon-lib ref everything below consumes
 .mise.toml                      terraform/terragrunt/sops versions and tasks
-.sops.yaml                      sops/age recipient for terraform/secrets.enc
+.sops.yaml                      sops/age recipient for terraform/secrets/*.enc
 fetch-lib.sh                    clones pigeon-lib into .lib-src/ at /.lib-version
 root.hcl                        GENERATED Terragrunt root -- see "Terraform"; never edit
 spoke.hcl                       root.hcl template version + this spoke's instance values
 terraform/                      the domain's Terraform leaves -- see "Terraform"
-  secrets.enc                   sops/age-encrypted dotenv
+  secrets/                      sops/age dotenv files, one per concern (LIB-0012)
 adr/                            decision records, RUN-NNNN -- see "Decision records"
 .github/workflows/              thin callers into pigeon-lib -- see "CI"
 ```
@@ -110,12 +110,15 @@ Mechanics, the same as the other spokes:
   `noisypigeon/blog` (COM-0006); `backblaze` and `grafana` only for the leaves
   under their `leaves` prefixes. A Grafana leaf must define `local.grafana_auth_token`, the Cockpit
   API key secret the generated provider authenticates with.
-- **Secrets** are in `terraform/secrets.enc` (sops/age, dotenv; `.sops.yaml` has the recipient).
-  Edit with `mise run secrets-edit` — never decrypt to a file. CI decrypts with `SOPS_AGE_KEY`.
-  Every key has a fixed name from `/secrets-schema.json` (LIB-0010): `TERRAFORM_STATE_*` for the
-  state bucket (the same Scaleway key as the provider's, held under both names),
-  `SCALEWAY_PROVIDER_*` and `BACKBLAZE_PROVIDER_*` for the providers, and `ENV_<NAME>` for a value a
-  leaf reads as `local.<name>`. `check-secrets.sh` checks the names in CI without decrypting.
+- **Secrets** are one sops/age dotenv file per concern under `terraform/secrets/` (LIB-0012;
+  `.sops.yaml` has the recipient): `terraform.enc` holds the state bucket's `TERRAFORM_STATE_*`
+  (the same Scaleway key as the provider's, held in both files; no backup, since this state is
+  versioned in place), `scaleway.enc` and `backblaze.enc` hold `SCALEWAY_PROVIDER_*` and
+  `BACKBLAZE_PROVIDER_*`, and `env.enc` holds the values a leaf reads as `local.<name>`, one key
+  `<NAME>` each. Each file holds exactly the keys `/secrets-schema.json` gives it, and each leaf
+  decrypts only the files it uses. Edit one with `mise run secrets-edit <file>` — never decrypt to
+  a file. CI decrypts with `SOPS_AGE_KEY`, and `check-secrets.sh` checks every file's key names
+  without decrypting.
 - **`state/iam` is not here.** It mints the deploy key these leaves authenticate with, and must not
   depend on that key, so it stays in `noisypigeon/noisypigeon` on that repo's shared root and
   shared state bucket (LIB-0001 §8; DEV-0133; RUN-0001). Rotating the deploy key is a PR *there*,

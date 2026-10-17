@@ -13,5 +13,5 @@ permissions: {}
 
 jobs:
   renew:
-    uses: noisypigeon/pigeon-lib/.github/workflows/interaction-limits-renew.yml@workflows/v2.0.0
+    uses: noisypigeon/pigeon-lib/.github/workflows/interaction-limits-renew.yml@workflows/v3.0.0
     secrets: inherit
