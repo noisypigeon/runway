@@ -4,7 +4,7 @@ locals {
   grafana_auth_token = var.grafana_auth_token
 }
 
-# Dashboards are versioned in pigeon-lib's grafana-dashboards/pigeon-cli track
+# Dashboards are versioned in the library's grafana-dashboards/pigeon-cli track
 # and fetched by tag URL -- pigeon-cli's own observability stack ships a copy
 # of the same JSON. The first-access ping Scaleway's Grafana needs before any
 # dashboard (ADR-0135) is the module's first_access, re-run when the IAM
@@ -14,7 +14,7 @@ module "grafana_dashboard" {
 
   folder_title = "pigeon-cli"
   dashboards = {
-    overview = { url = "https://raw.githubusercontent.com/noisypigeon/pigeon-lib/refs/tags/grafana-dashboards/pigeon-cli/v1.0.0/grafana-dashboards/pigeon-cli/overview.json" }
+    overview = { url = "https://raw.githubusercontent.com/noisypigeon/library/refs/tags/grafana-dashboards/pigeon-cli/v1.0.0/grafana-dashboards/pigeon-cli/overview.json" }
   }
 
   first_access = {
