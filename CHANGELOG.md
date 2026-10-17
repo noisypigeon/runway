@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-17
 
+- [terraform] chore(terraform): split secrets per concern and take root.hcl v4 (LIB-0012) ([#17](https://github.com/noisypigeon/willowgraysen/pull/17))
 - [terraform] chore(terraform): take root.hcl v3 with normalized secrets (LIB-0010) ([#16](https://github.com/noisypigeon/willowgraysen/pull/16))
 
 ## 2026-10-16
