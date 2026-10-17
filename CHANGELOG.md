@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-17
 
+- [terraform] Call noisypigeon/library, the renamed hub ([#19](https://github.com/noisypigeon/runway/pull/19))
 - [terraform] Hoist the deployer IAM into this repo behind a breakglass key ([#18](https://github.com/noisypigeon/runway/pull/18))
 - [terraform] chore(terraform): split secrets per concern and take root.hcl v4 (LIB-0012) ([#17](https://github.com/noisypigeon/willowgraysen/pull/17))
 - [terraform] chore(terraform): take root.hcl v3 with normalized secrets (LIB-0010) ([#16](https://github.com/noisypigeon/willowgraysen/pull/16))
