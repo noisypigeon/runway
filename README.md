@@ -6,9 +6,9 @@ storage, the job cluster, observability, and the IAM that ties them together. **
 website** — the domain redirects to [noisypigeon.com](https://noisypigeon.com), and that
 redirect is managed in [`noisypigeon/blog`](https://github.com/noisypigeon/blog).
 
-This repo is a spoke of [`noisypigeon/pigeon-lib`](https://github.com/noisypigeon/pigeon-lib),
+This repo is a spoke of [`noisypigeon/library`](https://github.com/noisypigeon/library),
 which holds the Terraform modules, the shared Terragrunt root template and the CI this repo calls
-([LIB-0001](https://github.com/noisypigeon/pigeon-lib/blob/main/docs/adr/LIB-0001-composable-hub-and-spoke-repo-architecture.md)).
+([LIB-0001](https://github.com/noisypigeon/library/blob/main/docs/adr/LIB-0001-composable-hub-and-spoke-repo-architecture.md)).
 
 ## Working on it
 
