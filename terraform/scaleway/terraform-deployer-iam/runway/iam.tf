@@ -1,9 +1,9 @@
 # This spoke's Terraform deployer identity (LIB-0014), hoisted from
-# noisypigeon/noisypigeon's willowgraysen.com/terraform/state/iam. It manages
-# the key every other leaf here deploys with, so it signs in with the
-# breakglass key instead (spoke.hcl providers.scaleway.breakglass). The names
-# are the ones the objects already have; renaming them is
-# noisypigeon/noisypigeon#324.
+# noisypigeon/noisypigeon's willowgraysen.com/terraform/state/iam. It signs in
+# with this spoke's own Scaleway key, which it doesn't manage, so it needs no
+# breakglass key yet; if it ever manages the key it signs in with, allowlist it
+# for one (spoke.hcl providers.scaleway.breakglass). The names are the ones the
+# objects already have; renaming them is noisypigeon/noisypigeon#324.
 module "terraform_deployer_iam" {
   source = "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.1.0"
 

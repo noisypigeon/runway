@@ -10,14 +10,9 @@ locals {
 
   # Which providers this spoke's leaves get (LIB-0005). A provider absent from
   # the map is off; `leaves` scopes one to path prefixes ending in "/". A
-  # Grafana leaf must define local.grafana_auth_token. Scaleway's breakglass
-  # (LIB-0014): only the deployer IAM leaf signs in with the hand-made key in
-  # terraform/secrets/scaleway_breakglass.enc -- for both the provider and the
-  # state -- because it manages the key every other leaf uses.
+  # Grafana leaf must define local.grafana_auth_token.
   providers = {
-    scaleway = {
-      breakglass = { leaves = ["terraform/scaleway/terraform-deployer-iam/"] }
-    }
+    scaleway  = {}
     backblaze = { leaves = ["terraform/backblaze/bucket/"] }
     grafana   = { leaves = ["terraform/grafana/dashboard/"] }
   }

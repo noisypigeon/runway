@@ -119,12 +119,11 @@ Mechanics, the same as the other spokes:
   decrypts only the files it uses. Edit one with `mise run secrets-edit <file>` — never decrypt to
   a file. CI decrypts with `SOPS_AGE_KEY`, and `check-secrets.sh` checks every file's key names
   without decrypting.
-- **The deploy key is minted here**, by `terraform/scaleway/terraform-deployer-iam/runway`
-  (LIB-0014). That leaf must not depend on the key it manages, so it alone signs in with the
-  hand-made breakglass key in `scaleway_breakglass.enc`, for both the provider and the state
-  (`spoke.hcl`'s `providers.scaleway.breakglass`). Terraform never manages that key. Rotating the
-  deploy key is a PR on that leaf, then a `secrets-edit` of its outputs into `scaleway.enc` and
-  `terraform.enc`. Nothing here reads anything from `noisypigeon/noisypigeon` any more.
+- **The deployer IAM lives here**, in `terraform/scaleway/terraform-deployer-iam/runway`
+  (LIB-0014). It signs in with this spoke's own Scaleway key, which it doesn't manage, so it needs
+  no breakglass key; if it ever manages the key it signs in with, allowlist it in `spoke.hcl`'s
+  `providers.scaleway.breakglass` and commit `scaleway_breakglass.enc`. Nothing here reads
+  anything from `noisypigeon/noisypigeon` any more.
 
 A Terraform PR is planned by `terragrunt-plan.yml` and applied by commenting `terragrunt apply` on it
 (`terragrunt-apply.yml`; ADR-0124/0129) — only an OWNER, MEMBER or COLLABORATOR's comment counts. A
