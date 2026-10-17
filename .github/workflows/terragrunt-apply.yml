@@ -1,6 +1,6 @@
 name: Terragrunt apply
 
-# Thin caller into noisypigeon/pigeon-lib's terragrunt-run.yml (RUN-0001). This
+# Thin caller into noisypigeon/library's terragrunt-run.yml (RUN-0001). This
 # file keeps the trigger, permissions, concurrency, and the authorization gate
 # below. That gate -- a fixed comment body plus an OWNER/MEMBER/COLLABORATOR
 # author-association check -- is what stands between an arbitrary PR comment
@@ -25,7 +25,7 @@ jobs:
       github.event.issue.pull_request != null &&
       github.event.comment.body == 'terragrunt apply' &&
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
-    uses: noisypigeon/pigeon-lib/.github/workflows/terragrunt-run.yml@workflows/v3.1.0
+    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@workflows/v3.1.0
     with:
       command: apply
       checkout_ref: refs/pull/${{ github.event.issue.number }}/head

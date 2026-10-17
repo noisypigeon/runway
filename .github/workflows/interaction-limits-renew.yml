@@ -2,7 +2,7 @@ name: Renew interaction limits
 
 # Keeps this public repo at a contributors_only interaction limit (RUN-0000).
 # GitHub auto-expires the limit after six months, so this re-applies it monthly.
-# Job body lives in noisypigeon/pigeon-lib; a cron trigger can't live in
+# Job body lives in noisypigeon/library; a cron trigger can't live in
 # another repo. Needs GH_ADMIN_TOKEN, a token with admin on this repo.
 on:
   schedule:
@@ -13,5 +13,5 @@ permissions: {}
 
 jobs:
   renew:
-    uses: noisypigeon/pigeon-lib/.github/workflows/interaction-limits-renew.yml@workflows/v3.1.0
+    uses: noisypigeon/library/.github/workflows/interaction-limits-renew.yml@workflows/v3.1.0
     secrets: inherit
