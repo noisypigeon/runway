@@ -1,6 +1,6 @@
 module "project" {
   source = "https://noisypigeon.garden/terraform/scaleway/project/v2.0.0"
-  name   = "willowgraysen"
+  name   = "runway"
   ssh_key = {
     alias = "noisypigeon"
     # Not a secret; this is my pub key.
