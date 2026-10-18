@@ -16,9 +16,10 @@ which holds the Terraform modules, the shared Terragrunt root template and the C
 mise install          # terraform, terragrunt, sops
 ```
 
-Terraform changes are planned on the PR and applied by commenting `terragrunt apply`. Conventions,
-the sensitivity rules, and how to file an ADR (`RUN-NNNN`, in [`adr/`](adr)) are in
-[CLAUDE.md](CLAUDE.md).
+Terraform changes are planned on the PR and applied by commenting `terragrunt apply`. Conventions
+and the sensitivity rules are in [CLAUDE.md](CLAUDE.md). Decisions about this
+repo are recorded in [`noisypigeon/library`](https://github.com/noisypigeon/library/blob/main/docs/adr/), not here
+([LIB-0017](https://github.com/noisypigeon/library/blob/main/docs/adr/LIB-0017-spokes-do-not-get-their-own-adrs.md)).
 
 ## Contributing
 
