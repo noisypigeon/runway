@@ -1,4 +1,4 @@
 locals {
-  name_prefix = "willowgraysen-com"
+  name_prefix = "runway"
   name_suffix = "terraform-state"
 }
