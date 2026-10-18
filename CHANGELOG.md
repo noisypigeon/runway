@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-17
 
+- [terraform] State lives in the runway-prefixed bucket (LIB-0016) ([#24](https://github.com/noisypigeon/runway/pull/24))
 - [terraform] State bucket takes the runway prefix (LIB-0016) ([#23](https://github.com/noisypigeon/runway/pull/23))
 - [terraform] chore: remove pigeon-deduplicate bucket; rename project ([#22](https://github.com/noisypigeon/runway/pull/22))
 - [terraform] chore: add new buckets and remove one old bucket ([#21](https://github.com/noisypigeon/runway/pull/21))
