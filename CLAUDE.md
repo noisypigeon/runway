@@ -37,7 +37,6 @@ root.hcl                        GENERATED Terragrunt root -- see "Terraform"; ne
 spoke.hcl                       root.hcl template version + this spoke's instance values
 terraform/                      the domain's Terraform leaves -- see "Terraform"
   secrets/                      sops/age dotenv files, one per concern (LIB-0012)
-adr/                            decision records, RUN-NNNN -- see "Decision records"
 .github/workflows/              thin callers into library -- see "CI"
 ```
 
@@ -166,29 +165,21 @@ number appended by squash merge: `fix(terraform): … (#12)`. There is no human 
 
 ## Decision records
 
-This repo's ADRs live flat in `adr/`, as `RUN-NNNN-<slug>.md`, numbered from `0000` within that
-directory. `RUN-0000` opened the domain and bootstrapped this repo; `RUN-0001` hoisted
-the Terraform here. Read them before changing the
-Terraform layout, the CI wiring, or the repo's settings; if a change would contradict one, write a
-new ADR rather than silently diverging.
+This repo holds no ADRs. It is a spoke, and its design standards come from
+`noisypigeon/library`, so its decisions live there too (LIB-0017):
 
-`RUN-` is this domain's prefix because `willowgraysen.com` is the namespace for `pigeon-cli` and the
-data-ops projects — the things that *run* — not for a website (RUN-0000).
+- **A new decision about this repo** is an amendment on the `LIB-` record
+  whose standard it applies, or a new `LIB-` record. File it in library, and
+  land it before the change here that depends on it.
+- **A library record about this repo is public, too.** Describe resources by
+  role ("the cold buckets"), not by name. The sensitivity rules above apply to
+  it exactly as they apply to anything pushed here.
+- **This repo's `RUN-` records** are folded into library as amendments, each
+  under a heading carrying its ID: RUN-0000 into LIB-0001, and RUN-0001 into
+  LIB-0003. The `RUN-` domain is closed: no new number is issued.
+- **Citations are never rewritten.** `RUN-NNNN` in comments and changelogs
+  still names the same record.
 
-Filing one, by hand:
-
-- **Number**: max+1 within `adr/`.
-- **Filename and H1 agree**: `RUN-0002-<slug>.md` holds `# RUN-0002: <title>`.
-- **Author is always** `Willow Graysen ([@noisypigeon](https://github.com/noisypigeon)).`
-- **Sections**: `## Context` / `## Decision` / `## Consequences` / `## Out of scope`, optionally
-  then `## Verification`. No YAML frontmatter, and no index.
-- Cite `RUN-NNNN` for this domain, `LIB-NNNN` for `library`'s, `DEV-NNNN` for `noisypigeon/garden`'s
-  and `COM-NNNN` for `noisypigeon/blog`'s. Bare `ADR-NNNN` in older prose means the `DEV-` corpus.
-- Genuinely-deferred `## Out of scope` items get a GitHub issue against `noisypigeon/noisypigeon`
-  (ADR-0031); permanent design boundaries do not.
-- **An ADR here is public, too.** Describe resources by role ("the cold buckets"), not by name.
-
-House style: state findings as facts verified against the live tree rather than against prior
-prose; say plainly what a decision reverses; classify every `## Out of scope` bullet as either a
-permanent boundary or genuinely deferred; and in `## Consequences`, name concrete costs rather than
-restating the benefits.
+Read the relevant records before changing the Terraform layout, the CI wiring
+or the repo's settings. If a change would contradict one, flag it rather than
+silently diverging.
