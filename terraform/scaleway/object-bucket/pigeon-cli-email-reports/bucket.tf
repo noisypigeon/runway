@@ -3,5 +3,4 @@ module "bucket" {
   name_prefix = local.name_prefix
   name_suffix = local.name_suffix
   storage_class   = "standard"
-  expiration_days = 3
 }
