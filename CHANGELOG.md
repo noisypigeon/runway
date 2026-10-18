@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-18
+
+- [adr] docs: move decisions to library and remove adr/ (LIB-0017) ([#25](https://github.com/noisypigeon/runway/pull/25))
+
 ## 2026-10-17
 
 - [terraform] State lives in the runway-prefixed bucket (LIB-0016) ([#24](https://github.com/noisypigeon/runway/pull/24))
