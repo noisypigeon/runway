@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-20
 
+- [terraform] docs: trim runway's prose to LIB-0021 ([#27](https://github.com/noisypigeon/runway/pull/27))
 - [terraform] Repin Scaleway buckets and the cluster leaf to the renamed library modules ([#26](https://github.com/noisypigeon/runway/pull/26))
 
 ## 2026-10-18
