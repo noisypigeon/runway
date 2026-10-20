@@ -1,6 +1,6 @@
 locals {
-  bucket_id = "6e589ef6842a5059a3170f1e"
-  bucket_name = "wg-e451tt-original-2026-06-01"
+  bucket_id = local.backblaze_original_bucket_id
+  bucket_name = local.backblaze_original_bucket_name
   key_capabilities = [
     "listBuckets",
     "listFiles",
