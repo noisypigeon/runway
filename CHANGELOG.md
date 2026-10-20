@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-20
 
+- [terraform] Move Scaleway bucket and cluster leaves to the renamed module paths ([#28](https://github.com/noisypigeon/runway/pull/28))
 - [terraform] docs: trim runway's prose to LIB-0021 ([#27](https://github.com/noisypigeon/runway/pull/27))
 - [terraform] Repin Scaleway buckets and the cluster leaf to the renamed library modules ([#26](https://github.com/noisypigeon/runway/pull/26))
 
