@@ -74,10 +74,10 @@ runbook (LIB-0004 §3; DEV-0106).
 - **`backblaze/bucket/*`** — B2 cold-storage buckets. **Custodial and archival data: destroying one
   is unrecoverable.** They get the Backblaze provider from `spoke.hcl`'s `providers` map.
   Their keys are commented out in place; enabling one means a new `backblaze/api-key/<name>` leaf.
-- **`scaleway/object-bucket/*`** — `pigeon-cli`'s per-job and per-phase report buckets, and this
+- **`scaleway/bucket/*`** — `pigeon-cli`'s per-job and per-phase report buckets, and this
   domain's Terraform state bucket (`terraform-state`).
 - **`scaleway/iam-application/pigeon-cli`, `scaleway/cockpit-observability/pigeon-cli`,
-  `scaleway/pigeon-cluster/pigeon-cli`** — the CLI's shared IAM application, its observability, and
+  `scaleway/compute-cluster/pigeon-cli`** — the CLI's shared IAM application, its observability, and
   its job cluster (whose module is currently commented out).
 - **`scaleway/{iam-policy,iam-api-key}/pigeon-deduplicate-local-key`** — a scoped key for running
   the deduplicate phase locally. Its outputs are sensitive; never print them.
