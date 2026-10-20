@@ -1,9 +1,10 @@
-# Re-enabling this needs pigeon-cluster v3.0.1 or later: every earlier tag
-# nests module short URLs that no longer resolve (LIB-0009 §2).
-# v3.0.0 also composes cloud-init, volumes and IPs at the cluster level, so
-# read its CHANGELOG before uncommenting.
+# Re-enabling this pins compute-cluster, which was pigeon-cluster until
+# LIB-0020. Every pigeon-cluster tag before v3.0.1 nests module short URLs
+# that no longer resolve (LIB-0009 §2). v3.0.0 moved cloud-init, volumes and
+# IPs to the cluster level and v4.0.0 changed the keyring shape (LIB-0018), so
+# read both modules' CHANGELOGs before uncommenting.
 # module "cluster" {
-#   source = "https://noisypigeon.garden/terraform/scaleway/pigeon-cluster/v3.0.1"
+#   source = "https://noisypigeon.garden/terraform/scaleway/compute-cluster/v5.0.0"
 
 #   cluster_config = {
 #     name_prefix         = "pigeon-cli"

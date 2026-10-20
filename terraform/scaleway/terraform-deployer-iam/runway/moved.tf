@@ -1,5 +1,3 @@
-# The state came from noisypigeon/noisypigeon's state/iam leaf, which called
-# iam-application, iam-policy and iam-api-key separately (LIB-0014 §4).
 moved {
   from = module.iam_application.scaleway_iam_application.application
   to   = module.terraform_deployer_iam.scaleway_iam_application.application
