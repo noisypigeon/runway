@@ -1,185 +1,60 @@
 # CLAUDE.md
 
-This is `noisypigeon/willowgraysen`: the Terraform for `willowgraysen.com`, the namespace that holds `pigeon-cli`'s and the
-data-ops projects' infrastructure. **There is no website** — the domain's HTTPS endpoint is a
-Cloudflare redirect to `noisypigeon.com`, which the `noisypigeon/blog` repo runs (COM-0006). It is a **spoke** in LIB-0001's hub-and-spoke
-architecture: infrastructure only, consuming every reusable asset from `noisypigeon/library` by
-pinned version (RUN-0000).
+`noisypigeon/runway` is the Terraform for `willowgraysen.com`'s
+infrastructure: pigeon-cli's object storage, job cluster, observability and
+Grafana, the data-ops cold-storage buckets, and the IAM that ties them
+together. Nothing here is publicly exposed. The domain itself redirects to
+noisypigeon.com, from `noisypigeon/blog`.
 
-This document describes the tree as it is now. Edit it in place when the tree changes — it is not
-a history. `CHANGELOG.md` is the history.
+It is a spoke of `noisypigeon/library`. Modules, CI logic, scripts and
+decision records all live there. Don't add them here.
 
-## This is the most sensitive repo in the family — read this first
+## Sensitive: read this first
 
-The account behind it holds custodial and archival data and third-party storage credentials. The
-repo is **public** (RUN-0000 records why and what that accepts), so:
+The repo is public, and the account behind it holds custodial and archival
+data.
 
-- **Everything pushed here is permanent and public** — commits, branch names, PR titles and
-  bodies, issue text, and CI logs. Treat anything you write as published.
-- **Never paste plan output, bucket names, key IDs, or `terraform/secrets/*.enc` contents** into an issue, a
-  PR body, a commit message, or a doc. CI masks decrypted secret *values* in its logs and PR
-  comments; it cannot mask what you type.
-- **Never decrypt a `terraform/secrets/*.enc` file to a file.** `mise run secrets-edit <file>` edits
-  one in place; `root.hcl` decrypts in memory. Never commit a plaintext `.env`.
-- **Read the whole plan before commenting `terragrunt apply`.** An apply that destroys a cold
-  bucket is not recoverable.
-- **Interactions are limited to prior contributors** (`interaction-limits-renew.yml`).
+- **Everything pushed is public and permanent.** That includes commits, branch
+  names, PR titles and bodies, issues and CI logs.
+- **Never paste plan output, bucket names, key IDs or secrets** anywhere,
+  library records included. Describe resources by role, such as "the cold
+  buckets". CI masks secret values, not names.
+- **Never decrypt a `terraform/secrets/*.enc` file to a file.** Use
+  `mise run secrets-edit <file>`.
+- **Read the whole plan before `terragrunt apply`.** Destroying a cold bucket
+  is unrecoverable.
 
-## Layout
+## Dev cycle
 
-```
-CHANGELOG.md                    one line per merged PR, by CI -- see "Changelog"
-.lib-version                    the library ref everything below consumes
-.mise.toml                      terraform/terragrunt/sops versions and tasks
-.sops.yaml                      sops/age recipient for terraform/secrets/*.enc
-fetch-lib.sh                    clones library into .lib-src/ at /.lib-version
-root.hcl                        GENERATED Terragrunt root -- see "Terraform"; never edit
-spoke.hcl                       root.hcl template version + this spoke's instance values
-terraform/                      the domain's Terraform leaves -- see "Terraform"
-  secrets/                      sops/age dotenv files, one per concern (LIB-0012)
-.github/workflows/              thin callers into library -- see "CI"
-```
-
-`/.lib-src/` and every `.terragrunt-cache/` are generated and gitignored. `root.hcl` is generated
-too, but committed — see "Terraform".
-
-## Where the dependencies are
-
-**Nothing is vendored in this repo.**
-
-| What | Where | How it gets here |
-| --- | --- | --- |
-| Terraform 1.16.3, Terragrunt 1.1.6, sops 3.13.3 | pinned in `.mise.toml` | `mise install` |
-| CI job bodies | `noisypigeon/library`, at `.github/workflows/` | reusable workflows, called at the `workflows/vX.Y.Z` tag `/.lib-version` names |
-| `root-changelog.sh`, `resolve-root-hcl.sh` | `noisypigeon/library`, at `.github/scripts/` | run out of `/.lib-src/`, which `fetch-lib.sh` materializes |
-| Terraform modules | `noisypigeon/library`, at `terraform/` | `source = "https://noisypigeon.garden/terraform/<provider>/<module>/vX.Y.Z"` |
-| Terragrunt `root.hcl` | `noisypigeon/library`, at `terragrunt/root-hcl/` | `resolve-root-hcl.sh` copies it at the version `spoke.hcl` pins; committed here |
-
-`/.lib-version` decides which library code runs; bump it, and the `@workflows/…` refs in every
-caller, to take a hub change — never track a branch (LIB-0001 invariant 2). To change a module, the
-CI, or any script, send a PR to `noisypigeon/library`, then bump the pin here. For local
-iteration across both, point `LIB_SRC` at a `library` checkout and `fetch-lib.sh` leaves it
-alone. `fetch-lib.sh` is the one script this repo keeps — a spoke cannot fetch its own fetcher.
+- Every change is a PR with a Conventional Commit title. There is no human
+  reviewer.
+- `CHANGELOG.md` is generated, one line per merged PR. Don't hand-edit it.
+- This repo cuts no releases and has no `release:*` labels.
+- Take a library change by bumping `.lib-version` and the `@workflows/vX.Y.Z`
+  refs, or `root_hcl_version` in `spoke.hcl`. Never track a branch. For local
+  iteration, point `LIB_SRC` at a library checkout.
 
 ## Terraform
 
-`terraform/` holds eighteen leaves laid out as `terraform/<provider>/<module>/<instance>/`, where
-`<provider>/<module>` is exactly the library module the leaf calls and each leaf calls one
-(LIB-0004). They were hoisted from `noisypigeon/noisypigeon` with their history (RUN-0001) and
-re-laid-out with state moves (LIB-0004, #314). `root.hcl` sits at this repo's root, so each leaf's
-state key is `terraform/<leaf path>/terraform.tfstate` in this domain's own bucket (LIB-0001
-invariant 4). **Moving `root.hcl` or a leaf changes its state key** — don't, without a state-move
-runbook (LIB-0004 §3; DEV-0106).
+- Leaves are `terraform/<provider>/<module>/<instance>/`. Each leaf calls one
+  library module.
+- A leaf's path is its state key. Don't move one without a state move.
+- **`root.hcl` is generated. Never edit it.** Bump `root_hcl_version`, run
+  `mise run terraform-prepare` and commit the diff.
+- State is on Scaleway, versioned in place, so there is no backup job.
+- A Terraform PR is planned on the PR and applied by an owner's or
+  collaborator's `terragrunt apply` comment. If it doesn't merge itself, merge
+  it by hand once `terragrunt/apply` is green.
+- One leaf reads another's value through a Terragrunt `dependency` block:
+  - the upstream leaf declares an `output`;
+  - the dependent passes `dependency.<name>.outputs.<output>` in `inputs`, and
+    declares a matching `variable` (`sensitive` for a secret);
+  - apply the upstream leaf first.
+- A Grafana leaf must define `local.grafana_auth_token`.
 
-- **`backblaze/bucket/*`** — B2 cold-storage buckets. **Custodial and archival data: destroying one
-  is unrecoverable.** They get the Backblaze provider from `spoke.hcl`'s `providers` map.
-  Their keys are commented out in place; enabling one means a new `backblaze/api-key/<name>` leaf.
-- **`scaleway/bucket/*`** — `pigeon-cli`'s per-job and per-phase report buckets, and this
-  domain's Terraform state bucket (`terraform-state`).
-- **`scaleway/iam-application/pigeon-cli`, `scaleway/cockpit-observability/pigeon-cli`,
-  `scaleway/compute-cluster/pigeon-cli`** — the CLI's shared IAM application, its observability, and
-  its job cluster (whose module is currently commented out).
-- **`scaleway/{iam-policy,iam-api-key}/pigeon-deduplicate-local-key`** — a scoped key for running
-  the deduplicate phase locally. Its outputs are sensitive; never print them.
-- **`scaleway/{iam-application,iam-policy,iam-api-key}/pigeon-cli-grafana`,
-  `grafana/dashboard/pigeon-cli`** — the identity and dashboards for pigeon-cli's managed
-  Grafana. The dashboard JSON is not here: it is versioned in the library's
-  `grafana-dashboards/pigeon-cli` track and fetched by its tag URL.
-- **`scaleway/project/com`** — the Scaleway project.
+## Commands
 
-Where one leaf needs another's value, it reads it with a Terragrunt `dependency` block, which reads
-the upstream leaf's **outputs from state**: the upstream leaf declares an `output`, the dependent
-passes `dependency.<name>.outputs.<output>` as an `inputs` entry and declares a matching
-`variable` (marked `sensitive` for a secret). The `pigeon-cli-grafana` leaves are the example —
-policy, key and dashboard depend on the application's `id`, and the dashboard leaf on the key's
-`secret_key`. A brand-new upstream leaf must be applied before its dependents can plan, and a
-leaf whose state arrived by a state move needs a refresh-only apply to record its outputs.
-
-Mechanics, the same as the other spokes:
-
-- **`root.hcl` is generated — never edit it.** It is the library's `terragrunt/root-hcl` template at
-  the version `spoke.hcl` pins (`root_hcl_version`), copied by
-  `.lib-src/.github/scripts/resolve-root-hcl.sh` and committed, because Terragrunt's git filter
-  plans inside git worktrees, which only hold tracked files (LIB-0003). CI runs the resolver with
-  `--check` and fails on drift. To take a template change, bump `root_hcl_version`, run
-  `mise run terraform-prepare`, commit the diff.
-- **`spoke.hcl`** holds the template version and the `providers` map (LIB-0005); state stays on
-  the default Scaleway backend.
-  `scaleway` is on for every leaf, and `cloudflare` is off: its two leaves moved to
-  `noisypigeon/blog` (COM-0006); `backblaze` and `grafana` only for the leaves
-  under their `leaves` prefixes. A Grafana leaf must define `local.grafana_auth_token`, the Cockpit
-  API key secret the generated provider authenticates with.
-- **Secrets** are one sops/age dotenv file per concern under `terraform/secrets/` (LIB-0012;
-  `.sops.yaml` has the recipient): `terraform.enc` holds the state bucket's `TERRAFORM_STATE_*`
-  (the same Scaleway key as the provider's, held in both files; no backup, since this state is
-  versioned in place), `scaleway.enc` and `backblaze.enc` hold `SCALEWAY_PROVIDER_*` and
-  `BACKBLAZE_PROVIDER_*`, and `env.enc` holds the values a leaf reads as `local.<name>`, one key
-  `<NAME>` each. Each file holds exactly the keys `/secrets-schema.json` gives it, and each leaf
-  decrypts only the files it uses. Edit one with `mise run secrets-edit <file>` — never decrypt to
-  a file. CI decrypts with `SOPS_AGE_KEY`, and `check-secrets.sh` checks every file's key names
-  without decrypting.
-- **The deployer IAM lives here**, in `terraform/scaleway/terraform-deployer-iam/runway`
-  (LIB-0014). It signs in with this spoke's own Scaleway key, which it doesn't manage, so it needs
-  no breakglass key; if it ever manages the key it signs in with, allowlist it in `spoke.hcl`'s
-  `providers.scaleway.breakglass` and commit `scaleway_breakglass.enc`. Nothing here reads
-  anything from `noisypigeon/noisypigeon` any more.
-
-A Terraform PR is planned by `terragrunt-plan.yml` and applied by commenting `terragrunt apply` on it
-(`terragrunt-apply.yml`; ADR-0124/0129) — only an OWNER, MEMBER or COLLABORATOR's comment counts. A
-successful apply sets the `terragrunt/apply` status `main`'s ruleset requires; its auto-merge
-currently fails (noisypigeon/noisypigeon#310), so merge by hand once the status is green. Never merge
-a Terraform PR any other way. **The plan comment is public** — CI masks secret values, not names.
-
-## Changelog
-
-`CHANGELOG.md` is **generated — do not hand-edit it.** This is DEV-0160's contract, adopted by
-RUN-0000: exactly one line per merged PR, every PR, written by `root-changelog.yml` as
-`- [<tag>] <PR title> ([#N](url))` under a `## YYYY-MM-DD` heading. The tag is the first match of
-`terraform/`/`root.hcl`/`spoke.hcl`/`.sops.yaml` → `terraform`, `adr/` → `adr`, `.github/` → `ci`,
-else `repo`. The `<!-- entries below; newest first -->` marker is where entries go; the script
-refuses to write without it. **PR titles are published** — keep resource names out of them.
-
-## CI
-
-All workflows are thin callers into `library`, so **that is where their behavior is defined.**
-
-- `root-changelog.yml` → `spoke-root-changelog.yml`, passing this repo's tag precedence, in its own
-  `main-writer-rollup` concurrency group. Pushes with `BOT_GITHUB_TOKEN`, so the bot account needs
-  write access here.
-- `interaction-limits-renew.yml` → `interaction-limits-renew.yml`, monthly, re-applying a
-  `contributors_only` interaction limit. Needs `GH_ADMIN_TOKEN`.
-- `terragrunt-plan.yml` / `terragrunt-apply.yml` → `terragrunt-detect.yml` and `terragrunt-run.yml`;
-  see "Terraform" above.
-
-`main` has a ruleset (RUN-0001, copied from `noisypigeon`'s ADR-0129): no force-push, and the
-`terragrunt/apply` status is required — the detect job sets it to success straight away for a PR
-touching no Terraform.
-
-This repo cuts no releases and has no `release:*` labels; every versioned asset is in
-`library`. A change spanning the hub and this repo is two PRs, hub first, then a pin bump.
-
-## Commits and PRs
-
-[Conventional Commits](https://www.conventionalcommits.org/), with an optional scope and the PR
-number appended by squash merge: `fix(terraform): … (#12)`. There is no human reviewer.
-
-## Decision records
-
-This repo holds no ADRs. It is a spoke, and its design standards come from
-`noisypigeon/library`, so its decisions live there too (LIB-0017):
-
-- **A new decision about this repo** is an amendment on the `LIB-` record
-  whose standard it applies, or a new `LIB-` record. File it in library, and
-  land it before the change here that depends on it.
-- **A library record about this repo is public, too.** Describe resources by
-  role ("the cold buckets"), not by name. The sensitivity rules above apply to
-  it exactly as they apply to anything pushed here.
-- **This repo's `RUN-` records** are folded into library as amendments, each
-  under a heading carrying its ID: RUN-0000 into LIB-0001, and RUN-0001 into
-  LIB-0003. The `RUN-` domain is closed: no new number is issued.
-- **Citations are never rewritten.** `RUN-NNNN` in comments and changelogs
-  still names the same record.
-
-Read the relevant records before changing the Terraform layout, the CI wiring
-or the repo's settings. If a change would contradict one, flag it rather than
-silently diverging.
+- `mise run plan` / `mise run apply` (prefer the PR flow)
+- `mise run terraform-prepare`
+- `mise run fmt-terraform` / `mise run fmt-check-terraform`
+- `mise run secrets-edit <file>`

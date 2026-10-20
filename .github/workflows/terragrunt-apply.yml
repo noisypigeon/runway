@@ -1,11 +1,5 @@
 name: Terragrunt apply
 
-# Thin caller into noisypigeon/library's terragrunt-run.yml (RUN-0001). This
-# file keeps the trigger, permissions, concurrency, and the authorization gate
-# below. That gate -- a fixed comment body plus an OWNER/MEMBER/COLLABORATOR
-# author-association check -- is what stands between an arbitrary PR comment
-# and applying real infrastructure, so it stays reviewable in this repo
-# (ADR-0155). On success the reusable sets terragrunt/apply and auto-merges.
 on:
   issue_comment:
     types: [created]
@@ -21,6 +15,7 @@ concurrency:
 
 jobs:
   apply:
+    # This gate is all that stands between a PR comment and real infrastructure.
     if: >
       github.event.issue.pull_request != null &&
       github.event.comment.body == 'terragrunt apply' &&

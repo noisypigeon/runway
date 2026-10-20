@@ -1,14 +1,8 @@
-# The grafana provider and the scaleway_cockpit_grafana data source come from
-# the root template (spoke.hcl's providers map); they authenticate with this key.
+# The generated grafana provider authenticates with this key.
 locals {
   grafana_auth_token = var.grafana_auth_token
 }
 
-# Dashboards are versioned in the library's grafana-dashboards/pigeon-cli track
-# and fetched by tag URL -- pigeon-cli's own observability stack ships a copy
-# of the same JSON. The first-access ping Scaleway's Grafana needs before any
-# dashboard (ADR-0135) is the module's first_access, re-run when the IAM
-# application changes.
 module "grafana_dashboard" {
   source = "https://noisypigeon.garden/terraform/grafana/dashboard/v0.1.0"
 
@@ -17,6 +11,7 @@ module "grafana_dashboard" {
     overview = { url = "https://raw.githubusercontent.com/noisypigeon/library/refs/tags/grafana-dashboards/pigeon-cli/v1.0.0/grafana-dashboards/pigeon-cli/overview.json" }
   }
 
+  # Scaleway's Grafana needs a first-access ping before any dashboard.
   first_access = {
     grafana_url = data.scaleway_cockpit_grafana.grafana.grafana_url
     trigger     = var.application_id
