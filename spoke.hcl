@@ -13,7 +13,7 @@ locals {
   # Grafana leaf must define local.grafana_auth_token.
   providers = {
     scaleway  = {}
-    backblaze = { leaves = ["terraform/backblaze/bucket/"] }
+    backblaze = { leaves = ["terraform/backblaze/"] }
     grafana   = { leaves = ["terraform/grafana/dashboard/"] }
   }
 }
