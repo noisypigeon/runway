@@ -2,6 +2,7 @@
 terraform = "1.16.3"
 terragrunt = "1.1.6"
 sops = "3.13.3"
+yq = "4.44.3"
 
 [env]
 # terragrunt defaults to `tofu`.
@@ -11,6 +12,7 @@ TG_TF_PATH = "terraform"
 run = [
   "./fetch-lib.sh",
   ".lib-src/.github/scripts/resolve-root-hcl.sh",
+  ".lib-src/.github/scripts/resolve-workloads.sh",
 ]
 
 [tasks.plan]
