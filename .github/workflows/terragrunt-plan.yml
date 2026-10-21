@@ -16,7 +16,7 @@ permissions:
 jobs:
   detect:
     if: github.event_name == 'pull_request'
-    uses: noisypigeon/library/.github/workflows/terragrunt-detect.yml@9e894fb56f8e72ba15c47599a5166b14aa4138c6
+    uses: noisypigeon/library/.github/workflows/terragrunt-detect.yml@a1dcd906160f7ab6579ceefc3b03e6d5ba10a972
     with:
       leaf_pattern: '^terraform/|^workloads/|^root\.hcl$|^spoke\.hcl$|^\.sops\.yaml$'
 
@@ -38,7 +38,7 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@9e894fb56f8e72ba15c47599a5166b14aa4138c6
+    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@a1dcd906160f7ab6579ceefc3b03e6d5ba10a972
     with:
       command: plan
       prepare_cmd: ./fetch-lib.sh && .lib-src/.github/scripts/resolve-root-hcl.sh --check && .lib-src/.github/scripts/check-secrets.sh && .lib-src/.github/scripts/resolve-workloads.sh --check
