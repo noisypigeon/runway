@@ -3,7 +3,6 @@
 # application landed first; the bucket and API key depend on their outputs.
 prefix: poc
 suffix: lib-0023
-
 scaleway:
   project:
     description: LIB-0023 workload proof of concept
@@ -12,6 +11,8 @@ scaleway:
       storage_class: standard
       expiration_days: 1
       force_destroy: true
+      website_index_document:
+        secretRef: DUMMY_INDEX
   iam:
     application:
       description: LIB-0023 workload proof of concept
