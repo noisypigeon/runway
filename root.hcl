@@ -1,10 +1,10 @@
-# pigeon-lib's spoke root.hcl template (LIB-0001 §6, LIB-0003).
+# the library's spoke root.hcl template (LIB-0001 §6, LIB-0003).
 #
 # GENERATED in a spoke -- do not edit there. .github/scripts/resolve-root-hcl.sh
 # copies this file to the spoke's repo root at the version the spoke's
 # spoke.hcl pins (root_hcl_version); the spoke commits the copy, and its CI runs
 # the same script with --check to fail on any drift. To change it, change it in
-# pigeon-lib and bump root_hcl_version. Every leaf under <spoke>/terraform/
+# library and bump root_hcl_version. Every leaf under <spoke>/terraform/
 # includes it with find_in_parent_folders("root.hcl"). Materialized rather than
 # included from the library clone because Terragrunt does not support nested
 # includes (DEV-0059), and because a leaf's path_relative_to_include() -- its
@@ -46,6 +46,9 @@
 # -- and the state backend's, when state_backend is that provider -- from it
 # instead. Which keys it stands in for is the schema's `replaces` and
 # `replaces_state`.
+#
+# Since v4.2.0 (LIB-0022) both state backends lock: Terraform's S3-native
+# lockfile, a conditional write of <state key>.tflock beside the state.
 
 locals {
   # The spoke's instance values. Missing spoke.hcl is a hard error, which is
@@ -394,6 +397,7 @@ EOF
     skip_metadata_api_check     = true
     skip_region_validation      = true
     skip_requesting_account_id  = true
+    use_lockfile                = true
 
     access_key = local.terraform_state_access_key_id
     secret_key = local.terraform_state_access_key
@@ -416,6 +420,7 @@ EOF
     skip_s3_checksum            = true
     skip_bucket_versioning      = true
     disable_bucket_update       = true
+    use_lockfile                = true
 
     access_key = local.terraform_state_access_key_id
     secret_key = local.terraform_state_access_key
