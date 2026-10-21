@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v1.json
-# LIB-0023's proof of concept: new, disposable resources only. The project and
+# LIB-0023 proof of concept: new, disposable resources only. The project and
 # application landed first; the bucket and API key depend on their outputs.
 prefix: poc
 suffix: lib-0023
