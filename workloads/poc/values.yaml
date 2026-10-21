@@ -1,12 +1,19 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v1.json
-# LIB-0023's proof of concept: new, disposable resources only. Independent kinds
-# land first; bucket.scratch and iam.apiKey follow once these are applied.
+# LIB-0023's proof of concept: new, disposable resources only. The project and
+# application landed first; the bucket and API key depend on their outputs.
 prefix: poc
 suffix: lib-0023
 
 scaleway:
   project:
     description: LIB-0023 workload proof of concept
+  bucket:
+    scratch:
+      storage_class: standard
+      expiration_days: 1
+      force_destroy: true
   iam:
     application:
+      description: LIB-0023 workload proof of concept
+    apiKey:
       description: LIB-0023 workload proof of concept

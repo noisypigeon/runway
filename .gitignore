@@ -5,3 +5,5 @@
 .terraform/
 .terraform.lock.hcl
 *.tfstate*
+# Workload stubs are generated from values.yaml, never committed (LIB-0023).
+/workloads/*/*/
