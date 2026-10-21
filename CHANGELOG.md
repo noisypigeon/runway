@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-20
 
+- [terraform] Add the LIB-0023 POC bucket and API key, from values.yaml alone ([#32](https://github.com/noisypigeon/runway/pull/32))
 - [terraform] Add the LIB-0023 proof-of-concept workload (project and application) ([#31](https://github.com/noisypigeon/runway/pull/31))
 - [terraform] Take LIB-0022: saved-plan applies and state locking ([#30](https://github.com/noisypigeon/runway/pull/30))
 - [terraform] chore: clean-up ([#29](https://github.com/noisypigeon/runway/pull/29))
