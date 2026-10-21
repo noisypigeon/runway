@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-21
 
+- [terraform] Give the POC workload its first secrets.yaml (LIB-0025) ([#41](https://github.com/noisypigeon/runway/pull/41))
 - [ci] Take workflows v4.4.0 alone ([#40](https://github.com/noisypigeon/runway/pull/40))
 
 ## 2026-10-20
