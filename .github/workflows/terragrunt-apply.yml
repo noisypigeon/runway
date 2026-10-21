@@ -28,5 +28,5 @@ jobs:
     with:
       command: apply
       checkout_ref: refs/pull/${{ github.event.issue.number }}/head
-      prepare_cmd: ./fetch-lib.sh && .lib-src/.github/scripts/resolve-root-hcl.sh --check && .lib-src/.github/scripts/check-secrets.sh
+      prepare_cmd: ./fetch-lib.sh && .lib-src/.github/scripts/resolve-root-hcl.sh --check && .lib-src/.github/scripts/check-secrets.sh && .lib-src/.github/scripts/resolve-workloads.sh --check
     secrets: inherit
