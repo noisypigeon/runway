@@ -9,7 +9,6 @@ scaleway:
   bucket:
     scratch:
       storage_class: standard
-      expiration_days: 1
       force_destroy: true
       website_index_document:
         secretRef: DUMMY_INDEX
