@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-20
 
+- [terraform] Take LIB-0022: saved-plan applies and state locking ([#30](https://github.com/noisypigeon/runway/pull/30))
 - [terraform] chore: clean-up ([#29](https://github.com/noisypigeon/runway/pull/29))
 - [terraform] Move Scaleway bucket and cluster leaves to the renamed module paths ([#28](https://github.com/noisypigeon/runway/pull/28))
 - [terraform] docs: trim runway's prose to LIB-0021 ([#27](https://github.com/noisypigeon/runway/pull/27))
