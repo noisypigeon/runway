@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-21
+
+- [ci] Take workflows v4.4.0 alone ([#40](https://github.com/noisypigeon/runway/pull/40))
+
 ## 2026-10-20
 
 - [terraform] Give the POC workload its own deployer (LIB-0024) ([#38](https://github.com/noisypigeon/runway/pull/38))
