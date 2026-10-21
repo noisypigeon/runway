@@ -11,9 +11,10 @@ scaleway:
       storage_class: standard
       expiration_days: 1
       force_destroy: true
-      force_destory: true
   iam:
     application:
       description: LIB-0023 workload proof of concept
     apiKey:
       description: LIB-0023 workload proof of concept
+  deployer:
+    rotation_days: 1
