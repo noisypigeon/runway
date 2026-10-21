@@ -6,12 +6,12 @@ suffix: lib-0023
 scaleway:
   project:
     description: LIB-0023 workload proof of concept
-    version: 2.0.2
   bucket:
     scratch:
       storage_class: standard
       expiration_days: 1
       force_destroy: true
+      force_destory: true
   iam:
     application:
       description: LIB-0023 workload proof of concept
