@@ -3,10 +3,10 @@
 # application landed first; the bucket and API key depend on their outputs.
 prefix: poc
 suffix: lib-0023
-
 scaleway:
   project:
     description: LIB-0023 workload proof of concept
+    version: 2.0.2
   bucket:
     scratch:
       storage_class: standard
