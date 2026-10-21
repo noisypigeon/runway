@@ -32,3 +32,7 @@ run = ["terragrunt hcl format --check", "terraform fmt -recursive -check terrafo
 [tasks.secrets-edit]
 usage = 'arg "<file>" help="terraform, cloudflare, scaleway, backblaze or env"'
 run = "sops --input-type dotenv --output-type dotenv terraform/secrets/{{arg(name=\"file\")}}.enc"
+
+[tasks.secrets-edit-workload]
+usage = 'arg "<workload>" help="A directory under workloads/"'
+run = "sops workloads/{{arg(name=\"workload\")}}/secrets.yaml"
