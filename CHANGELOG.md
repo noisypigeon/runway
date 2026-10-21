@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-20
 
+- [ci] Take workflows v4.3.0 alone ([#37](https://github.com/noisypigeon/runway/pull/37))
 - [repo] Take workflows v4.2.0 and stop committing workload stubs ([#34](https://github.com/noisypigeon/runway/pull/34))
 - [terraform] Add the LIB-0023 POC bucket and API key, from values.yaml alone ([#32](https://github.com/noisypigeon/runway/pull/32))
 - [terraform] Add the LIB-0023 proof-of-concept workload (project and application) ([#31](https://github.com/noisypigeon/runway/pull/31))
