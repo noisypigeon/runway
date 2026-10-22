@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-22
 
+- [repo] Rotate the POC deployer's key ([#48](https://github.com/noisypigeon/runway/pull/48))
 - [ci] Take workflows v4.7.1 ([#49](https://github.com/noisypigeon/runway/pull/49))
 - [ci] Take workflows v4.7.0, with the replan job ([#47](https://github.com/noisypigeon/runway/pull/47))
 - [ci] Take workflows v4.5.0 ([#45](https://github.com/noisypigeon/runway/pull/45))
