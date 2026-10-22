@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-22
 
+- [repo] Destroy the POC's bucket and IAM leaves before LIB-0028 ([#52](https://github.com/noisypigeon/runway/pull/52))
 - [repo] Restore the POC deployer's 30-day rotation ([#51](https://github.com/noisypigeon/runway/pull/51))
 - [ci] Take workflows v4.8.0 ([#50](https://github.com/noisypigeon/runway/pull/50))
 - [repo] Rotate the POC deployer's key ([#48](https://github.com/noisypigeon/runway/pull/48))
