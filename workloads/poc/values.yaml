@@ -18,3 +18,5 @@ scaleway:
       description: LIB-0023 workload proof of concept
     apiKey:
       description: LIB-0023 workload proof of concept
+  deployer:
+    rotation_days: 1
