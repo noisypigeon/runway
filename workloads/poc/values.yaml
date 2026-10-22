@@ -1,9 +1,21 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v1.json
-# LIB-0023's proof of concept: new, disposable resources only. Its bucket, IAM
-# application and API key are destroyed here, to be recreated in the workload's
-# own state bucket once runway takes root.hcl v5.0.0 (LIB-0028 §8).
+# LIB-0023's proof of concept: new, disposable resources only. Its project,
+# deployer and state bucket are implicit (LIB-0028); the bucket, application and
+# API key keep their state in that bucket, and land after it.
 prefix: poc
 suffix: lib-0023
 scaleway:
   project:
     description: LIB-0023 workload proof of concept
+  bucket:
+    scratch:
+      storage_class: standard
+      expiration_days: 1
+      force_destroy: true
+      website_index_document:
+        secretRef: INDEX_DOCUMENT
+  iam:
+    application:
+      description: LIB-0023 workload proof of concept
+    apiKey:
+      description: LIB-0023 workload proof of concept
