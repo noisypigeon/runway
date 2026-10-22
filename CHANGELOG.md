@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-22
+
+- [repo] Rotate the POC secrets.yaml's data key ([#43](https://github.com/noisypigeon/runway/pull/43))
+
 ## 2026-10-21
 
 - [terraform] Give the POC workload its first secrets.yaml (LIB-0025) ([#41](https://github.com/noisypigeon/runway/pull/41))
