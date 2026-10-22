@@ -9,3 +9,5 @@ locals {
     grafana   = { leaves = ["terraform/grafana/dashboard/"] }
   }
 }
+
+# LIB-0026 draft: a comment so every leaf plans.
