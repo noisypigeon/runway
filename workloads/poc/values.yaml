@@ -8,7 +8,7 @@ scaleway:
     description: LIB-0023 workload proof of concept
   bucket:
     scratch:
-      storage_class: glacier
+      storage_class: standard
       expiration_days: 1
       force_destroy: true
       website_index_document:
