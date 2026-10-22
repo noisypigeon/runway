@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-22
 
+- [terraform] Take root.hcl v5.0.1 and workflows v4.9.1 ([#55](https://github.com/noisypigeon/runway/pull/55))
 - [terraform] Take root.hcl v5.0.0 and recreate the POC in its own state bucket ([#54](https://github.com/noisypigeon/runway/pull/54))
 - [ci] Take workflows v4.9.0 ([#53](https://github.com/noisypigeon/runway/pull/53))
 - [repo] Destroy the POC's bucket and IAM leaves before LIB-0028 ([#52](https://github.com/noisypigeon/runway/pull/52))
