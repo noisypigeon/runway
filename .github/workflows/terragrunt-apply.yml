@@ -24,7 +24,7 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@dcc6d8911a65c3e66d4ff96faec8bdbc3f918785
+    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@3b1431469e356fb3447c4dae489e726ab53767f9
     with:
       command: apply
       checkout_ref: refs/pull/${{ github.event.issue.number }}/head
