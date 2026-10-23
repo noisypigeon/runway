@@ -84,6 +84,16 @@
 # the workload's bucket, and an API key reaches only the buckets its `buckets`
 # list names. A workload leaf gets exactly the provider its path names, when
 # spoke.hcl's providers map has it; `leaves` scopes hand-written leaves only.
+#
+# Since v5.2.0 (LIB-0030) a workload may also declare Cloudflare buckets, DNS
+# records, rulesets and apex redirects. A root zones.yaml gives each zone one
+# owner, a workload or `terraform`; a workload may act only on zones it owns,
+# and a hand-written zone leaf only on zones no workload owns.
+#
+# Since v5.3.0 (LIB-0033) a workload that owns a zone, or declares an R2
+# bucket, gets its own Cloudflare token, cloudflare/api-token/deployer, minted
+# with the spoke's token and scoped to exactly those zones. Its Cloudflare
+# leaves sign in with it, not with the spoke's token.
 
 locals {
   # The spoke's instance values. Missing spoke.hcl is a hard error, which is
@@ -340,6 +350,16 @@ locals {
   )
   cloudflare_zone = local.is_zone_leaf ? local.path_segments[2] : ""
 
+  # zones.yaml (LIB-0030 §2): each zone's apex and its one owner, a workload
+  # or `terraform`. Read only by workload and zone leaves, through the for's
+  # filter, so a change re-plans exactly those; a spoke without the file has
+  # no zones a workload may use.
+  zones_file = "${get_parent_terragrunt_dir()}/zones.yaml"
+  zones = merge({}, [
+    for f in [local.zones_file] : try(yamldecode(file(mark_as_read(f))), {})
+    if(local.is_zone_leaf || local.is_workload_leaf) && fileexists(f)
+  ]...)
+
   # Workload leaves (LIB-0023). HCL evaluates both arms of a conditional, so
   # every expression below runs for every leaf and is written to be harmless
   # for a hand-written one. Only the guards and workload_tf act, and only on a
@@ -381,6 +401,38 @@ locals {
   workload_b2_buckets   = try(local.workload_backblaze.bucket, null)
   workload_b2_keys      = try(local.workload_backblaze.apiKey, null)
   workload_b2_key_entry = try(local.workload_b2_keys[local.workload_instance], null)
+  # Cloudflare kinds (LIB-0030). cloudflare.zone fills `zone` for the three
+  # zone kinds; a zone always comes from the file, never the path.
+  workload_cloudflare = try(local.workload_values.cloudflare, null)
+  workload_cf_zone    = try(tostring(local.workload_cloudflare.zone), "")
+  workload_cf_maps = {
+    "cloudflare/bucket"        = try(local.workload_cloudflare.bucket, null)
+    "cloudflare/dns-record"    = try(local.workload_cloudflare.dnsRecord, null)
+    "cloudflare/ruleset"       = try(local.workload_cloudflare.ruleset, null)
+    "cloudflare/apex-redirect" = try(local.workload_cloudflare.apexRedirect, null)
+  }
+  workload_cf_yaml = {
+    "cloudflare/bucket"        = "bucket"
+    "cloudflare/dns-record"    = "dnsRecord"
+    "cloudflare/ruleset"       = "ruleset"
+    "cloudflare/apex-redirect" = "apexRedirect"
+  }
+  workload_cf_entry     = try(local.workload_cf_maps[local.workload_module][local.workload_instance], null)
+  workload_cf_declared  = contains(try(keys(local.workload_cf_maps[local.workload_module]), []), local.workload_instance)
+  workload_cf_secrets   = try(local.workload_secrets.cloudflare[local.workload_cf_yaml[local.workload_module]][local.workload_instance], null)
+  workload_cf_zone_kind = contains(["cloudflare/dns-record", "cloudflare/ruleset", "cloudflare/apex-redirect"], local.workload_module)
+  workload_cf_zone_set  = { for k, v in { zone = local.workload_cf_zone } : k => v if v != "" }
+  # The zone a zone kind acts on: its own, or the workload's default.
+  workload_zone = try(tostring(local.workload_cf_entry.zone), local.workload_cf_zone)
+  # The workload's own Cloudflare token (LIB-0033 §4): it exists when the
+  # workload owns a zone or declares an R2 bucket, and reaches only those.
+  workload_cf_owned    = sort([for z, v in local.zones : z if try(v.workload, "") == local.workload])
+  workload_cf_buckets  = length(try(keys(local.workload_cloudflare.bucket), [])) > 0
+  workload_cf_deployer = length(local.workload_cf_owned) > 0 || local.workload_cf_buckets
+  workload_cf_policies = concat(
+    [for z in [local.workload_cf_owned] : { permission_groups = ["Zone Read", "DNS Write", "Dynamic URL Redirects Write"], zones = z } if length(z) > 0],
+    [for b in [local.workload_cf_buckets] : { permission_groups = ["Workers R2 Storage Write"], account = true } if b],
+  )
   # Each kind also says where its state lives (LIB-0028 §4): `spoke` in the
   # spoke's bucket, through this file's remote_state; `workload` in the
   # workload's bucket, through the remote_state its stub declares. The project,
@@ -483,10 +535,70 @@ locals {
       credentials = "spoke"
       state       = "workload"
     }
+    # The workload's Cloudflare token (LIB-0033 §4), minted with the spoke's.
+    # An entry under cloudflare.deployer overrides any default.
+    "cloudflare/api-token#deployer" = {
+      declared     = local.workload_instance == "deployer" && local.workload_cf_deployer
+      entry        = try(local.workload_cloudflare.deployer, null)
+      secrets      = try(local.workload_secrets.cloudflare.deployer, null)
+      wiring       = {}
+      defaults     = { name = "${local.workload_prefix}-${local.workload_suffix}-cloudflare-deployer", rotation_days = 30, policies = local.workload_cf_policies }
+      spoke_inputs = { account_id = local.cloudflare_account_id }
+      sensitive    = true
+      credentials  = "spoke"
+      state        = "workload"
+    }
+    # Cloudflare (LIB-0030), signed in with the workload's token (LIB-0033 §4).
+    # spoke_inputs reach the module as sensitive variables, never literals.
+    "cloudflare/bucket" = {
+      declared     = local.workload_cf_declared
+      entry        = local.workload_cf_entry
+      secrets      = local.workload_cf_secrets
+      wiring       = {}
+      defaults     = { name_prefix = "${local.workload_prefix}-${local.workload_instance}", name_suffix = local.workload_suffix }
+      spoke_inputs = { account_id = local.cloudflare_account_id }
+      sensitive    = false
+      credentials  = "workload"
+      state        = "workload"
+    }
+    "cloudflare/dns-record" = {
+      declared    = local.workload_cf_declared
+      entry       = local.workload_cf_entry
+      secrets     = local.workload_cf_secrets
+      wiring      = {}
+      defaults    = merge(local.workload_cf_zone_set, { name = local.workload_instance, comment = "workloads/${local.workload}" })
+      sensitive   = false
+      credentials = "workload"
+      state       = "workload"
+    }
+    "cloudflare/ruleset" = {
+      declared    = local.workload_cf_declared
+      entry       = local.workload_cf_entry
+      secrets     = local.workload_cf_secrets
+      wiring      = {}
+      defaults    = merge(local.workload_cf_zone_set, { name = "${local.workload_prefix}-${local.workload_instance}-${local.workload_suffix}" })
+      sensitive   = false
+      credentials = "workload"
+      state       = "workload"
+    }
+    "cloudflare/apex-redirect" = {
+      declared    = local.workload_cf_declared
+      entry       = local.workload_cf_entry
+      secrets     = local.workload_cf_secrets
+      wiring      = {}
+      defaults    = local.workload_cf_zone_set
+      sensitive   = false
+      credentials = "workload"
+      state       = "workload"
+    }
   }
-  workload_kind_key = local.workload_module == "scaleway/bucket" && local.workload_instance == "state" ? "scaleway/bucket#state" : local.workload_module
-  workload_kind     = try(local.workload_kinds[local.workload_kind_key], null)
-  workload_entry    = merge({}, try(local.workload_kind.entry, null))
+  workload_kind_key = (
+    local.workload_module == "scaleway/bucket" && local.workload_instance == "state" ? "scaleway/bucket#state" :
+    local.workload_module == "cloudflare/api-token" && local.workload_instance == "deployer" ? "cloudflare/api-token#deployer" :
+    local.workload_module
+  )
+  workload_kind  = try(local.workload_kinds[local.workload_kind_key], null)
+  workload_entry = merge({}, try(local.workload_kind.entry, null))
 
   # Secret inputs (LIB-0025 §3): this leaf's slice of secrets.yaml, and every
   # values.yaml input written as { secretRef: NAME }, resolved from `env`.
@@ -496,6 +608,7 @@ locals {
   workload_sensitive = merge(
     { for k, v in local.workload_secret_entry : k => try(tostring(v), null) },
     { for k, name in local.workload_refs : k => lookup(local.workload_env, name, null) },
+    try(local.workload_kind.spoke_inputs, {}),
   )
 
   # The module's plaintext inputs: the defaults, then the entry, which wins.
@@ -512,6 +625,10 @@ locals {
   # A `workload` kind signs its provider in with the workload deployer's key
   # (LIB-0024 §2), which the stub passes from its deployer dependency.
   workload_credentials = local.is_workload_leaf && try(local.workload_kind.credentials, "spoke") == "workload"
+  # Whose: a Scaleway leaf's comes from the workload deployer's key, a
+  # Cloudflare leaf's from the workload's Cloudflare token (LIB-0033 §4).
+  workload_credentials_scaleway   = local.workload_credentials && try(local.path_segments[2], "") == "scaleway"
+  workload_credentials_cloudflare = local.workload_credentials && try(local.path_segments[2], "") == "cloudflare"
 
   # Where a `workload`-state leaf's state sits in its workload's bucket
   # (LIB-0028 §3): under scaleway.state.prefix, by default workloads/<workload>/,
@@ -562,6 +679,12 @@ locals {
   guard_workload_b2_list  = local.is_workload_leaf && local.workload_module == "backblaze/api-key" && length(try(tolist(local.workload_b2_key_entry.buckets), [])) == 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.buckets must list at least one of this workload's backblaze.bucket keys (LIB-0029 §3)") : true
   guard_workload_b2_known = local.is_workload_leaf && local.workload_module == "backblaze/api-key" && length(setsubtract(try(tolist(local.workload_b2_key_entry.buckets), []), try(keys(local.workload_b2_buckets), []))) > 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.buckets names a bucket this workload's backblaze.bucket doesn't have (LIB-0029 §3)") : true
   guard_workload_b2_ids   = local.is_workload_leaf && local.workload_module == "backblaze/api-key" && (can(local.workload_b2_key_entry.bucket_ids) || can(local.workload_secrets.backblaze.apiKey[local.workload_instance].bucket_ids)) ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.bucket_ids can't be set; list the buckets in buckets instead (LIB-0029 §3)") : true
+  guard_workload_cf_on    = local.is_workload_leaf && try(local.path_segments[2], "") == "cloudflare" && !contains(keys(local.providers), "cloudflare") ? file("${path_relative_to_include()} is a Cloudflare workload leaf, but spoke.hcl's providers map has no cloudflare (LIB-0030 §1)") : true
+  guard_workload_cf_spoke = local.is_workload_leaf && try(local.path_segments[2], "") == "cloudflare" && (can(local.workload_cf_entry.account_id) || can(local.workload_cf_entry.zone_id) || can(local.workload_cf_secrets.account_id) || can(local.workload_cf_secrets.zone_id)) ? file("${local.workload_file}: cloudflare.${try(local.workload_cf_yaml[local.workload_module], "")}.${local.workload_instance} can't set account_id or zone_id; the account is the spoke's, and a zone is named (LIB-0030 §§4-5)") : true
+  guard_workload_cf_zone  = local.is_workload_leaf && local.workload_cf_zone_kind && local.workload_zone == "" ? file("${local.workload_file}: cloudflare.${try(local.workload_cf_yaml[local.workload_module], "")}.${local.workload_instance} has no zone, and the workload sets no cloudflare.zone (LIB-0030 §3)") : true
+  guard_workload_cf_owner = local.is_workload_leaf && local.workload_cf_zone_kind && local.workload_zone != "" && try(local.zones[local.workload_zone].workload, "") != local.workload ? file("${local.workload_file}: zone ${local.workload_zone} isn't registered to workload ${local.workload} in zones.yaml (LIB-0030 §2)") : true
+  guard_zone_leaf_owner   = local.is_zone_leaf && try(local.zones[local.cloudflare_zone].workload, "terraform") != "terraform" ? file("${path_relative_to_include()} is a hand-written leaf in zone ${local.cloudflare_zone}, which zones.yaml registers to workload ${try(local.zones[local.cloudflare_zone].workload, "")} (LIB-0030 §2)") : true
+  guard_zones_shape       = alltrue([for z, v in local.zones : can(tostring(v.workload)) && length(regexall("\\.", z)) > 0]) ? true : file("zones.yaml: every key must be a zone's apex domain, and every value a mapping with a `workload` (LIB-0030 §2)")
 
   # The leaf's module call. Inputs are written as literals -- JSON is HCL
   # expression syntax -- with template sequences escaped, since a `type = any`
@@ -591,7 +714,15 @@ variable "workload_env" {
   default   = {}
 }
 
-%{if local.workload_credentials~}
+%{if local.workload_credentials_cloudflare~}
+# The workload's Cloudflare token (LIB-0033 §4), for provider_cloudflare_generated.tf.
+variable "cloudflare_api_token" {
+  type      = string
+  sensitive = true
+}
+
+%{endif~}
+%{if local.workload_credentials_scaleway~}
 # The workload deployer's key (LIB-0024 §2), for provider_scaleway_generated.tf.
 variable "scaleway_access_key" {
   type      = string
@@ -813,7 +944,7 @@ generate "provider_cloudflare" {
   if_exists = "overwrite"
   contents  = !local.cloudflare_enabled ? local.provider_off : <<EOF
 provider "cloudflare" {
-  api_token = "${local.cloudflare_api_token}"
+  api_token = ${local.workload_credentials_cloudflare ? "var.cloudflare_api_token" : "\"${local.cloudflare_api_token}\""}
 }
 EOF
 }
@@ -823,8 +954,8 @@ generate "provider_scaleway" {
   if_exists = "overwrite"
   contents  = !local.scaleway_enabled ? local.provider_off : <<EOF
 provider "scaleway" {
-  access_key      = ${local.workload_credentials ? "var.scaleway_access_key" : "\"${local.scaleway_access_key}\""}
-  secret_key      = ${local.workload_credentials ? "var.scaleway_secret_key" : "\"${local.scaleway_secret_key}\""}
+  access_key      = ${local.workload_credentials_scaleway ? "var.scaleway_access_key" : "\"${local.scaleway_access_key}\""}
+  secret_key      = ${local.workload_credentials_scaleway ? "var.scaleway_secret_key" : "\"${local.scaleway_secret_key}\""}
   organization_id = "${local.scaleway_organization_id}"
   zone            = "${local.scaleway_zone}"
   region          = "${local.scaleway_region}"
