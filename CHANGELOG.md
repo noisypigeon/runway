@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-23
+
+- [ci] Take workflows v4.12.0 ([#58](https://github.com/noisypigeon/runway/pull/58))
+
 ## 2026-10-22
 
 - [ci] Take workflows v4.10.1 ([#57](https://github.com/noisypigeon/runway/pull/57))
