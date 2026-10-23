@@ -19,3 +19,10 @@ scaleway:
       description: LIB-0023 workload proof of concept
     apiKey:
       description: LIB-0023 workload proof of concept
+backblaze:
+  bucket:
+    b2: {}
+  apiKey:
+    b2-reader:
+      buckets: [b2]
+      capabilities: [listBuckets, listFiles, readFiles]
