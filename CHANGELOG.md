@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-24
 
+- [repo] Commit the blog's imported DNS records and redirects ([#63](https://github.com/noisypigeon/runway/pull/63))
 - [ci] Take workflows v4.13.1 ([#62](https://github.com/noisypigeon/runway/pull/62))
 
 ## 2026-10-23
