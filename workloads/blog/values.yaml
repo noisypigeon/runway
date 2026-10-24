@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v1.json
+# The blog, at noisypigeon.com, and the zones it owns (LIB-0032). Its DNS
+# entries arrive by import, and its site files after them.
+prefix: blog
+suffix: noisypigeon
+cloudflare:
+  zone: noisypigeon.com

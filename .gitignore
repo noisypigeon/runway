@@ -5,5 +5,11 @@
 .terraform/
 .terraform.lock.hcl
 *.tfstate*
-# Workload stubs are generated from values.yaml, never committed (LIB-0023).
-/workloads/*/*/
+# Workload stubs are generated from values.yaml, never committed (LIB-0023),
+# under their provider's directory; a site workload's own files sit beside
+# them, so only these are ignored (LIB-0031 §2).
+/workloads/*/scaleway/
+/workloads/*/backblaze/
+/workloads/*/cloudflare/
+/workloads/*/themes/
+/workloads/*/public/
