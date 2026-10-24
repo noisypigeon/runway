@@ -1,0 +1,25 @@
+# The blog's site lives here, in workloads/blog/, but deploys from
+# noisypigeon/blog: Pages only deploys the repo the workflow runs in
+# (DEV-0156). So a change to the site dispatches blog's deploy, which builds
+# this repo's main (LIB-0031 §4).
+name: Blog site
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "workloads/blog/**"
+      - "!workloads/blog/values.yaml"
+      - "!workloads/blog/secrets.yaml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    uses: noisypigeon/library/.github/workflows/site-dispatch.yml@workflows/v4.13.1
+    with:
+      site_repo: noisypigeon/blog
+      workflow: blog-pages.yml
+    secrets: inherit

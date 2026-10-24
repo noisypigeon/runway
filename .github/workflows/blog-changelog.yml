@@ -1,0 +1,32 @@
+# The blog's daily changelog digest, written into workloads/blog/ and then
+# deployed through noisypigeon/blog (LIB-0031 §6).
+name: blog-changelog
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths:
+      - "workloads/blog/**"
+      - "!workloads/blog/values.yaml"
+      - "!workloads/blog/secrets.yaml"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: main-writer
+  cancel-in-progress: false
+
+jobs:
+  changelog:
+    if: github.event.pull_request.merged == true
+    uses: noisypigeon/library/.github/workflows/blog-changelog.yml@workflows/v4.13.1
+    with:
+      src_dir: workloads/blog
+      # root_changelog_tag stays unset, or a blog PR would get two root lines.
+      changelog_path: workloads/blog/CHANGELOG.md
+      deploy_workflow: blog-pages.yml
+      deploy_repo: noisypigeon/blog
+    secrets: inherit
