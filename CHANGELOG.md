@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-23
 
+- [repo] Bootstrap the blog workload, owning its three zones ([#61](https://github.com/noisypigeon/runway/pull/61))
 - [terraform] Sign in with the minted Cloudflare token and B2 key ([#60](https://github.com/noisypigeon/runway/pull/60))
 - [terraform] Mint runway's Cloudflare token and B2 key from minting-only bootstrap keys ([#59](https://github.com/noisypigeon/runway/pull/59))
 - [ci] Take workflows v4.12.0 ([#58](https://github.com/noisypigeon/runway/pull/58))
