@@ -1,0 +1,23 @@
+# Each site workload's files live here, in workloads/<w>/, but deploy from its
+# Pages shim: Pages only deploys the repo the workflow runs in (DEV-0156). So
+# a change to a site dispatches the pages.yml of the shim its values.yaml
+# names in features.githubPages, which builds this repo's main (LIB-0031 §4,
+# LIB-0034 §3).
+name: Sites
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "workloads/**"
+      - "!workloads/*/values.yaml"
+      - "!workloads/*/secrets.yaml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    uses: noisypigeon/library/.github/workflows/site-dispatch.yml@workflows/v5.0.0
+    secrets: inherit

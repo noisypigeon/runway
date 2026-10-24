@@ -1,26 +1,17 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v1.json
 # The blog, at noisypigeon.com, and the zones it owns (LIB-0032). Each DNS
 # entry and redirect was imported from noisypigeon/blog's leaves, not
-# created: change one only on purpose. Its site files come next.
+# created: change one only on purpose. githubPages names the shim that
+# deploys the site, and implies its two Pages CNAMEs (LIB-0034).
 prefix: blog
 suffix: noisypigeon
+features:
+  githubPages:
+    pagesShim: noisypigeon/noisypigeon.com
+    pagesBaseUrl: noisypigeon.github.io
 cloudflare:
   zone: noisypigeon.com
   dnsRecord:
-    github-pages-root-cname:
-      name: '@'
-      type: CNAME
-      content: noisypigeon.github.io
-      ttl: 1
-      proxied: false
-      comment: github pages root cname (apex, cloudflare-flattened)
-    github-pages-www-cname:
-      name: www
-      type: CNAME
-      content: noisypigeon.github.io
-      ttl: 1
-      proxied: false
-      comment: github pages www cname
     bluesky-did:
       name: _atproto
       type: TXT
