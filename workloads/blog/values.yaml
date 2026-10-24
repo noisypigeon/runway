@@ -1,7 +1,148 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v1.json
-# The blog, at noisypigeon.com, and the zones it owns (LIB-0032). Its DNS
-# entries arrive by import, and its site files after them.
+# The blog, at noisypigeon.com, and the zones it owns (LIB-0032). Each DNS
+# entry and redirect was imported from noisypigeon/blog's leaves, not
+# created: change one only on purpose. Its site files come next.
 prefix: blog
 suffix: noisypigeon
 cloudflare:
   zone: noisypigeon.com
+  dnsRecord:
+    github-pages-root-cname:
+      name: '@'
+      type: CNAME
+      content: noisypigeon.github.io
+      ttl: 1
+      proxied: false
+      comment: github pages root cname (apex, cloudflare-flattened)
+    github-pages-www-cname:
+      name: www
+      type: CNAME
+      content: noisypigeon.github.io
+      ttl: 1
+      proxied: false
+      comment: github pages www cname
+    bluesky-did:
+      name: _atproto
+      type: TXT
+      content: did=did:plc:kkh3qo4rjs4b6aayzj4fcpkg
+      ttl: 1
+      comment: bluesky domain handle
+    google-search-site-verification:
+      name: '@'
+      type: TXT
+      content: '"google-site-verification=vFu1wL_0hoMl6UpTkWZ3IiVSlfOvGuY_wtYfpWOrsfA"'
+      ttl: 3600
+      comment: null
+    proton-dkim-primary:
+      name: dkim._domainkey
+      type: CNAME
+      content: dkim._domainkey.alias.proton.me
+      ttl: 1
+      proxied: false
+      comment: proton primary dkim
+    proton-dkim-secondary:
+      name: dkim02._domainkey
+      type: CNAME
+      content: dkim02._domainkey.alias.proton.me
+      ttl: 1
+      proxied: false
+      comment: proton secondary dkim
+    proton-dkim-tertiary:
+      name: dkim03._domainkey
+      type: CNAME
+      content: dkim03._domainkey.alias.proton.me
+      ttl: 1
+      proxied: false
+      comment: fastmail tertiary dkim
+    proton-dmarc:
+      name: _dmarc
+      type: TXT
+      content: v=DMARC1; p=quarantine; pct=100; adkim=s; aspf=s
+      ttl: 1
+      comment: proton spf verification
+    proton-protonmail-verification:
+      name: '@'
+      type: TXT
+      content: protonmail-verification=e9457a054010bbbb12cc4abfce39d67198e9abd1
+      ttl: 1
+      comment: protonmail verification
+    proton-pm-verification:
+      name: '@'
+      type: TXT
+      content: pm-verification=yulfrkphygclvbkaipymgmyhstrxuj
+      ttl: 1
+      comment: pm verification
+    proton-mx-primary:
+      name: '@'
+      type: MX
+      content: mx1.alias.proton.me
+      ttl: 1
+      priority: 10
+      comment: protonmail primary mx
+    proton-mx-secondary:
+      name: '@'
+      type: MX
+      content: mx2.alias.proton.me
+      ttl: 1
+      priority: 20
+      comment: protonmail secondary mx
+    proton-proton-spf:
+      name: '@'
+      type: TXT
+      content: v=spf1 include:alias.proton.me ~all
+      ttl: 1
+      comment: proton spf verification
+    fastmail-dkim-fm1:
+      zone: pigeon.dev
+      name: fm1._domainkey
+      type: CNAME
+      content: fm1.pigeon.dev.dkim.fmhosted.com
+      ttl: 1
+      proxied: false
+      comment: fastmail primary dkim
+    fastmail-dkim-fm2:
+      zone: pigeon.dev
+      name: fm2._domainkey
+      type: CNAME
+      content: fm2.pigeon.dev.dkim.fmhosted.com
+      ttl: 1
+      proxied: false
+      comment: fastmail secondary dkim
+    fastmail-dkim-fm3:
+      zone: pigeon.dev
+      name: fm3._domainkey
+      type: CNAME
+      content: fm3.pigeon.dev.dkim.fmhosted.com
+      ttl: 1
+      proxied: false
+      comment: fastmail tertiary dkim
+    fastmail-mx-primary:
+      zone: pigeon.dev
+      name: '@'
+      type: MX
+      content: in1-smtp.messagingengine.com
+      ttl: 1
+      priority: 10
+      comment: fastmail primary mx
+    fastmail-mx-secondary:
+      zone: pigeon.dev
+      name: '@'
+      type: MX
+      content: in2-smtp.messagingengine.com
+      ttl: 1
+      priority: 20
+      comment: fastmail secondary mx
+    fastmail-spf:
+      zone: pigeon.dev
+      name: '@'
+      type: TXT
+      content: '"v=spf1 include:spf.messagingengine.com ?all"'
+      ttl: 1
+      comment: fastmail spf
+  apexRedirect:
+    pigeon-dev:
+      zone: pigeon.dev
+      target_url: https://noisypigeon.com
+    willowgraysen-com:
+      zone: willowgraysen.com
+      target_url: https://noisypigeon.com
