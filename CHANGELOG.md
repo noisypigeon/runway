@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-24
 
+- [repo] Bootstrap the garden workload, owning noisypigeon.garden (LIB-0035) ([#66](https://github.com/noisypigeon/runway/pull/66))
 - [terraform] The blog declares its Pages shim in values.yaml (LIB-0034) ([#65](https://github.com/noisypigeon/runway/pull/65))
 - [ci] Move the blog's site into workloads/blog ([#64](https://github.com/noisypigeon/runway/pull/64))
 - [repo] Commit the blog's imported DNS records and redirects ([#63](https://github.com/noisypigeon/runway/pull/63))
