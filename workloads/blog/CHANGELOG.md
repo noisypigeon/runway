@@ -8,6 +8,7 @@ collapsed from full PR bodies; each PR, or commit, keeps its long form.
 
 ## 2026-10-24
 
+- [blog] The blog declares its Pages shim in values.yaml (LIB-0034) ([#65](https://github.com/noisypigeon/runway/pull/65))
 - [blog] Move the blog's site into workloads/blog ([#64](https://github.com/noisypigeon/runway/pull/64))
 
 ## 2026-10-15
