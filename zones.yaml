@@ -1,0 +1,7 @@
+# Each Cloudflare zone this spoke acts on, and its one owner (LIB-0030 §2).
+noisypigeon.com:
+  workload: blog
+pigeon.dev:
+  workload: blog
+willowgraysen.com:
+  workload: blog
