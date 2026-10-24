@@ -14,8 +14,9 @@ It also holds the blog, the one public thing here, as the `blog` workload
   noisypigeon.com and pigeon.dev, and the redirects from pigeon.dev and
   willowgraysen.com to noisypigeon.com. They were imported, not created, so
   change one only on purpose.
-- **`noisypigeon/blog` is now only the Pages shim** (LIB-0031). Merging a site
-  change here dispatches its deploy, which builds this repo's `main`. A post
+- **`noisypigeon/noisypigeon.com` is now only the Pages shim** (LIB-0031,
+  LIB-0034), named by `values.yaml`'s `features.githubPages`. Merging a site
+  change here dispatches its `pages.yml`, which builds this repo's `main`. A post
   is a PR like any other, but only `values.yaml` and `secrets.yaml` changes
   run a plan.
 
