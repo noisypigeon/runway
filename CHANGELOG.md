@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-23
 
+- [terraform] Mint runway's Cloudflare token and B2 key from minting-only bootstrap keys ([#59](https://github.com/noisypigeon/runway/pull/59))
 - [ci] Take workflows v4.12.0 ([#58](https://github.com/noisypigeon/runway/pull/58))
 
 ## 2026-10-22
