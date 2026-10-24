@@ -4,6 +4,24 @@ All notable changes to the blog are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-10-24 — Move the blog's site into workloads/blog
+
+Step 4 of moving the blog into runway ([LIB-0032](https://github.com/noisypigeon/library/blob/main/docs/adr/LIB-0032-move-the-blog-into-runway.md) §4, library#149).
+
+- **The site:** noisypigeon/blog's `web/` moves to `workloads/blog/` as it is, beside the blog workload's `values.yaml`: `config.toml`, `content/`, `static/` and `CHANGELOG.md`, the same 177 files. It builds there with its pinned theme (`zola-site/v1.2.0`, 67 pages), and its fetched theme and `public/` stay gitignored.
+- **`blog-site.yml`:** a push to `main` that changes the site, but not `values.yaml` or `secrets.yaml`, calls `site-dispatch.yml` to dispatch noisypigeon/blog's `blog-pages.yml` (LIB-0031 §4).
+- **`blog-changelog.yml`:** a merged site PR gets its daily digest written into `workloads/blog/CHANGELOG.md`, then the same dispatch, through `deploy_repo` (LIB-0031 §6).
+- **`CLAUDE.md`:** the blog is the one public thing here, and its records were imported, not created.
+
+What to expect:
+- **No Terragrunt plan.** Nothing here matches the plan's leaf pattern, so the gate reports no leaves affected.
+- **On merge,** the dispatch reaches noisypigeon/blog's current `blog-pages.yml`, which still builds blog's own `web/`, so the live site doesn't change yet. It does prove `BOT_GITHUB_TOKEN` can reach the shim. If that run fails, the token needs `actions: write` on noisypigeon/blog.
+- **Next,** noisypigeon/blog's shim PR points its deploy at `workloads/blog/` here.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+[#64](https://github.com/noisypigeon/runway/pull/64)
+
 ## 2026-10-15 — ci: give every change a one-line changelog entry
 
 Until now, only changes to the blog itself left a record here. Changes to the tooling around it, such as how the site is built or where decisions are written down, left none.
