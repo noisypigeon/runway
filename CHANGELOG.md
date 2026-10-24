@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-24
+
+- [ci] Take workflows v4.13.1 ([#62](https://github.com/noisypigeon/runway/pull/62))
+
 ## 2026-10-23
 
 - [repo] Bootstrap the blog workload, owning its three zones ([#61](https://github.com/noisypigeon/runway/pull/61))
