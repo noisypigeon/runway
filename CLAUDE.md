@@ -3,8 +3,21 @@
 `noisypigeon/runway` is the Terraform for `willowgraysen.com`'s
 infrastructure: pigeon-cli's object storage, job cluster, observability and
 Grafana, the data-ops cold-storage buckets, and the IAM that ties them
-together. Nothing here is publicly exposed. The domain itself redirects to
-noisypigeon.com, from `noisypigeon/blog`.
+together.
+
+It also holds the blog, the one public thing here, as the `blog` workload
+(LIB-0032):
+
+- **`workloads/blog/`** is the noisypigeon.com Zola site (`config.toml`,
+  `content/`, `static/`, `CHANGELOG.md`), beside its `values.yaml`.
+- **`values.yaml`** owns the blog's zones in `zones.yaml`: the DNS records of
+  noisypigeon.com and pigeon.dev, and the redirects from pigeon.dev and
+  willowgraysen.com to noisypigeon.com. They were imported, not created, so
+  change one only on purpose.
+- **`noisypigeon/blog` is now only the Pages shim** (LIB-0031). Merging a site
+  change here dispatches its deploy, which builds this repo's `main`. A post
+  is a PR like any other, but only `values.yaml` and `secrets.yaml` changes
+  run a plan.
 
 It is a spoke of `noisypigeon/library`. Modules, CI logic, scripts and
 decision records all live there. Don't add them here.
