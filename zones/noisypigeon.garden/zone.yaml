@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v1.json
+# noisypigeon.garden, a unit of its own (LIB-0036). The garden writes its Pages
+# records here.
+prefix: npg
+suffix: noisypigeon
+workload: garden

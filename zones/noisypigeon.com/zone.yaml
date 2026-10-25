@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v1.json
+# noisypigeon.com, a unit of its own (LIB-0036). Its project is named for the
+# domain; its other resources use prefix. The blog writes its Pages records
+# here; the domain's own mail and identity records move here by import.
+prefix: npc
+suffix: noisypigeon
+workload: blog

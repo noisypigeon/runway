@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v1.json
+# willowgraysen.com, a unit of its own (LIB-0036). Its redirect to
+# noisypigeon.com moves here from the blog by import.
+prefix: wgc
+suffix: noisypigeon
+workload: blog

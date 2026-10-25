@@ -13,3 +13,6 @@
 /workloads/*/cloudflare/
 /workloads/*/themes/
 /workloads/*/public/
+# A zone's stubs, the same way, from its zone.yaml (LIB-0036).
+/zones/*/scaleway/
+/zones/*/cloudflare/

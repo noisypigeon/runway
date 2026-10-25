@@ -19,5 +19,5 @@ permissions:
 
 jobs:
   dispatch:
-    uses: noisypigeon/library/.github/workflows/site-dispatch.yml@workflows/v5.0.0
+    uses: noisypigeon/library/.github/workflows/site-dispatch.yml@workflows/v5.2.0
     secrets: inherit
