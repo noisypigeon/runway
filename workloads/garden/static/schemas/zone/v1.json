@@ -1,0 +1,822 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://noisypigeon.garden/schemas/zone/v1.json",
+  "title": "Zone zone.yaml (LIB-0036)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "suffix"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The zone unit's name, and its Scaleway project's. Default: the zone apex, its directory (LIB-0036 §1)"
+    },
+    "prefix": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "What every other resource's name starts with. Default: name, with each character outside a-z, 0-9 and - as a dash (LIB-0036 §1)"
+    },
+    "suffix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workload": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "The one workload that may also write records in this zone (LIB-0036 §§1, 3)"
+    },
+    "scaleway": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "project": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "enum": [
+                    "2",
+                    "2.0",
+                    "2.0.0",
+                    "2.0.1",
+                    "2.0.2",
+                    "2.0.3"
+                  ]
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "not": {
+                      "required": [
+                        "version"
+                      ]
+                    }
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/project/v2.0.3/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "2"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/project/v2.0.3/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "2.0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/project/v2.0.3/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "2.0.0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/project/v2.0.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "2.0.1"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/project/v2.0.1/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "2.0.2"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/project/v2.0.2/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "2.0.3"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/project/v2.0.3/inputs.schema.json"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "deployer": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "enum": [
+                    "0",
+                    "0.1",
+                    "0.1.0",
+                    "0.2",
+                    "0.2.0"
+                  ]
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "not": {
+                      "required": [
+                        "version"
+                      ]
+                    }
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.2.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.2.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.1"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.1.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.1.0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.1.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.2"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.2.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.2.0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.2.0/inputs.schema.json"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "enum": [
+                    "5",
+                    "5.0",
+                    "5.0.0"
+                  ]
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "not": {
+                      "required": [
+                        "version"
+                      ]
+                    }
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/bucket/v5.0.0/state.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "5"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/bucket/v5.0.0/state.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "5.0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/bucket/v5.0.0/state.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "5.0.0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/scaleway/bucket/v5.0.0/state.schema.json"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "cloudflare": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "deployer": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "enum": [
+                    "0",
+                    "0.1",
+                    "0.1.0"
+                  ]
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "not": {
+                      "required": [
+                        "version"
+                      ]
+                    }
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/cloudflare/api-token/v0.1.0/workload.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/cloudflare/api-token/v0.1.0/workload.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.1"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/cloudflare/api-token/v0.1.0/workload.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.1.0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/cloudflare/api-token/v0.1.0/workload.schema.json"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "dnsRecord": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "additionalProperties": {
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "version": {
+                        "type": "string",
+                        "enum": [
+                          "0",
+                          "0.1",
+                          "0.1.0",
+                          "1",
+                          "1.0",
+                          "1.0.0"
+                        ]
+                      }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "not": {
+                            "required": [
+                              "version"
+                            ]
+                          }
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/dns-record/v1.0.0/inputs.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/dns-record/v0.1.0/inputs.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.1"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/dns-record/v0.1.0/inputs.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.1.0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/dns-record/v0.1.0/inputs.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "1"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/dns-record/v1.0.0/inputs.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "1.0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/dns-record/v1.0.0/inputs.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "1.0.0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/dns-record/v1.0.0/inputs.schema.json"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "not": {
+                  "required": [
+                    "zone"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "ruleset": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "additionalProperties": {
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "version": {
+                        "type": "string",
+                        "enum": [
+                          "0",
+                          "0.1",
+                          "0.1.0",
+                          "0.2",
+                          "0.2.0"
+                        ]
+                      }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "not": {
+                            "required": [
+                              "version"
+                            ]
+                          }
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/ruleset/v0.2.0/workload.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/ruleset/v0.2.0/workload.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.1"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/ruleset/v0.1.0/workload.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.1.0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/ruleset/v0.1.0/workload.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.2"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/ruleset/v0.2.0/workload.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.2.0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/ruleset/v0.2.0/workload.schema.json"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "not": {
+                  "required": [
+                    "zone"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "apexRedirect": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "additionalProperties": {
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "version": {
+                        "type": "string",
+                        "enum": [
+                          "0",
+                          "0.1",
+                          "0.1.0"
+                        ]
+                      }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "not": {
+                            "required": [
+                              "version"
+                            ]
+                          }
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/apex-redirect/v0.1.0/inputs.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/apex-redirect/v0.1.0/inputs.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.1"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/apex-redirect/v0.1.0/inputs.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.1.0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/cloudflare/apex-redirect/v0.1.0/inputs.schema.json"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "not": {
+                  "required": [
+                    "zone"
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
