@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-25
+
+- [terraform] chore: take workflows/v6.0.0 and root-hcl 6.0.0 (LIB-0036) ([#73](https://github.com/noisypigeon/runway/pull/73))
+
 ## 2026-10-24
 
 - [repo] feat(zones): move the blog's mail, identity and redirect entries into their zones (LIB-0036) ([#72](https://github.com/noisypigeon/runway/pull/72))
