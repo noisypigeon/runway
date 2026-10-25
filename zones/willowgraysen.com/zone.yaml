@@ -1,7 +1,11 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v1.json
 # willowgraysen.com, a unit of its own (LIB-0036). Its redirect to
-# noisypigeon.com moves here from the blog by import.
+# noisypigeon.com was imported from the blog, not created: change it only on
+# purpose.
 name: willowgraysen.com
 prefix: wgc
 suffix: noisypigeon
-workload: blog
+cloudflare:
+  apexRedirect:
+    main:
+      target_url: https://noisypigeon.com
