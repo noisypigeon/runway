@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-24
 
+- [ci] ci: acknowledge terragrunt comments at once, and announce a staged re-plan (LIB-0022, LIB-0027) ([#71](https://github.com/noisypigeon/runway/pull/71))
 - [ci] feat(zones): bootstrap the four zone units (LIB-0036) ([#70](https://github.com/noisypigeon/runway/pull/70))
 - [terraform] feat(zones): make each Cloudflare zone a unit of its own (LIB-0036) ([#69](https://github.com/noisypigeon/runway/pull/69))
 - [ci] feat(garden): move the noisypigeon.garden site into workloads/garden (LIB-0035) ([#68](https://github.com/noisypigeon/runway/pull/68))
