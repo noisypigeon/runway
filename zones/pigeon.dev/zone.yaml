@@ -1,7 +1,53 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v1.json
-# pigeon.dev, a unit of its own (LIB-0036). Its Fastmail records and its redirect
-# to noisypigeon.com move here from the blog by import.
+# pigeon.dev, a unit of its own (LIB-0036). Its Fastmail records and its
+# redirect to noisypigeon.com were imported from the blog, not created: change
+# one only on purpose.
 name: pigeon.dev
 prefix: pd
 suffix: noisypigeon
-workload: blog
+cloudflare:
+  dnsRecord:
+    fastmail-dkim-fm1:
+      name: fm1._domainkey
+      type: CNAME
+      content: fm1.pigeon.dev.dkim.fmhosted.com
+      ttl: 1
+      proxied: false
+      comment: fastmail primary dkim
+    fastmail-dkim-fm2:
+      name: fm2._domainkey
+      type: CNAME
+      content: fm2.pigeon.dev.dkim.fmhosted.com
+      ttl: 1
+      proxied: false
+      comment: fastmail secondary dkim
+    fastmail-dkim-fm3:
+      name: fm3._domainkey
+      type: CNAME
+      content: fm3.pigeon.dev.dkim.fmhosted.com
+      ttl: 1
+      proxied: false
+      comment: fastmail tertiary dkim
+    fastmail-mx-primary:
+      name: '@'
+      type: MX
+      content: in1-smtp.messagingengine.com
+      ttl: 1
+      priority: 10
+      comment: fastmail primary mx
+    fastmail-mx-secondary:
+      name: '@'
+      type: MX
+      content: in2-smtp.messagingengine.com
+      ttl: 1
+      priority: 20
+      comment: fastmail secondary mx
+    fastmail-spf:
+      name: '@'
+      type: TXT
+      content: '"v=spf1 include:spf.messagingengine.com ?all"'
+      ttl: 1
+      comment: fastmail spf
+  apexRedirect:
+    main:
+      target_url: https://noisypigeon.com
