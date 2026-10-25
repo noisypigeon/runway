@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-24
 
+- [terraform] feat(zones): make each Cloudflare zone a unit of its own (LIB-0036) ([#69](https://github.com/noisypigeon/runway/pull/69))
 - [ci] feat(garden): move the noisypigeon.garden site into workloads/garden (LIB-0035) ([#68](https://github.com/noisypigeon/runway/pull/68))
 - [repo] Commit garden's imported Pages CNAMEs (LIB-0035) ([#67](https://github.com/noisypigeon/runway/pull/67))
 - [repo] Bootstrap the garden workload, owning noisypigeon.garden (LIB-0035) ([#66](https://github.com/noisypigeon/runway/pull/66))
