@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-24
 
+- [ci] feat(garden): move the noisypigeon.garden site into workloads/garden (LIB-0035) ([#68](https://github.com/noisypigeon/runway/pull/68))
 - [repo] Commit garden's imported Pages CNAMEs (LIB-0035) ([#67](https://github.com/noisypigeon/runway/pull/67))
 - [repo] Bootstrap the garden workload, owning noisypigeon.garden (LIB-0035) ([#66](https://github.com/noisypigeon/runway/pull/66))
 - [terraform] The blog declares its Pages shim in values.yaml (LIB-0034) ([#65](https://github.com/noisypigeon/runway/pull/65))
