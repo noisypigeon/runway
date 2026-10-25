@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-25
 
+- [repo] feat(poc): destroy the POC's buckets, IAM and API keys ([#74](https://github.com/noisypigeon/runway/pull/74))
 - [terraform] chore: take workflows/v6.0.0 and root-hcl 6.0.0 (LIB-0036) ([#73](https://github.com/noisypigeon/runway/pull/73))
 
 ## 2026-10-24
