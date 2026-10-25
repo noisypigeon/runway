@@ -10,18 +10,19 @@ It also holds the two public sites, as the `blog` workload (LIB-0032) and the
 
 - **`workloads/blog/`** is the noisypigeon.com Zola site (`config.toml`,
   `content/`, `static/`, `CHANGELOG.md`), beside its `values.yaml`.
-- **`values.yaml`** owns the blog's zones in `zones.yaml`: the DNS records of
-  noisypigeon.com and pigeon.dev, and the redirects from pigeon.dev and
-  willowgraysen.com to noisypigeon.com. They were imported, not created, so
-  change one only on purpose.
+- **`values.yaml`** holds the DNS records of noisypigeon.com and pigeon.dev,
+  and the redirects from pigeon.dev and willowgraysen.com to noisypigeon.com,
+  in zones whose `zone.yaml` names `blog`. They were imported, not created, so
+  change one only on purpose. The mail and identity records and the redirects
+  are moving to their zones (LIB-0036 §7).
 - **`noisypigeon/noisypigeon.com` is now only the Pages shim** (LIB-0031,
   LIB-0034), named by `values.yaml`'s `features.githubPages`. Merging a site
   change here dispatches its `pages.yml`, which builds this repo's `main`. A post
   is a PR like any other, but only `values.yaml` and `secrets.yaml` changes
   run a plan.
 - **`workloads/garden/`** is the noisypigeon.garden Zola site. Its shim is
-  `noisypigeon/noisypigeon.garden`, and its `values.yaml` owns the
-  noisypigeon.garden zone, whose two Pages records were imported.
+  `noisypigeon/noisypigeon.garden`, and the noisypigeon.garden zone names it,
+  so its two Pages records, which were imported, live in its `values.yaml`.
 - **Most of garden is generated.** Its module redirect pages under
   `content/terraform/`, `content/theme-versions/` and `content/releases/`, and
   its schemas under `static/terraform/` and `static/schemas/`, come from
@@ -29,6 +30,14 @@ It also holds the two public sites, as the `blog` workload (LIB-0032) and the
   are committed, so a short URL is a file with a history. Never hand-edit them:
   run the workflow. Every `terraform init`, this repo's included, resolves
   through them.
+
+Each Cloudflare zone is a unit of its own (LIB-0036), at
+`zones/<zone>/zone.yaml`: noisypigeon.com, pigeon.dev, willowgraysen.com and
+noisypigeon.garden. A zone has its own Scaleway project, named for the domain,
+and its own deployer, state bucket and Cloudflare token, named by its short
+`prefix`. It holds the records that belong to the domain rather than a site,
+and names the one workload that may also write in it. Its stubs are
+generated, like a workload's.
 
 It is a spoke of `noisypigeon/library`. Modules, CI logic, scripts and
 decision records all live there. Don't add them here.
@@ -61,7 +70,9 @@ data.
 ## Terraform
 
 - Leaves are `terraform/<provider>/<module>/<instance>/`. Each leaf calls one
-  library module.
+  library module. Generated unit leaves are
+  `workloads/<w>/<provider>/<module>/<instance>/` and
+  `zones/<zone>/<provider>/<module>/<instance>/`.
 - A leaf's path is its state key. Don't move one without a state move.
 - **`root.hcl` is generated. Never edit it.** Bump `root_hcl_version`, run
   `mise run terraform-prepare` and commit the diff.
