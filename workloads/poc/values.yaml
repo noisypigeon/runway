@@ -1,28 +1,9 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v1.json
-# LIB-0023's proof of concept: new, disposable resources only. Its project,
-# deployer and state bucket are implicit (LIB-0028); the bucket, application and
-# API key keep their state in that bucket, and land after it.
+# LIB-0023's proof of concept, being torn down: its bucket, application and
+# API keys are gone, and only its implicit project, deployer and state bucket
+# (LIB-0028) remain, until the whole workload is removed.
 prefix: poc
 suffix: lib-0023
 scaleway:
   project:
     description: LIB-0023 workload proof of concept
-  bucket:
-    scratch:
-      storage_class: standard
-      expiration_days: 1
-      force_destroy: true
-      website_index_document:
-        secretRef: INDEX_DOCUMENT
-  iam:
-    application:
-      description: LIB-0023 workload proof of concept
-    apiKey:
-      description: LIB-0023 workload proof of concept
-backblaze:
-  bucket:
-    b2: {}
-  apiKey:
-    b2-reader:
-      buckets: [b2]
-      capabilities: [listBuckets, listFiles, readFiles]
