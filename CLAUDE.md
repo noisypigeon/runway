@@ -5,8 +5,8 @@ infrastructure: pigeon-cli's object storage, job cluster, observability and
 Grafana, the data-ops cold-storage buckets, and the IAM that ties them
 together.
 
-It also holds the blog, the one public thing here, as the `blog` workload
-(LIB-0032):
+It also holds the two public sites, as the `blog` workload (LIB-0032) and the
+`garden` workload (LIB-0035):
 
 - **`workloads/blog/`** is the noisypigeon.com Zola site (`config.toml`,
   `content/`, `static/`, `CHANGELOG.md`), beside its `values.yaml`.
@@ -19,6 +19,16 @@ It also holds the blog, the one public thing here, as the `blog` workload
   change here dispatches its `pages.yml`, which builds this repo's `main`. A post
   is a PR like any other, but only `values.yaml` and `secrets.yaml` changes
   run a plan.
+- **`workloads/garden/`** is the noisypigeon.garden Zola site. Its shim is
+  `noisypigeon/noisypigeon.garden`, and its `values.yaml` owns the
+  noisypigeon.garden zone, whose two Pages records were imported.
+- **Most of garden is generated.** Its module redirect pages under
+  `content/terraform/`, `content/theme-versions/` and `content/releases/`, and
+  its schemas under `static/terraform/` and `static/schemas/`, come from
+  `garden-generate.yml`, which the library dispatches on every release. They
+  are committed, so a short URL is a file with a history. Never hand-edit them:
+  run the workflow. Every `terraform init`, this repo's included, resolves
+  through them.
 
 It is a spoke of `noisypigeon/library`. Modules, CI logic, scripts and
 decision records all live there. Don't add them here.

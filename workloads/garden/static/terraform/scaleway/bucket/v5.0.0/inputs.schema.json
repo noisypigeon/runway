@@ -1,0 +1,272 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,2}$",
+      "description": "Pins this module: X.Y.Z exactly, X.Y or X to the newest release within it. Omitted, the newest release (LIB-0023 §3)."
+    },
+    "enable_public_read": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Grant the bucket a public-read ACL (scaleway_object_bucket_acl)"
+    },
+    "enable_versioning": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Object versioning enabled (true/false)"
+    },
+    "enable_website": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Configure the bucket for static website hosting (scaleway_object_bucket_website_configuration)"
+    },
+    "exact_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Exact bucket name, bypassing the name_prefix/random-suffix/name_suffix scheme entirely — for buckets whose name must match something external (e.g. a custom domain for bucket-website hosting)"
+    },
+    "expiration_days": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Delete objects this many days after creation, via a scaleway_object_bucket lifecycle_rule expiration. null (the default) adds no expiration rule at all. Day-granular only -- the S3 lifecycle API this wraps has no finer unit, so a 72-hour retention is expressed as 3. Note this is independent of storage_class's own 90-day glacier transition: an expiration shorter than 90 days means objects are deleted before that transition could ever fire, so pair a short expiration with storage_class = \"standard\"."
+    },
+    "force_destroy": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Boolean that, when set to true, allows the deletion of all objects (including locked objects) when the bucket is destroyed."
+    },
+    "name_prefix": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Bucket name prefix (ignored if exact_name is set)"
+    },
+    "name_suffix": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Bucket name suffix (ignored if exact_name is set)"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Project ID the bucket belongs to (defaults to the provider's own project when unset)"
+    },
+    "storage_class": {
+      "anyOf": [
+        {
+          "type": "string",
+          "default": "glacier"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Storage class for new objects (standard/glacier)"
+    },
+    "website_error_document": {
+      "anyOf": [
+        {
+          "type": "string",
+          "default": "404.html"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Error document key for website hosting (only used when enable_website is true)"
+    },
+    "website_index_document": {
+      "anyOf": [
+        {
+          "type": "string",
+          "default": "index.html"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Index document suffix for website hosting (only used when enable_website is true)"
+    }
+  },
+  "$id": "https://noisypigeon.garden/terraform/scaleway/bucket/v5.0.0/inputs.schema.json"
+}
