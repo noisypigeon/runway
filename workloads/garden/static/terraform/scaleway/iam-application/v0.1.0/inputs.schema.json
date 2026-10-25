@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,2}$",
+      "description": "Pins this module: X.Y.Z exactly, X.Y or X to the newest release within it. Omitted, the newest release (LIB-0023 §3)."
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "IAM application description"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "IAM application name"
+    }
+  },
+  "$id": "https://noisypigeon.garden/terraform/scaleway/iam-application/v0.1.0/inputs.schema.json"
+}

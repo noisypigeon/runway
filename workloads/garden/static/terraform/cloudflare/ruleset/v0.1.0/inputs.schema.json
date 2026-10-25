@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,2}$",
+      "description": "Pins this module: X.Y.Z exactly, X.Y or X to the newest release within it. Omitted, the newest release (LIB-0023 §3)."
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Ruleset description. Null leaves it unset"
+    },
+    "kind": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Ruleset kind, e.g. \"zone\""
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Ruleset name"
+    },
+    "phase": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Ruleset phase, e.g. \"http_request_dynamic_redirect\""
+    },
+    "rules": {
+      "anyOf": [
+        {},
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "The ruleset's rules, passed to the provider exactly as given (the cloudflare_ruleset rules schema)"
+    },
+    "zone_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Cloudflare zone ID the ruleset belongs to"
+    }
+  },
+  "$id": "https://noisypigeon.garden/terraform/cloudflare/ruleset/v0.1.0/inputs.schema.json"
+}

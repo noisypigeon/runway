@@ -1,0 +1,223 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,2}$",
+      "description": "Pins this module: X.Y.Z exactly, X.Y or X to the newest release within it. Omitted, the newest release (LIB-0023 §3)."
+    },
+    "api_key_description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "IAM API key description"
+    },
+    "default_project_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Default project ID to use for Object Storage operations with the API key (defaults to the provider's own project when unset)"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Description for the IAM application and its policy"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "API key expiration timestamp (i.e. 2027-09-25T22:32:12Z). Defaults to 30 days after the key is first created."
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "IAM application name"
+    },
+    "organization_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Organization id"
+    },
+    "organization_permission_sets": {
+      "anyOf": [
+        {
+          "type": "array"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Organization permission set grants"
+    },
+    "policy_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "IAM policy name, used exactly as given (defaults to \"<name>-policy\")"
+    },
+    "project_ids": {
+      "anyOf": [
+        {
+          "type": "array"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Project ids"
+    },
+    "project_permission_sets": {
+      "anyOf": [
+        {
+          "type": "array"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Project permission set grants"
+    }
+  },
+  "$id": "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.1.0/inputs.schema.json"
+}

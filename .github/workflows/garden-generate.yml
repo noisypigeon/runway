@@ -1,0 +1,24 @@
+# garden's module redirect pages, theme-version pages, release posts and
+# schemas are generated from the library's tags and changelogs, and committed
+# under workloads/garden/ (LIB-0035 §2). The library dispatches this on every
+# release; run it by hand to regenerate. Its commit lands outside values.yaml,
+# so sites.yml then deploys it through noisypigeon/noisypigeon.garden.
+name: garden-generate
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: main-writer
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    uses: noisypigeon/library/.github/workflows/site-generate.yml@workflows/v5.1.0
+    with:
+      src_dir: workloads/garden
+      generate_cmd: ".lib-src/.github/scripts/generate-module-redirects.sh --content-root workloads/garden/content --static-root workloads/garden/static"
+    secrets: inherit
