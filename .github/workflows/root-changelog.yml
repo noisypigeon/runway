@@ -16,7 +16,7 @@ concurrency:
 jobs:
   rollup:
     if: github.event.pull_request.merged == true
-    uses: noisypigeon/library/.github/workflows/spoke-root-changelog.yml@workflows/v5.2.2
+    uses: noisypigeon/library/.github/workflows/spoke-root-changelog.yml@workflows/v5.4.0
     with:
       # First match wins.
       precedence: |
