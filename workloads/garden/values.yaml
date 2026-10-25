@@ -1,8 +1,12 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v1.json
 # garden, at noisypigeon.garden, and the zone it owns (LIB-0035). Its two Pages
-# CNAMEs arrive by import, through features.githubPages, and its site files
-# after them.
+# CNAMEs were imported from noisypigeon/garden's leaf, not created, and
+# features.githubPages implies them (LIB-0034 §2): change one only on purpose.
 prefix: garden
 suffix: noisypigeon
+features:
+  githubPages:
+    pagesShim: noisypigeon/noisypigeon.garden
+    pagesBaseUrl: noisypigeon.github.io
 cloudflare:
   zone: noisypigeon.garden
