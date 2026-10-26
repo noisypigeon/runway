@@ -1,85 +1,26 @@
-# yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v2.json
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v3.json
 # noisypigeon.com, a unit of its own (LIB-0036). Its project is named for the
 # domain; its other resources use prefix. The blog lives in this project and
-# writes its Pages records here (LIB-0037). The domain's own mail and
-# identity records below were imported from the blog, not created: change one
-# only on purpose.
-name: noisypigeon.com
-prefix: npc
-suffix: noisypigeon
-# blog, in workloads/noisypigeon.com/blog/, serves the apex and www (LIB-0037).
-hosts:
-  "@": blog
-cloudflare:
-  dnsRecord:
-    bluesky-did:
-      name: _atproto
-      type: TXT
-      content: did=did:plc:kkh3qo4rjs4b6aayzj4fcpkg
-      ttl: 1
-      comment: bluesky domain handle
-    google-search-site-verification:
-      name: '@'
-      type: TXT
-      content: '"google-site-verification=vFu1wL_0hoMl6UpTkWZ3IiVSlfOvGuY_wtYfpWOrsfA"'
-      ttl: 3600
-      comment: null
-    proton-dkim-primary:
-      name: dkim._domainkey
-      type: CNAME
-      content: dkim._domainkey.alias.proton.me
-      ttl: 1
-      proxied: false
-      comment: proton primary dkim
-    proton-dkim-secondary:
-      name: dkim02._domainkey
-      type: CNAME
-      content: dkim02._domainkey.alias.proton.me
-      ttl: 1
-      proxied: false
-      comment: proton secondary dkim
-    proton-dkim-tertiary:
-      name: dkim03._domainkey
-      type: CNAME
-      content: dkim03._domainkey.alias.proton.me
-      ttl: 1
-      proxied: false
-      comment: fastmail tertiary dkim
-    proton-dmarc:
-      name: _dmarc
-      type: TXT
-      content: v=DMARC1; p=quarantine; pct=100; adkim=s; aspf=s
-      ttl: 1
-      comment: proton spf verification
-    proton-protonmail-verification:
-      name: '@'
-      type: TXT
-      content: protonmail-verification=e9457a054010bbbb12cc4abfce39d67198e9abd1
-      ttl: 1
-      comment: protonmail verification
-    proton-pm-verification:
-      name: '@'
-      type: TXT
-      content: pm-verification=yulfrkphygclvbkaipymgmyhstrxuj
-      ttl: 1
-      comment: pm verification
-    proton-mx-primary:
-      name: '@'
-      type: MX
-      content: mx1.alias.proton.me
-      ttl: 1
-      priority: 10
-      comment: protonmail primary mx
-    proton-mx-secondary:
-      name: '@'
-      type: MX
-      content: mx2.alias.proton.me
-      ttl: 1
-      priority: 20
-      comment: protonmail secondary mx
-    proton-proton-spf:
-      name: '@'
-      type: TXT
-      content: v=spf1 include:alias.proton.me ~all
-      ttl: 1
-      comment: proton spf verification
+# writes its Pages records here (LIB-0037). The domain's mail and identity
+# records follow from its services (LIB-0039), and were imported from the
+# blog, not created: change one only on purpose.
+zone:
+  name: noisypigeon.com
+  prefix: npc
+  suffix: noisypigeon
+  # blog, in workloads/noisypigeon.com/blog/, serves the apex and www
+  # (LIB-0037).
+  hosts:
+    "@": blog
+  services:
+    proton:
+      enabled: true
+      verification:
+        pm: yulfrkphygclvbkaipymgmyhstrxuj
+        protonmail: e9457a054010bbbb12cc4abfce39d67198e9abd1
+    googleSearch:
+      enabled: true
+      verification: vFu1wL_0hoMl6UpTkWZ3IiVSlfOvGuY_wtYfpWOrsfA
+    bluesky:
+      enabled: true
+      did: did:plc:kkh3qo4rjs4b6aayzj4fcpkg
