@@ -1,14 +1,13 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v1.json
 # noisypigeon.com, a unit of its own (LIB-0036). Its project is named for the
-# domain; its other resources use prefix. The blog writes its Pages records
-# here. The domain's own mail and identity records below were imported from
-# the blog, not created: change one only on purpose.
+# domain; its other resources use prefix. The blog lives in this project and
+# writes its Pages records here (LIB-0037). The domain's own mail and
+# identity records below were imported from the blog, not created: change one
+# only on purpose.
 name: noisypigeon.com
 prefix: npc
 suffix: noisypigeon
-workload: blog
-# LIB-0037: blog in workloads/noisypigeon.com/ serves the apex and www.
-# workload: stays until blog moves there (§7 step 4).
+# blog, in workloads/noisypigeon.com/blog/, serves the apex and www (LIB-0037).
 hosts:
   "@": blog
 cloudflare:

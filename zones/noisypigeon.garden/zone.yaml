@@ -1,11 +1,10 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v1.json
-# noisypigeon.garden, a unit of its own (LIB-0036). The garden writes its Pages
-# records here.
+# noisypigeon.garden, a unit of its own (LIB-0036). The garden lives in this
+# project and writes its Pages records here (LIB-0037).
 name: noisypigeon.garden
 prefix: npg
 suffix: noisypigeon
-workload: garden
-# LIB-0037: garden in workloads/noisypigeon.garden/ serves the apex and www.
-# workload: stays until garden moves there (§7 step 4).
+# garden, in workloads/noisypigeon.garden/garden/, serves the apex and www
+# (LIB-0037).
 hosts:
   "@": garden
