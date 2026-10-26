@@ -1,9 +1,10 @@
-# yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v3.json
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v4.json
 # garden, at noisypigeon.garden, in its zone (LIB-0037). It lives in the
 # zone's project, and the zone's hosts give it the apex and www. githubPages
 # deploys it through noisypigeon/noisypigeon.garden and implies its two Pages
 # CNAMEs, whose state moved here from workloads/garden/: change one only on
 # purpose.
-name: garden
-deployments:
-  githubPages: {}
+workload:
+  name: garden
+  deployments:
+    githubPages: {}
