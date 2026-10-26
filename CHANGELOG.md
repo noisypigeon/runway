@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-25
 
+- [terraform] feat(workloads): bootstrap blog and garden in their zones (LIB-0037) ([#76](https://github.com/noisypigeon/runway/pull/76))
 - [ci] ci: take workflows/v6.1.0 (LIB-0037) ([#78](https://github.com/noisypigeon/runway/pull/78))
 - [repo] feat(poc): remove the POC workload ([#75](https://github.com/noisypigeon/runway/pull/75))
 - [repo] feat(poc): let the POC's state bucket force-destroy ([#77](https://github.com/noisypigeon/runway/pull/77))
