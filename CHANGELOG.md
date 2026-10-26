@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-26
+
+- [ci] feat(workloads): move blog and garden into their zones (LIB-0037) ([#79](https://github.com/noisypigeon/runway/pull/79))
+
 ## 2026-10-25
 
 - [terraform] feat(workloads): bootstrap blog and garden in their zones (LIB-0037) ([#76](https://github.com/noisypigeon/runway/pull/76))
