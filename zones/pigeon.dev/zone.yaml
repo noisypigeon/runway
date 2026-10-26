@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v1.json
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v2.json
 # pigeon.dev, a unit of its own (LIB-0036). Its Fastmail records and its
 # redirect to noisypigeon.com were imported from the blog, not created: change
 # one only on purpose.

@@ -1,9 +1,9 @@
 # Signs in with this spoke's Scaleway key, which it doesn't manage. If it ever does, it needs a breakglass key.
-module "terraform_deployer_iam" {
-  source = "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.1.0"
+module "iam_policy" {
+  source = "https://noisypigeon.garden/terraform/scaleway/iam-policy/v4.0.0"
+  name   = "willowgraysen-com-terraform-deploy-policy"
 
-  name        = "willowgraysen-com-terraform-deploy"
-  policy_name = "willowgraysen-com-terraform-deploy-policy-policy"
+  application_id = var.application_id
 
   project_ids = [local.scaleway_project_id]
   project_permission_sets = [
@@ -25,6 +25,4 @@ module "terraform_deployer_iam" {
     "IAMManager",
     "IAMApplicationManager"
   ]
-
-  default_project_id = local.scaleway_project_id
 }
