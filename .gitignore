@@ -13,6 +13,13 @@
 /workloads/*/cloudflare/
 /workloads/*/themes/
 /workloads/*/public/
+# A workload in its zone (LIB-0037), the same way: by provider, never
+# /workloads/*/*/*/, which would hide its site files.
+/workloads/*/*/scaleway/
+/workloads/*/*/backblaze/
+/workloads/*/*/cloudflare/
+/workloads/*/*/themes/
+/workloads/*/*/public/
 # A zone's stubs, the same way, from its zone.yaml (LIB-0036).
 /zones/*/scaleway/
 /zones/*/cloudflare/

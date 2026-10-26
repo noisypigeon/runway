@@ -5,3 +5,7 @@ name: noisypigeon.garden
 prefix: npg
 suffix: noisypigeon
 workload: garden
+# LIB-0037: garden in workloads/noisypigeon.garden/ serves the apex and www.
+# workload: stays until garden moves there (§7 step 4).
+hosts:
+  "@": garden
