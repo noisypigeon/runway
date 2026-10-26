@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v1.json
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/zone/v2.json
 # noisypigeon.com, a unit of its own (LIB-0036). Its project is named for the
 # domain; its other resources use prefix. The blog lives in this project and
 # writes its Pages records here (LIB-0037). The domain's own mail and
