@@ -16,9 +16,9 @@ permissions:
 jobs:
   detect:
     if: github.event_name == 'pull_request'
-    uses: noisypigeon/library/.github/workflows/terragrunt-detect.yml@workflows/v6.0.0
+    uses: noisypigeon/library/.github/workflows/terragrunt-detect.yml@workflows/v6.1.0
     with:
-      leaf_pattern: '^terraform/|^workloads/[^/]+/(values|secrets)\.yaml$|^zones/[^/]+/zone\.yaml$|^zones\.yaml$|^root\.hcl$|^spoke\.hcl$|^\.sops\.yaml$'
+      leaf_pattern: '^terraform/|^workloads/[^/]+/(values|secrets)\.yaml$|^workloads/[^/]+/[^/]+/(workload|secrets\.workload)\.yaml$|^zones/[^/]+/zone\.yaml$|^zones\.yaml$|^root\.hcl$|^spoke\.hcl$|^\.sops\.yaml$'
 
   # 👀 on a `terragrunt plan` comment at once (LIB-0022's 2026-10-25
   # amendment), in no concurrency group. A push has no comment to react to.
@@ -28,7 +28,7 @@ jobs:
       github.event.issue.pull_request != null &&
       github.event.comment.body == 'terragrunt plan' &&
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
-    uses: noisypigeon/library/.github/workflows/terragrunt-ack.yml@workflows/v6.0.0
+    uses: noisypigeon/library/.github/workflows/terragrunt-ack.yml@workflows/v6.1.0
 
   # On a push, or on a `terragrunt plan` comment, gated like apply (LIB-0022).
   plan:
@@ -48,7 +48,7 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@workflows/v6.0.0
+    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@workflows/v6.1.0
     with:
       command: plan
       prepare_cmd: ./fetch-lib.sh && .lib-src/.github/scripts/resolve-root-hcl.sh --check && .lib-src/.github/scripts/check-secrets.sh && .lib-src/.github/scripts/resolve-workloads.sh --check
