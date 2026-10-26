@@ -6,6 +6,10 @@ collapsed from full PR bodies; each PR, or commit, keeps its long form.
 
 <!-- entries below; newest first -->
 
+## 2026-10-26
+
+- [blog] feat(workloads): move blog and garden into their zones (LIB-0037) ([#79](https://github.com/noisypigeon/runway/pull/79))
+
 ## 2026-10-24
 
 - [blog] The blog declares its Pages shim in values.yaml (LIB-0034) ([#65](https://github.com/noisypigeon/runway/pull/65))
