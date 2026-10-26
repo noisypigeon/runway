@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-26
 
+- [terraform] feat: wrap unit files and declare zone services (LIB-0039) ([#84](https://github.com/noisypigeon/runway/pull/84))
 - [ci] ci: take workflows/v7.1.0 (LIB-0039) ([#83](https://github.com/noisypigeon/runway/pull/83))
 - [terraform] feat(zones): compose deployers and redirects from single-resource modules (LIB-0038) ([#82](https://github.com/noisypigeon/runway/pull/82))
 - [ci] ci: take workflows/v7.0.0 (LIB-0038) ([#81](https://github.com/noisypigeon/runway/pull/81))
