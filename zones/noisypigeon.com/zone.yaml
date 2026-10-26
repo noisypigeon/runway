@@ -7,6 +7,10 @@ name: noisypigeon.com
 prefix: npc
 suffix: noisypigeon
 workload: blog
+# LIB-0037: blog in workloads/noisypigeon.com/ serves the apex and www.
+# workload: stays until blog moves there (§7 step 4).
+hosts:
+  "@": blog
 cloudflare:
   dnsRecord:
     bluesky-did:
