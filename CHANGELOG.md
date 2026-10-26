@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-26
 
+- [repo] feat(workloads): remove blog's and garden's old workloads (LIB-0037) ([#80](https://github.com/noisypigeon/runway/pull/80))
 - [ci] feat(workloads): move blog and garden into their zones (LIB-0037) ([#79](https://github.com/noisypigeon/runway/pull/79))
 
 ## 2026-10-25
