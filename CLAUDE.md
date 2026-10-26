@@ -8,21 +8,22 @@ together.
 It also holds the two public sites, as the `blog` workload (LIB-0032) and the
 `garden` workload (LIB-0035):
 
-- **`workloads/blog/`** is the noisypigeon.com Zola site (`config.toml`,
-  `content/`, `static/`, `CHANGELOG.md`), beside its `values.yaml`.
-- **`values.yaml`** holds the DNS records of noisypigeon.com and pigeon.dev,
-  and the redirects from pigeon.dev and willowgraysen.com to noisypigeon.com,
-  in zones whose `zone.yaml` names `blog`. They were imported, not created, so
-  change one only on purpose. The mail and identity records and the redirects
-  are moving to their zones (LIB-0036 §7).
+- **`workloads/noisypigeon.com/blog/`** is the noisypigeon.com Zola site
+  (`config.toml`, `content/`, `static/`, `CHANGELOG.md`), beside its
+  `workload.yaml` (LIB-0037). It lives in its zone's project, and the zone's
+  `hosts` gives it the apex and `www`.
 - **`noisypigeon/noisypigeon.com` is now only the Pages shim** (LIB-0031,
-  LIB-0034), named by `values.yaml`'s `features.githubPages`. Merging a site
-  change here dispatches its `pages.yml`, which builds this repo's `main`. A post
-  is a PR like any other, but only `values.yaml` and `secrets.yaml` changes
-  run a plan.
-- **`workloads/garden/`** is the noisypigeon.garden Zola site. Its shim is
-  `noisypigeon/noisypigeon.garden`, and the noisypigeon.garden zone names it,
-  so its two Pages records, which were imported, live in its `values.yaml`.
+  LIB-0037 §4), implied by `workload.yaml`'s `deployments.githubPages`.
+  Merging a site change here dispatches its `pages.yml`, which builds this
+  repo's `main`. A post is a PR like any other, but only `workload.yaml` and
+  `secrets.workload.yaml` changes run a plan.
+- **`workloads/noisypigeon.garden/garden/`** is the noisypigeon.garden Zola
+  site. Its shim is `noisypigeon/noisypigeon.garden`.
+- **Each site's two Pages records** were imported, not created, and its
+  `deployments.githubPages` implies them, so change one only on purpose.
+- **`workloads/blog/` and `workloads/garden/`** are the old workloads, being
+  torn down (LIB-0037 §7). Only their project, deployer, state bucket and
+  token remain.
 - **Most of garden is generated.** Its module redirect pages under
   `content/terraform/`, `content/theme-versions/` and `content/releases/`, and
   its schemas under `static/terraform/` and `static/schemas/`, come from

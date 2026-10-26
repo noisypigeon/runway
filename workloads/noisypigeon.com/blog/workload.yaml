@@ -1,5 +1,8 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v2.json
-# blog, in its zone noisypigeon.com (LIB-0037). For now it only bootstraps
-# its deployer, state bucket and Cloudflare token in the zone's project
-# (§7 step 2). workloads/blog/ still serves the site until its state moves here.
+# The blog, at noisypigeon.com, in its zone (LIB-0037). It lives in the zone's
+# project, and the zone's hosts give it the apex and www. githubPages deploys
+# it through noisypigeon/noisypigeon.com and implies its two Pages CNAMEs,
+# whose state moved here from workloads/blog/: change one only on purpose.
 name: blog
+deployments:
+  githubPages: {}
