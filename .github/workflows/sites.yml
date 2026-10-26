@@ -1,8 +1,8 @@
-# Each site workload's files live here, in workloads/<w>/, but deploy from its
-# Pages shim: Pages only deploys the repo the workflow runs in (DEV-0156). So
-# a change to a site dispatches the pages.yml of the shim its values.yaml
-# names in features.githubPages, which builds this repo's main (LIB-0031 §4,
-# LIB-0034 §3).
+# Each site workload's files live here, in workloads/<zone>/<w>/, but deploy
+# from its Pages shim: Pages only deploys the repo the workflow runs in
+# (DEV-0156). So a change to a site dispatches the pages.yml of the shim its
+# workload.yaml's deployments.githubPages implies, which builds this repo's
+# main (LIB-0031 §4, LIB-0037 §4).
 name: Sites
 
 on:

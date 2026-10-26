@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v1.json
-# The blog, at noisypigeon.com (LIB-0032). The zone names it, so it writes
-# the site's own records there; the domain's mail and identity records, and
-# the redirects to it, are the zones' (LIB-0036). githubPages names the shim
-# that deploys the site, and implies its two Pages CNAMEs (LIB-0034).
+# The blog's old workload, being torn down (LIB-0037 §7): the site and its two
+# Pages CNAMEs moved to workloads/noisypigeon.com/blog/, whose state took
+# over the records. Only its implicit project, deployer, state bucket and
+# token remain, until the whole workload is removed. The state bucket
+# force-destroys, so its leftover object versions don't block that.
 prefix: blog
 suffix: noisypigeon
-features:
-  githubPages:
-    pagesShim: noisypigeon/noisypigeon.com
-    pagesBaseUrl: noisypigeon.github.io
+scaleway:
+  state:
+    force_destroy: true
 cloudflare:
   zone: noisypigeon.com
