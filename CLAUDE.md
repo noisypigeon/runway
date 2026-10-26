@@ -21,9 +21,6 @@ It also holds the two public sites, as the `blog` workload (LIB-0032) and the
   site. Its shim is `noisypigeon/noisypigeon.garden`.
 - **Each site's two Pages records** were imported, not created, and its
   `deployments.githubPages` implies them, so change one only on purpose.
-- **`workloads/blog/` and `workloads/garden/`** are the old workloads, being
-  torn down (LIB-0037 §7). Only their project, deployer, state bucket and
-  token remain.
 - **Most of garden is generated.** Its module redirect pages under
   `content/terraform/`, `content/theme-versions/` and `content/releases/`, and
   its schemas under `static/terraform/` and `static/schemas/`, come from
@@ -37,7 +34,8 @@ Each Cloudflare zone is a unit of its own (LIB-0036), at
 noisypigeon.garden. A zone has its own Scaleway project, named for the domain,
 and its own deployer, state bucket and Cloudflare token, named by its short
 `prefix`. It holds the records that belong to the domain rather than a site,
-and names the one workload that may also write in it. Its stubs are
+and its `hosts` names the workload that serves each host, which lives under
+`workloads/<zone>/` in the zone's project (LIB-0037). Its stubs are
 generated, like a workload's.
 
 It is a spoke of `noisypigeon/library`. Modules, CI logic, scripts and
