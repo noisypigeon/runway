@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-26
 
+- [terraform] chore: take root-hcl 8.0.0 (LIB-0039) ([#86](https://github.com/noisypigeon/runway/pull/86))
 - [ci] ci: take workflows/v8.0.0 (LIB-0039) ([#85](https://github.com/noisypigeon/runway/pull/85))
 - [terraform] feat: wrap unit files and declare zone services (LIB-0039) ([#84](https://github.com/noisypigeon/runway/pull/84))
 - [ci] ci: take workflows/v7.1.0 (LIB-0039) ([#83](https://github.com/noisypigeon/runway/pull/83))
