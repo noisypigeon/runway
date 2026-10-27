@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-27
+
+- [ci] chore: take workflows/v8.0.1 ([#88](https://github.com/noisypigeon/runway/pull/88))
+
 ## 2026-10-26
 
 - [terraform] chore: take root-hcl 8.0.0 (LIB-0039) ([#86](https://github.com/noisypigeon/runway/pull/86))
