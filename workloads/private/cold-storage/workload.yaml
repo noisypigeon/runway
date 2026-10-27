@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v4.json
+# cold-storage: the data-ops cold-storage buckets on Backblaze (LIB-0040). It
+# has no zone, so it lives under private/ in its own project, wg-cold-storage,
+# whose only job is to hold the buckets' state. The buckets sign in with the
+# spoke's account-wide B2 key (LIB-0029 §4).
+workload:
+  name: cold-storage
+  deployments:
+    scaleway:
+      project:
+        prefix: wg
+        suffix: cold-storage
