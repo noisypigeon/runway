@@ -19,7 +19,7 @@ jobs:
       github.event.issue.pull_request != null &&
       github.event.comment.body == 'terragrunt apply' &&
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
-    uses: noisypigeon/library/.github/workflows/terragrunt-ack.yml@workflows/v8.0.1
+    uses: noisypigeon/library/.github/workflows/terragrunt-ack.yml@workflows/v8.1.0
 
   apply:
     # This gate is all that stands between a PR comment and real infrastructure.
@@ -34,7 +34,7 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@workflows/v8.0.1
+    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@workflows/v8.1.0
     with:
       command: apply
       prepare_cmd: ./fetch-lib.sh && .lib-src/.github/scripts/resolve-root-hcl.sh --check && .lib-src/.github/scripts/check-secrets.sh && .lib-src/.github/scripts/resolve-workloads.sh --check
@@ -49,7 +49,7 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@workflows/v8.0.1
+    uses: noisypigeon/library/.github/workflows/terragrunt-run.yml@workflows/v8.1.0
     with:
       command: plan
       prepare_cmd: ./fetch-lib.sh && .lib-src/.github/scripts/resolve-root-hcl.sh --check && .lib-src/.github/scripts/check-secrets.sh && .lib-src/.github/scripts/resolve-workloads.sh --check
