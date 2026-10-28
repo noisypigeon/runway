@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-28
 
+- [terraform] chore: take library 8.2.0, faster Terragrunt plans (LIB-0042) ([#92](https://github.com/noisypigeon/runway/pull/92))
 - [terraform] chore: retire the spoke-wide Backblaze key and Cloudflare token (LIB-0041) ([#91](https://github.com/noisypigeon/runway/pull/91))
 - [terraform] chore: take library 8.1.0, cold-storage gets its own Backblaze key (LIB-0041) ([#90](https://github.com/noisypigeon/runway/pull/90))
 - [terraform] feat: move the cold-storage buckets into their workload (LIB-0040) ([#89](https://github.com/noisypigeon/runway/pull/89))
