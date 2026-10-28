@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-27
 
+- [terraform] feat: add the cold-storage workload's own project (LIB-0040) ([#87](https://github.com/noisypigeon/runway/pull/87))
 - [ci] chore: take workflows/v8.0.1 ([#88](https://github.com/noisypigeon/runway/pull/88))
 
 ## 2026-10-26
