@@ -702,6 +702,133 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "deployer": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "enum": [
+                    "0",
+                    "0.1",
+                    "0.1.0",
+                    "0.1.1",
+                    "0.2",
+                    "0.2.0"
+                  ]
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "not": {
+                      "required": [
+                        "version"
+                      ]
+                    }
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.2.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.2.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.1"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.1.1/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.1.0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.1.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.1.1"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.1.1/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.2"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.2.0/inputs.schema.json"
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "version": {
+                        "const": "0.2.0"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.2.0/inputs.schema.json"
+                  }
+                }
+              ]
+            }
+          ]
+        },
         "bucket": {
           "type": [
             "object",
@@ -844,7 +971,10 @@
             "null"
           ],
           "propertyNames": {
-            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "not": {
+              "const": "deployer"
+            }
           },
           "additionalProperties": {
             "anyOf": [
