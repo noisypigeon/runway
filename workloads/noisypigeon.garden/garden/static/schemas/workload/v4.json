@@ -1151,7 +1151,9 @@
                           "0",
                           "0.1",
                           "0.1.0",
-                          "0.1.1"
+                          "0.1.1",
+                          "0.2",
+                          "0.2.0"
                         ]
                       }
                     },
@@ -1165,7 +1167,7 @@
                           }
                         },
                         "then": {
-                          "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.1.1/workload.schema.json"
+                          "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.2.0/workload.schema.json"
                         }
                       },
                       {
@@ -1180,7 +1182,7 @@
                           ]
                         },
                         "then": {
-                          "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.1.1/workload.schema.json"
+                          "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.2.0/workload.schema.json"
                         }
                       },
                       {
@@ -1226,6 +1228,36 @@
                         },
                         "then": {
                           "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.1.1/workload.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.2"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.2.0/workload.schema.json"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "version": {
+                              "const": "0.2.0"
+                            }
+                          },
+                          "required": [
+                            "version"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.2.0/workload.schema.json"
                         }
                       }
                     ]

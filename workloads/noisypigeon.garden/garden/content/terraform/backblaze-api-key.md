@@ -8,7 +8,7 @@ in_search_index = true
 kind = "module"
 provider = "backblaze"
 module = "api-key"
-latest_version = "0.1.1"
+latest_version = "0.2.0"
 github_url = "https://github.com/noisypigeon/library/tree/main/terraform/backblaze/api-key"
 usage_example = """
 module "backup_key" {
@@ -18,5 +18,5 @@ module "backup_key" {
   bucket_ids   = [module.backup_bucket.bucket_id]
 }
 """
-versions = [{ version = "0.1.0", path = "terraform/backblaze/api-key/v0.1.0" }, { version = "0.1.1", path = "terraform/backblaze/api-key/v0.1.1" }]
+versions = [{ version = "0.1.0", path = "terraform/backblaze/api-key/v0.1.0" }, { version = "0.1.1", path = "terraform/backblaze/api-key/v0.1.1" }, { version = "0.2.0", path = "terraform/backblaze/api-key/v0.2.0" }]
 +++
