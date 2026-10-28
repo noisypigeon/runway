@@ -5,17 +5,11 @@ locals {
   # A Grafana leaf must define local.grafana_auth_token.
   providers = {
     scaleway = {}
-    # The bootstrap keys in *_breakglass.enc can only mint keys, and only the
-    # deployer leaves read them; every other leaf signs in with the key those
-    # leaves mint, hand-copied into cloudflare.enc and backblaze.enc (LIB-0033).
-    backblaze = {
-      leaves     = ["terraform/backblaze/"]
-      breakglass = { leaves = ["terraform/backblaze/api-key/terraform-deployer/"] }
-    }
-    cloudflare = {
-      leaves     = ["terraform/cloudflare/"]
-      breakglass = { leaves = ["terraform/cloudflare/api-token/terraform-deployer/"] }
-    }
-    grafana = { leaves = ["terraform/grafana/dashboard/"] }
+    # No spoke-wide Cloudflare token or Backblaze key: every leaf of these is a
+    # unit's, signed in with its own token or key, which the minting-only
+    # bootstrap key in *_breakglass.enc mints (LIB-0033, LIB-0041).
+    backblaze  = { workloads_only = true, breakglass = {} }
+    cloudflare = { workloads_only = true, breakglass = {} }
+    grafana    = { leaves = ["terraform/grafana/dashboard/"] }
   }
 }
