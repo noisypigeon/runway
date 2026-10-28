@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-28
+
+- [terraform] feat: move the cold-storage buckets into their workload (LIB-0040) ([#89](https://github.com/noisypigeon/runway/pull/89))
+
 ## 2026-10-27
 
 - [terraform] feat: add the cold-storage workload's own project (LIB-0040) ([#87](https://github.com/noisypigeon/runway/pull/87))
