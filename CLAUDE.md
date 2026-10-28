@@ -38,6 +38,10 @@ and its `hosts` names the workload that serves each host, which lives under
 `workloads/<zone>/` in the zone's project (LIB-0037). Its stubs are
 generated, like a workload's.
 
+The cold-storage buckets are the `cold-storage` workload (LIB-0040), at
+`workloads/private/cold-storage/`. It has no zone, so it has its own project,
+`wg-cold-storage`, whose only job is to hold the buckets' state.
+
 It is a spoke of `noisypigeon/library`. Modules, CI logic, scripts and
 decision records all live there. Don't add them here.
 
