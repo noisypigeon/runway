@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-28
 
+- [terraform] chore: take library 8.1.0, cold-storage gets its own Backblaze key (LIB-0041) ([#90](https://github.com/noisypigeon/runway/pull/90))
 - [terraform] feat: move the cold-storage buckets into their workload (LIB-0040) ([#89](https://github.com/noisypigeon/runway/pull/89))
 
 ## 2026-10-27
