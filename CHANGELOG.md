@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-28
 
+- [terraform] feat(data-ops): move pigeon-cli's buckets into private/data-ops (LIB-0046) ([#99](https://github.com/noisypigeon/runway/pull/99))
 - [terraform] feat(data-ops): bootstrap private/data-ops with runway's project (LIB-0046) ([#98](https://github.com/noisypigeon/runway/pull/98))
 - [terraform] feat: enforce library policies; take workflows v9.2.0 and root.hcl 9.1.1 (LIB-0045) ([#97](https://github.com/noisypigeon/runway/pull/97))
 - [repo] feat(custodial-cold-storage): rename the custodial-storage workload (LIB-0044) ([#96](https://github.com/noisypigeon/runway/pull/96))
