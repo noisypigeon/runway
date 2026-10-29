@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-28
 
+- [terraform] feat: enforce library policies; take workflows v9.2.0 and root.hcl 9.1.1 (LIB-0045) ([#97](https://github.com/noisypigeon/runway/pull/97))
 - [repo] feat(custodial-cold-storage): rename the custodial-storage workload (LIB-0044) ([#96](https://github.com/noisypigeon/runway/pull/96))
 - [repo] feat(personal-cold-storage): rename the cold-storage workload (LIB-0044) ([#95](https://github.com/noisypigeon/runway/pull/95))
 - [repo] feat(custodial-storage): move the custodial bucket into its own workload (LIB-0044) ([#94](https://github.com/noisypigeon/runway/pull/94))
