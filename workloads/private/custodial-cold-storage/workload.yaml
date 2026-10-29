@@ -1,16 +1,16 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v4.json
-# custodial-storage: the custodial bucket on Backblaze, in a project of its
+# custodial-cold-storage: the custodial bucket on Backblaze, in a project of its
 # own, so no other deployer can reach its state (LIB-0044). It has no zone, so
 # it lives under private/. Its bucket signs in with the workload's own B2 key,
 # which the spoke's breakglass key mints (LIB-0041).
 workload:
-  name: custodial-storage
+  name: custodial-cold-storage
   deployments:
     scaleway:
       project:
-        name: custodial-storage
+        name: custodial-cold-storage
         prefix: cus
-        suffix: custodial-storage
+        suffix: custodial-cold-storage
   # The entry writes its old leaf's own name parts, so its name doesn't
   # change; the random code moved with its state (LIB-0044 §3).
   backblaze:
