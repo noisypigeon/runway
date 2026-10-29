@@ -138,6 +138,12 @@
 # breakglass key where it has one, and its Backblaze leaves sign in with it. A
 # provider's entry may set workloads_only = true: no hand-written leaf turns it
 # on, and the spoke keeps no credentials of its own for it.
+#
+# Since v9.1.0 (LIB-0045 §§6-7) a Backblaze bucket may grant other workloads,
+# each up to a list of capabilities, under `grants`, which isn't a module
+# input. A key may name a bucket another workload grants it as
+# <parent>/<workload>/<bucket>; its leaf reads that workload's file and refuses
+# a bucket it isn't granted, or capabilities beyond the grant.
 
 locals {
   # The spoke's instance values. Missing spoke.hcl is a hard error, which is
@@ -579,6 +585,28 @@ locals {
   workload_b2_keys      = try(local.workload_backblaze.apiKey, null)
   workload_b2_key_entry = try(local.workload_b2_keys[local.workload_instance], null)
   workload_b2_deployer  = length(try(keys(local.workload_b2_buckets), [])) + length(try(keys(local.workload_b2_keys), [])) > 0
+  # A key's buckets: its own by key, and another workload's as
+  # <parent>/<workload>/<bucket>, which that bucket's grants must give this
+  # workload, with at least the key's capabilities (LIB-0045 §§6-7). The
+  # owner's file is read as resolve-workloads.sh's grant check reads it.
+  workload_b2_key_buckets = [for b in try(tolist(local.workload_b2_key_entry.buckets), []) : tostring(b)]
+  workload_b2_own_buckets = [for b in local.workload_b2_key_buckets : b if length(split("/", b)) == 1]
+  workload_b2_xbuckets = {
+    for b in local.workload_b2_key_buckets : b => {
+      owner  = join("/", slice(split("/", b), 0, 2))
+      bucket = split("/", b)[2]
+    } if length(split("/", b)) == 3
+  }
+  workload_b2_xgrants = {
+    for b, x in local.workload_b2_xbuckets : b => try(
+      [for c in yamldecode(file(mark_as_read("${get_parent_terragrunt_dir()}/workloads/${x.owner}/workload.yaml"))).workload.backblaze.bucket[x.bucket].grants["${local.workload_parent}/${local.workload}"] : tostring(c)],
+      null
+    )
+  }
+  workload_b2_ungranted = sort([for b, g in local.workload_b2_xgrants : b if g == null])
+  workload_b2_overreach = sort(distinct(flatten([
+    for b, g in local.workload_b2_xgrants : g == null ? [] : tolist(setsubtract([for c in try(tolist(local.workload_b2_key_entry.capabilities), []) : tostring(c)], g))
+  ])))
   # Everything a deployer needs to create, reconfigure and delete buckets and
   # their keys (LIB-0033 §5), as runway's spoke key held.
   b2_deployer_capabilities = [
@@ -760,6 +788,76 @@ locals {
     [for z in [local.workload_cf_owned] : { permission_groups = concat(["Zone Read", "DNS Write"], local.is_zone_unit ? ["Dynamic URL Redirects Write"] : []), zones = z } if length(z) > 0],
     [for b in [local.workload_cf_buckets] : { permission_groups = ["Workers R2 Storage Write"], account = true } if b],
   )
+  # Scaleway's compute kinds (LIB-0043). An instance expands into its
+  # compute-instance and compute-instance-config leaves (§2), and with
+  # selfDelete its own application, policy and key (§3); sshViaGateway
+  # implies a gateway-pat-rule (§5). privateNetwork and publicGateway are on
+  # when declared and not enabled: false. resolve-workloads.sh's
+  # expand_compute and compute_problems are their twins.
+  wc_scaleway_keys = try(keys(local.workload_scaleway), [])
+  wc_on            = { for k in ["privateNetwork", "publicGateway"] : k => contains(local.wc_scaleway_keys, k) && try(local.workload_scaleway[k].enabled, true) != false }
+  wc_pn            = local.wc_on.privateNetwork
+  wc_gw            = local.wc_on.publicGateway
+  wc_cockpit       = contains(local.wc_scaleway_keys, "cockpit")
+  wc_policies      = try(merge({}, local.workload_iam.policy), {})
+  wc_apikeys       = try(merge({}, local.workload_iam.apiKey), {})
+  wc_volumes       = try(merge({}, local.workload_scaleway.blockVolume), {})
+  wc_bucket_keys   = try(keys(local.workload_buckets), [])
+  wc_shared        = try(merge({}, local.workload_scaleway.sharedKeyring), {})
+  wc_instances     = { for k, v in try(merge({}, local.workload_scaleway.instance), {}) : k => try(merge({}, v), {}) }
+  wc_passthrough   = ["type", "image", "enabled", "ssh_key", "version", "name_prefix", "name_suffix"]
+  wc_interface     = ["network", "volumes", "cockpit", "transcoding", "selfDelete", "commands", "keyring"]
+  wc_wired         = ["project_id", "cloud_init", "additional_volume_ids", "private_network_id", "enable_private_network", "public_ipv4", "ip_ids"]
+  wc_net           = { for k, v in local.wc_instances : k => try(merge({}, v.network), {}) }
+  wc_attached      = { for k, n in local.wc_net : k => try(tobool(n.privateNetwork), local.wc_pn) }
+  wc_ipv4          = { for k, n in local.wc_net : k => try(n.publicIpv4 == true, false) }
+  wc_pat           = { for k, n in local.wc_net : k => n.sshViaGateway if can(n.sshViaGateway) }
+  wc_self_delete   = { for k, v in local.wc_instances : "self-delete-${k}" => k if try(v.selfDelete == true, false) }
+  # Each instance's keyring, sharedKeyring underneath (§2). What a
+  # dependency fills (a scaleway.bucket key's name, an apiKey's credentials)
+  # is the stub's keyring_wiring; what a secretRef fills is keyring_secrets,
+  # one sensitive variable; the rest is the literal keyring (§4).
+  wc_keyring = { for k, v in local.wc_instances : k => merge(local.wc_shared, try(merge({}, v.keyring), {})) }
+  wc_keyring_list = { for k, kr in local.wc_keyring : k => [
+    for a, e in kr : merge(
+      { for f, x in try(merge({}, e), {}) : f => x if f != "apiKey" && !can(x.secretRef) && !(f == "bucket" && contains(local.wc_bucket_keys, try(tostring(x), ""))) },
+      { alias = a },
+      { for f, x in { endpoint = "https://s3.${local.scaleway_region}.scw.cloud" } : f => x if contains(local.wc_bucket_keys, try(tostring(e.bucket), "")) && !can(e.endpoint) },
+    )
+  ] }
+  wc_keyring_secrets = { for k, kr in local.wc_keyring : k => {
+    for a, e in kr : a => { for f, x in try(merge({}, e), {}) : f => lookup(local.workload_env, try(tostring(x.secretRef), ""), null) if can(x.secretRef) }
+    if length([for f, x in try(merge({}, e), {}) : f if can(x.secretRef)]) > 0
+  } }
+  # A command names a keyring entry as ${keyring.<alias>.alias}, or
+  # ${keyring["<alias>"].alias}, which is the alias itself (ADR-0144).
+  wc_commands = { for k, v in local.wc_instances : k => [
+    for c in try(tolist(v.commands), []) : replace(replace(tostring(c), "/\\$\\{keyring\\.([a-z0-9-]+)\\.alias\\}/", "$1"), "/\\$\\{keyring\\[\"([a-z0-9-]+)\"\\]\\.alias\\}/", "$1")
+  ] }
+  wc_instance_entry = { for k, v in local.wc_instances : k => merge(
+    { for f, x in v : f => x if contains(local.wc_passthrough, f) },
+    { public_ipv4 = local.wc_ipv4[k], enable_private_network = local.wc_attached[k] },
+  ) }
+  wc_config_entry = { for k, v in local.wc_instances : k => {
+    keyring                 = local.wc_keyring_list[k]
+    post_provision_commands = local.wc_commands[k]
+    enable_transcoding      = try(v.transcoding == true, false)
+    self_delete_on_exit     = try(v.selfDelete == true, false)
+    has_attached_volume     = length(try(tolist(v.volumes), [])) > 0
+  } }
+  # The deployer's grants (§8): ObjectStorageFullAccess for the state bucket,
+  # and one set per compute kind the workload declares.
+  wc_deployer_sets = concat(["ObjectStorageFullAccess"], [
+    for k, set in {
+      blockVolume    = "BlockStorageFullAccess"
+      instance       = "InstancesFullAccess"
+      privateNetwork = "PrivateNetworksFullAccess"
+      publicGateway  = "VPCGatewayFullAccess"
+      cockpit        = "ObservabilityFullAccess"
+    } : set if contains(local.wc_scaleway_keys, k)
+  ])
+  wc_kebab = "^[a-z0-9]+(-[a-z0-9]+)*$"
+
   # Each kind also says where its state lives (LIB-0028 §4): `spoke` in the
   # spoke's bucket, through this file's remote_state; `workload` in the
   # workload's bucket, through the remote_state its stub declares. The project,
@@ -810,7 +908,7 @@ locals {
       wiring   = { project_ids = "list(string)", application_id = "string" }
       defaults = {
         name                    = "${local.workload_prefix}-${local.workload_suffix}${local.unit_tag}-deployer"
-        project_permission_sets = ["ObjectStorageFullAccess"]
+        project_permission_sets = local.wc_deployer_sets
       }
       sensitive   = false
       credentials = "spoke"
@@ -859,10 +957,12 @@ locals {
       state       = "workload"
       units       = ["workload"]
     }
+    # Since LIB-0043 §1 a mapping of keys, each on the workload's one
+    # application, as every declared policy is.
     "scaleway/iam-api-key" = {
-      declared    = local.workload_instance == "main" && contains(try(keys(local.workload_iam), []), "apiKey")
-      entry       = try(local.workload_iam.apiKey, null)
-      secrets     = try(local.workload_secrets_scaleway.iam.apiKey, null)
+      declared    = contains(keys(local.wc_apikeys), local.workload_instance)
+      entry       = try(local.wc_apikeys[local.workload_instance], null)
+      secrets     = try(local.workload_secrets_scaleway.iam.apiKey[local.workload_instance], null)
       wiring      = { default_project_id = "string", application_id = "string" }
       defaults    = {}
       sensitive   = true
@@ -870,11 +970,149 @@ locals {
       state       = "workload"
       units       = ["workload"]
     }
+    "scaleway/iam-policy" = {
+      declared    = contains(keys(local.wc_policies), local.workload_instance)
+      entry       = try(local.wc_policies[local.workload_instance], null)
+      secrets     = try(local.workload_secrets_scaleway.iam.policy[local.workload_instance], null)
+      wiring      = { project_ids = "list(string)", application_id = "string" }
+      defaults    = { name = "${local.workload_prefix}-${local.workload_suffix}${local.workload_name_tag}-${local.workload_instance}" }
+      sensitive   = false
+      credentials = "spoke"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    # A self-deleting instance's own application, policy and key (LIB-0043
+    # §3), at self-delete-<instance>, so InstancesFullAccess never reaches the
+    # workload's keys. Nothing in the file overrides them.
+    "scaleway/iam-application#self-delete" = {
+      declared    = contains(keys(local.wc_self_delete), local.workload_instance)
+      entry       = null
+      secrets     = null
+      wiring      = {}
+      defaults    = { name = "${local.workload_prefix}-${local.workload_suffix}${local.workload_name_tag}-${local.workload_instance}" }
+      sensitive   = false
+      credentials = "spoke"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    "scaleway/iam-policy#self-delete" = {
+      declared    = contains(keys(local.wc_self_delete), local.workload_instance)
+      entry       = null
+      secrets     = null
+      wiring      = { project_ids = "list(string)", application_id = "string" }
+      defaults    = { name = "${local.workload_prefix}-${local.workload_suffix}${local.workload_name_tag}-${local.workload_instance}", project_permission_sets = ["InstancesFullAccess"] }
+      sensitive   = false
+      credentials = "spoke"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    "scaleway/iam-api-key#self-delete" = {
+      declared    = contains(keys(local.wc_self_delete), local.workload_instance)
+      entry       = null
+      secrets     = null
+      wiring      = { default_project_id = "string", application_id = "string" }
+      defaults    = {}
+      sensitive   = true
+      credentials = "spoke"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    "scaleway/block-volume" = {
+      declared    = contains(keys(local.wc_volumes), local.workload_instance)
+      entry       = try(local.wc_volumes[local.workload_instance], null)
+      secrets     = try(local.workload_secrets_scaleway.blockVolume[local.workload_instance], null)
+      wiring      = { project_id = "string" }
+      defaults    = { name_prefix = "${local.workload_prefix}${local.workload_name_tag}-${local.workload_instance}", name_suffix = local.workload_suffix }
+      sensitive   = false
+      credentials = "workload"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    "scaleway/cockpit-observability" = {
+      declared    = local.workload_instance == "main" && local.wc_cockpit
+      entry       = try(local.workload_scaleway.cockpit, null)
+      secrets     = try(local.workload_secrets_scaleway.cockpit, null)
+      wiring      = { project_id = "string" }
+      defaults    = { name = "${local.workload_prefix}-${local.workload_suffix}${local.workload_name_tag}" }
+      sensitive   = true
+      credentials = "workload"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    # enabled: false removes the leaf and keeps its settings (LIB-0043 §5).
+    "scaleway/private-network" = {
+      declared    = local.workload_instance == "main" && local.wc_pn
+      entry       = try({ for k, v in merge({}, local.workload_scaleway.privateNetwork) : k => v if k != "enabled" }, null)
+      secrets     = try(local.workload_secrets_scaleway.privateNetwork, null)
+      wiring      = { project_id = "string" }
+      defaults    = { name = "${local.workload_prefix}-${local.workload_suffix}${local.workload_name_tag}" }
+      sensitive   = false
+      credentials = "workload"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    "scaleway/public-gateway" = {
+      declared    = local.workload_instance == "main" && local.wc_gw
+      entry       = try({ for k, v in merge({}, local.workload_scaleway.publicGateway) : k => v if k != "enabled" }, null)
+      secrets     = try(local.workload_secrets_scaleway.publicGateway, null)
+      wiring      = { project_id = "string", private_network_id = "string" }
+      defaults    = { name = "${local.workload_prefix}-${local.workload_suffix}${local.workload_name_tag}" }
+      sensitive   = false
+      credentials = "workload"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    # An instance's server, and the cloud-init its config leaf renders
+    # (LIB-0043 §2). cloud_init and the config's wiring carry credentials, so
+    # their variables are sensitive (wiring_sensitive), and keyring_secrets
+    # reaches the config as one JSON variable (json_sensitive).
+    "scaleway/compute-instance" = {
+      declared         = contains(keys(local.wc_instances), local.workload_instance)
+      entry            = try(local.wc_instance_entry[local.workload_instance], null)
+      secrets          = try(local.workload_secrets_scaleway.instance[local.workload_instance], null)
+      wiring           = { project_id = "string", private_network_id = "string", cloud_init = "string", additional_volume_ids = "list(string)" }
+      wiring_sensitive = ["cloud_init"]
+      defaults         = { name_prefix = "${local.workload_prefix}${local.workload_name_tag}", name_suffix = local.workload_instance }
+      sensitive        = false
+      credentials      = "workload"
+      state            = "workload"
+      units            = ["workload"]
+    }
+    "scaleway/compute-instance-config" = {
+      declared = contains(keys(local.wc_instances), local.workload_instance)
+      entry    = try(local.wc_config_entry[local.workload_instance], null)
+      secrets  = null
+      wiring = {
+        cockpit                 = "object({ metrics_push_url = string, logs_push_url = string, token_secret = string })"
+        self_delete_credentials = "object({ access_key = string, secret_key = string, project_id = string })"
+        keyring_wiring          = "map(object({ bucket = optional(string), access_key_id = optional(string), secret_key = optional(string) }))"
+      }
+      wiring_sensitive = ["cockpit", "self_delete_credentials", "keyring_wiring"]
+      json_sensitive   = { for k, v in { keyring_secrets = try(local.wc_keyring_secrets[local.workload_instance], {}) } : k => v if length(v) > 0 }
+      defaults         = {}
+      sensitive        = true
+      credentials      = "workload"
+      state            = "workload"
+      units            = ["workload"]
+    }
+    "scaleway/gateway-pat-rule" = {
+      declared    = contains(keys(local.wc_pat), local.workload_instance)
+      entry       = try({ public_port = local.wc_pat[local.workload_instance] }, null)
+      secrets     = null
+      wiring      = { gateway_id = "string", private_ip = "string" }
+      defaults    = {}
+      sensitive   = false
+      credentials = "workload"
+      state       = "workload"
+      units       = ["workload"]
+    }
     # Backblaze (LIB-0029): the workload's own key (LIB-0041 §2), the
     # workload's state.
+    # `grants` says who else may key a bucket (LIB-0045 §6); it isn't an
+    # input of the module's.
     "backblaze/bucket" = {
       declared    = contains(try(keys(local.workload_b2_buckets), []), local.workload_instance)
-      entry       = try(local.workload_b2_buckets[local.workload_instance], null)
+      entry       = try({ for k, v in local.workload_b2_buckets[local.workload_instance] : k => v if k != "grants" }, null)
       secrets     = try(local.workload_secrets.backblaze.bucket[local.workload_instance], null)
       wiring      = {}
       defaults    = { name_prefix = "${local.workload_prefix}${local.workload_name_tag}-${local.workload_instance}", name_suffix = local.workload_suffix }
@@ -967,6 +1205,7 @@ locals {
   workload_kind_key = (
     local.workload_module == "scaleway/bucket" && local.workload_instance == "state" ? "scaleway/bucket#state" :
     local.workload_instance == "deployer" && contains(["scaleway/iam-application", "scaleway/iam-policy", "scaleway/iam-api-key", "cloudflare/api-token", "backblaze/api-key"], local.workload_module) ? "${local.workload_module}#deployer" :
+    startswith(local.workload_instance, "self-delete-") && contains(["scaleway/iam-application", "scaleway/iam-policy", "scaleway/iam-api-key"], local.workload_module) ? "${local.workload_module}#self-delete" :
     local.workload_module
   )
   # The kinds LIB-0038 retired, refused by name rather than as unknown.
@@ -983,6 +1222,7 @@ locals {
     { for k, v in local.workload_secret_entry : k => try(tostring(v), null) },
     { for k, name in local.workload_refs : k => lookup(local.workload_env, name, null) },
     try(local.workload_kind.spoke_inputs, {}),
+    { for k, v in try(local.workload_kind.json_sensitive, {}) : k => jsonencode(v) },
   )
 
   # The module's plaintext inputs: the defaults, then the entry, which wins.
@@ -1082,12 +1322,70 @@ locals {
   guard_workload_backend  = !local.workload_stub_backend ? file("${path_relative_to_include()} keeps its state in the workload's bucket but its stub declares no remote_state; regenerate it with a resolve-workloads.sh from workflows v4.9.0 or later (LIB-0028 §5)") : true
   guard_workload_b2_on    = local.is_workload_leaf && local.leaf_provider == "backblaze" && !contains(keys(local.providers), "backblaze") ? file("${path_relative_to_include()} is a Backblaze workload leaf, but spoke.hcl's providers map has no backblaze (LIB-0029 §4)") : true
   guard_workload_b2_list  = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && length(try(tolist(local.workload_b2_key_entry.buckets), [])) == 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.buckets must list at least one of this workload's backblaze.bucket keys (LIB-0029 §3)") : true
-  guard_workload_b2_known = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && length(setsubtract(try(tolist(local.workload_b2_key_entry.buckets), []), try(keys(local.workload_b2_buckets), []))) > 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.buckets names a bucket this workload's backblaze.bucket doesn't have (LIB-0029 §3)") : true
+  guard_workload_b2_known = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && length(setsubtract(local.workload_b2_own_buckets, try(keys(local.workload_b2_buckets), []))) > 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.buckets names a bucket this workload's backblaze.bucket doesn't have (LIB-0029 §3)") : true
+  guard_workload_b2_grant = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && length(local.workload_b2_ungranted) > 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.buckets: ${join(", ", local.workload_b2_ungranted)} isn't granted to ${local.workload_parent}/${local.workload}, or doesn't exist; the owning bucket's grants must name it (LIB-0045 §§6-7)") : true
+  guard_workload_b2_reach = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && length(local.workload_b2_overreach) > 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.capabilities: ${join(", ", local.workload_b2_overreach)} exceed what a bucket of another workload it names grants ${local.workload_parent}/${local.workload} (LIB-0045 §§6-7)") : true
   guard_workload_b2_dep   = local.is_workload_leaf && contains(try(keys(local.workload_b2_keys), []), "deployer") ? file("${local.workload_file}: backblaze.apiKey.deployer is reserved for the workload's own key; configure it as backblaze.deployer (LIB-0041 §1)") : true
   guard_workload_b2_ids   = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && (can(local.workload_b2_key_entry.bucket_ids) || can(local.workload_secrets.backblaze.apiKey[local.workload_instance].bucket_ids)) ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.bucket_ids can't be set; list the buckets in buckets instead (LIB-0029 §3)") : true
   guard_workload_cf_on    = local.is_workload_leaf && local.leaf_provider == "cloudflare" && !contains(keys(local.providers), "cloudflare") ? file("${path_relative_to_include()} is a Cloudflare workload leaf, but spoke.hcl's providers map has no cloudflare (LIB-0030 §1)") : true
   guard_workload_cf_spoke = local.is_workload_leaf && local.leaf_provider == "cloudflare" && (can(local.workload_cf_entry.account_id) || can(local.workload_cf_entry.zone_id) || can(local.workload_cf_secrets.account_id) || can(local.workload_cf_secrets.zone_id)) ? file("${local.workload_file}: ${local.workload_cf_path}.${local.workload_instance} can't set account_id or zone_id; the account is the spoke's, and a zone is named (LIB-0030 §§4-5)") : true
   guard_workload_cf_zone  = local.is_workload_leaf && local.workload_cf_zone_kind && local.workload_zone == "" ? file("${local.workload_file}: ${local.workload_cf_path}.${local.workload_instance} has no zone, and the workload sets no cloudflare.zone (LIB-0030 §3)") : true
+  # Scaleway's compute kinds (LIB-0043 §§1-6): what can't work, on every
+  # leaf of the workload, as resolve-workloads.sh's compute_problems refuses
+  # it. Its warnings (I5) are --check's alone.
+  wc_problems = local.is_nested_workload ? compact(distinct(flatten([
+    [for m, entries in { policy = local.wc_policies, apiKey = local.wc_apikeys } : [
+      for k, e in entries : [
+        e == null || can(keys(e)) ? "" : m == "apiKey" ? "scaleway.iam.apiKey is a mapping of key names since root.hcl v9.0.0; move a single key's inputs under a name of its own, e.g. scaleway.iam.apiKey.main (LIB-0043 §1)" : "scaleway.iam.policy.${k} must be a mapping of module inputs",
+        k == "deployer" || startswith(k, "self-delete-") ? "scaleway.iam.${m}.${k}: deployer and self-delete-* are the implied leaves' (LIB-0043 §1)" : "",
+        [for i in(m == "policy" ? ["application_id", "project_ids"] : ["application_id", "default_project_id"]) : "scaleway.iam.${m}.${k}.${i} can't be set; it's wired from the workload (LIB-0043 §1)" if can(e[i])],
+      ]
+    ]],
+    length(local.wc_policies) + length(local.wc_apikeys) > 0 && !contains(try(keys(local.workload_iam), []), "application") ? "scaleway.iam.policy and scaleway.iam.apiKey hang off scaleway.iam.application, which this workload doesn't declare (LIB-0043 §6)" : "",
+    [for k, e in local.wc_volumes : [
+      can(e.size) ? "" : "scaleway.blockVolume.${k} needs size, in GB",
+      can(e.project_id) ? "scaleway.blockVolume.${k}.project_id can't be set; it's wired from the workload (LIB-0043 §1)" : "",
+    ]],
+    [for m in ["cockpit", "privateNetwork", "publicGateway"] : [for i in ["project_id", "private_network_id"] : "scaleway.${m}.${i} can't be set; it's wired from the workload (LIB-0043 §1)" if can(local.workload_scaleway[m][i])]],
+    [for m in ["privateNetwork", "publicGateway"] : "scaleway.${m}.enabled must be true or false (LIB-0043 §5)" if can(local.workload_scaleway[m].enabled) && !(try(local.workload_scaleway[m].enabled == true, false) || try(local.workload_scaleway[m].enabled == false, false))],
+    can(local.workload_scaleway.cockpit.enabled) ? "scaleway.cockpit has no enabled; remove it to turn Cockpit off (LIB-0043 §1)" : "",
+    local.wc_gw && !local.wc_pn ? "scaleway.publicGateway is on, so scaleway.privateNetwork must be on too: the gateway reaches instances only through it (LIB-0043 §5, E3)" : "",
+    [for k, v in local.wc_instances : [
+      can(regex(local.wc_kebab, k)) && length(k) <= 40 ? "" : "scaleway.instance.${k}: an instance name is kebab-case and at most 40 characters (LIB-0043 §6, M3)",
+      contains(["main", "deployer"], k) ? "scaleway.instance.${k}: main and deployer are reserved (LIB-0043 §1)" : "",
+      [for x in sort(setsubtract(keys(v), concat(local.wc_passthrough, local.wc_interface, local.wc_wired))) : "scaleway.instance.${k}.${x} isn't an instance key; known: ${join(", ", concat(local.wc_passthrough, local.wc_interface))} (LIB-0043 §2)"],
+      [for x in local.wc_wired : "scaleway.instance.${k}.${x} can't be set; it's wired, or set by network (LIB-0043 §§1-2)" if contains(keys(v), x)],
+      [for x in sort(setsubtract(keys(local.wc_net[k]), ["privateNetwork", "publicIpv4", "sshViaGateway"])) : "scaleway.instance.${k}.network.${x} isn't one of privateNetwork, publicIpv4, sshViaGateway (LIB-0043 §2)"],
+      try(local.wc_net[k].privateNetwork == true, false) && !local.wc_pn ? "scaleway.instance.${k}.network.privateNetwork needs scaleway.privateNetwork on (LIB-0043 §5, E6)" : "",
+      !local.wc_gw && !try(local.wc_net[k].publicIpv4 == true, false) ? "scaleway.instance.${k}: the public gateway is off, so every instance sets network.publicIpv4: true itself (LIB-0043 §5, E2)" : "",
+      local.wc_gw && !local.wc_ipv4[k] && !local.wc_attached[k] ? "scaleway.instance.${k} has no way out: set network.publicIpv4: true, or attach it to the private network (LIB-0043 §5, E1)" : "",
+      can(local.wc_pat[k]) && (!local.wc_gw || !local.wc_attached[k]) ? "scaleway.instance.${k}.network.sshViaGateway needs the public gateway on and the instance on the private network (LIB-0043 §5, E5)" : "",
+      length(try(tolist(v.volumes), [])) > 1 ? "scaleway.instance.${k}.volumes takes at most one volume: cloud-init mounts /dev/sdb alone (LIB-0043 §6, S1)" : "",
+      [for x in try(tolist(v.volumes), []) : "scaleway.instance.${k}.volumes: ${jsonencode(x)} isn't a scaleway.blockVolume key (LIB-0043 §6, S1)" if !contains(keys(local.wc_volumes), try(tostring(x), ""))],
+      try(v.cockpit == true, false) && !local.wc_cockpit ? "scaleway.instance.${k}.cockpit needs scaleway.cockpit (LIB-0043 §6, M2)" : "",
+      try(v.transcoding == true, false) && startswith(try(tostring(v.type), ""), "COPARM") ? "scaleway.instance.${k}.transcoding is x86_64 only, and ${try(tostring(v.type), "")} is arm64 (ADR-0152, LIB-0043 §6, M1)" : "",
+      [for a, e in local.wc_keyring[k] : [
+        can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", a)) ? "" : "scaleway.instance.${k}.keyring.${a}: an alias is lowercase alphanumeric with hyphens (LIB-0043 §4)",
+        !contains(["bucket", "email"], try(tostring(e.kind), "")) ? "scaleway.instance.${k}.keyring.${a}.kind must be email or bucket (LIB-0043 §4)" : "",
+        [for f in ["email", "provider", "host", "port", "secret"] : "scaleway.instance.${k}.keyring.${a} needs ${f}: an email entry has email, provider, host, port and secret (LIB-0043 §6)" if try(e.kind == "email", false) && !can(e[f])],
+        try(e.kind == "bucket", false) && !can(e.bucket) ? "scaleway.instance.${k}.keyring.${a} needs bucket: a scaleway.bucket key, or the name of a bucket outside the workload (LIB-0043 §4)" : "",
+        try(e.kind == "bucket", false) && can(e.apiKey) && (can(e.access_key_id) || can(e.secret_key)) ? "scaleway.instance.${k}.keyring.${a} takes apiKey, or both access_key_id and secret_key, never both (LIB-0043 §4)" : "",
+        try(e.kind == "bucket", false) && !can(e.apiKey) && !(can(e.access_key_id) && can(e.secret_key)) ? "scaleway.instance.${k}.keyring.${a} needs its credentials: apiKey, or both access_key_id and secret_key (LIB-0043 §4)" : "",
+        can(e.apiKey) && !contains(keys(local.wc_apikeys), try(tostring(e.apiKey), "")) ? "scaleway.instance.${k}.keyring.${a}.apiKey must name one of scaleway.iam.apiKey's keys (LIB-0043 §6)" : "",
+        try(e.kind == "bucket", false) && can(e.bucket) && !contains(local.wc_bucket_keys, try(tostring(e.bucket), "")) && !can(e.endpoint) ? "scaleway.instance.${k}.keyring.${a}: bucket ${jsonencode(try(e.bucket, null))} isn't a scaleway.bucket key, so it needs endpoint (LIB-0043 §4)" : "",
+        [for f, x in try(merge({}, e), {}) : "scaleway.instance.${k}.keyring.${a}.${f}: secretRef ${try(tostring(x.secretRef), "")} isn't in secrets.workload.yaml's env (LIB-0025, LIB-0043 §4)" if can(x.secretRef) && !contains(keys(local.workload_env), try(tostring(x.secretRef), ""))],
+      ]],
+      [for c in try(tolist(v.commands), []) : [
+        for r in compact(flatten(try(regexall("\\$\\{keyring(?:\\.([a-z0-9-]+)|\\[\"([a-z0-9-]+)\"\\])\\.alias\\}", tostring(c)), []))) :
+        "scaleway.instance.${k}.commands: $${keyring...} names ${r}, which isn't in its keyring or scaleway.sharedKeyring (LIB-0043 §2)" if !contains(keys(local.wc_keyring[k]), r)
+      ]],
+    ]],
+    # Spoke-wide over the instances: one volume and one port each (S1, E5).
+    [for vol, ks in { for p in flatten([for k, v in local.wc_instances : [for x in try(tolist(v.volumes), []) : { v = try(tostring(x), ""), k = k }]]) : p.v => p.k... } : "scaleway.blockVolume.${vol} is attached to ${join(" and ", ks)}; a volume attaches to one instance (LIB-0043 §6, S1)" if length(ks) > 1],
+    [for port, ks in { for k, p in local.wc_pat : tostring(p) => k... } : "${join(" and ", [for k in ks : "scaleway.instance.${k}"])} share sshViaGateway ${port} (LIB-0043 §5, E5)" if length(ks) > 1],
+  ]))) : []
+  guard_workload_compute = length(local.wc_problems) > 0 ? file("${local.workload_file}: ${join("; ", local.wc_problems)}") : true
+
   # Nested workloads (LIB-0037 §§1-4): what a workload.yaml can't say, read
   # before its defaults fill it in, then what its host allows.
   workload_record_name = try(tostring(local.workload_cf_entry.name), local.workload_instance)
@@ -1169,8 +1467,14 @@ locals {
 # Generated by root.hcl from ${local.workload_file} (LIB-0023) -- do not edit.
 %{for k, type in local.workload_wiring~}
 variable "${k}" {
+%{if contains(try(local.workload_kind.wiring_sensitive, []), k)~}
+  type      = ${type}
+  default   = null
+  sensitive = true
+%{else~}
   type    = ${type}
   default = null
+%{endif~}
 }
 
 %{endfor~}
@@ -1231,7 +1535,7 @@ module "this" {
   ${k} = var.${k}
 %{endfor~}
 %{for k, v in local.workload_sensitive~}
-  ${k} = var.${k}
+  ${k} = ${contains(keys(try(local.workload_kind.json_sensitive, {})), k) ? "jsondecode(var.${k})" : "var.${k}"}
 %{endfor~}
 }
 
