@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-28
 
+- [repo] feat(custodial-cold-storage): rename the custodial-storage workload (LIB-0044) ([#96](https://github.com/noisypigeon/runway/pull/96))
 - [repo] feat(personal-cold-storage): rename the cold-storage workload (LIB-0044) ([#95](https://github.com/noisypigeon/runway/pull/95))
 - [repo] feat(custodial-storage): move the custodial bucket into its own workload (LIB-0044) ([#94](https://github.com/noisypigeon/runway/pull/94))
 - [repo] feat(custodial-storage): bootstrap the private/custodial-storage workload (LIB-0044) ([#93](https://github.com/noisypigeon/runway/pull/93))
