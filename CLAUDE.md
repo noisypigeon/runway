@@ -45,6 +45,14 @@ custodial bucket is the `custodial-cold-storage` workload, at
 its own project, `wg-personal-cold-storage` and `custodial-cold-storage`, whose
 only job is to hold its buckets' state.
 
+The Scaleway project everything under `terraform/scaleway/` lives in is the
+`data-ops` workload's, `wg-data-ops` (LIB-0046), at
+`workloads/private/data-ops/`. It was this spoke's hand-written project,
+`runway`, renamed in place, so `SCALEWAY_PROVIDER_PROJECT_ID` still names it.
+`terraform/scaleway/project/runway` only looks it up. pigeon-cli's buckets
+move into the workload next; its cluster, Cockpit and IAM, and the spoke's
+state bucket, stay hand-written in the project for now.
+
 It is a spoke of `noisypigeon/library`. Modules, CI logic, scripts and
 decision records all live there. Don't add them here.
 

@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v4.json
+# data-ops: the project pigeon-cli's data lives in, wg-data-ops (LIB-0046). It
+# was runway's hand-written project leaf, renamed in place from `runway`; its
+# ID didn't change, so SCALEWAY_PROVIDER_PROJECT_ID still names it, and the
+# hand-written leaves under terraform/scaleway/ still live in it.
+# terraform/scaleway/project/runway now only looks it up. It has no zone, so
+# it lives under private/.
+workload:
+  name: data-ops
+  deployments:
+    scaleway:
+      project:
+        prefix: wg
+        suffix: data-ops
+        # Moved with the project's state from its old leaf (LIB-0046 §1).
+        ssh_key:
+          alias: noisypigeon
+          # Not a secret; this is my pub key.
+          public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKsmUsSyZRo1u8TLkz+kJVbxuYsrs3M3tBXpI3HVHQa" #gitleaks:allow
