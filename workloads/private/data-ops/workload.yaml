@@ -3,6 +3,7 @@
 # was runway's hand-written project leaf, renamed in place from `runway`; its
 # ID didn't change, so SCALEWAY_PROVIDER_PROJECT_ID still names it, and the
 # hand-written leaves under terraform/scaleway/ still live in it.
+# pigeon-cli's buckets moved in from their old leaves (LIB-0046 §3).
 # terraform/scaleway/project/runway now only looks it up. It has no zone, so
 # it lives under private/.
 workload:
@@ -17,3 +18,24 @@ workload:
           alias: noisypigeon
           # Not a secret; this is my pub key.
           public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKsmUsSyZRo1u8TLkz+kJVbxuYsrs3M3tBXpI3HVHQa" #gitleaks:allow
+  # Each entry writes its old leaf's own name parts and inputs, so its name
+  # doesn't change; the random code moved with its state (LIB-0046 §§3-4).
+  scaleway:
+    bucket:
+      pigeon-cli-email:
+        name_prefix: pigeon-cli
+        name_suffix: email
+        storage_class: glacier
+      pigeon-cli-email-reports:
+        name_prefix: pigeon-cli
+        name_suffix: email-reports
+        storage_class: standard
+      pigeon-cli-reports-transform:
+        name_prefix: pigeon-cli
+        name_suffix: reports
+        storage_class: standard
+        expiration_days: 3
+      # The module's default storage class, glacier, as its old leaf had.
+      pigeon-transform:
+        name_prefix: pigeon
+        name_suffix: transform

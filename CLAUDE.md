@@ -50,8 +50,8 @@ The Scaleway project everything under `terraform/scaleway/` lives in is the
 `workloads/private/data-ops/`. It was this spoke's hand-written project,
 `runway`, renamed in place, so `SCALEWAY_PROVIDER_PROJECT_ID` still names it.
 `terraform/scaleway/project/runway` only looks it up. pigeon-cli's buckets
-move into the workload next; its cluster, Cockpit and IAM, and the spoke's
-state bucket, stay hand-written in the project for now.
+are the workload's `scaleway.bucket` entries; its cluster, Cockpit and IAM,
+and the spoke's state bucket, stay hand-written in the project for now.
 
 It is a spoke of `noisypigeon/library`. Modules, CI logic, scripts and
 decision records all live there. Don't add them here.
