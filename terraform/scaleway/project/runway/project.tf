@@ -1,9 +1,15 @@
-module "project" {
-  source = "https://noisypigeon.garden/terraform/scaleway/project/v2.0.0"
-  name   = "runway"
-  ssh_key = {
-    alias = "noisypigeon"
-    # Not a secret; this is my pub key.
-    public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKsmUsSyZRo1u8TLkz+kJVbxuYsrs3M3tBXpI3HVHQa" #gitleaks:allow
-  }
+# The project is workloads/private/data-ops's, renamed wg-data-ops; this leaf
+# only looks it up (LIB-0046 §2). Its path, and so its state key, stays.
+data "scaleway_account_project" "project" {
+  project_id = local.scaleway_project_id
+}
+
+output "id" {
+  description = "Project ID"
+  value       = data.scaleway_account_project.project.id
+}
+
+output "name" {
+  description = "Project name"
+  value       = data.scaleway_account_project.project.name
 }
