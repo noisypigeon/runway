@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-28
 
+- [repo] feat(custodial-storage): move the custodial bucket into its own workload (LIB-0044) ([#94](https://github.com/noisypigeon/runway/pull/94))
 - [repo] feat(custodial-storage): bootstrap the private/custodial-storage workload (LIB-0044) ([#93](https://github.com/noisypigeon/runway/pull/93))
 - [terraform] chore: take library 8.2.0, faster Terragrunt plans (LIB-0042) ([#92](https://github.com/noisypigeon/runway/pull/92))
 - [terraform] chore: retire the spoke-wide Backblaze key and Cloudflare token (LIB-0041) ([#91](https://github.com/noisypigeon/runway/pull/91))
