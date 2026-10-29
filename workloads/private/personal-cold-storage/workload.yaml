@@ -1,15 +1,17 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v4.json
-# cold-storage: the data-ops cold-storage buckets on Backblaze (LIB-0040). It
-# has no zone, so it lives under private/ in its own project, wg-cold-storage,
-# whose only job is to hold the buckets' state. The buckets sign in with the
-# spoke's account-wide B2 key (LIB-0029 §4).
+# personal-cold-storage: the personal cold-storage buckets on Backblaze,
+# backups and pigeon-cli's snapshots (LIB-0040, LIB-0044). It has no zone, so
+# it lives under private/ in its own project, wg-personal-cold-storage, whose
+# only job is to hold the buckets' state. The custodial bucket is
+# custodial-storage's. The buckets sign in with the workload's own B2 key
+# (LIB-0041).
 workload:
-  name: cold-storage
+  name: personal-cold-storage
   deployments:
     scaleway:
       project:
         prefix: wg
-        suffix: cold-storage
+        suffix: personal-cold-storage
   # Each entry writes its old leaf's own name parts, so its name doesn't
   # change; the random code moved with its state (LIB-0040 §§1, 4).
   backblaze:
