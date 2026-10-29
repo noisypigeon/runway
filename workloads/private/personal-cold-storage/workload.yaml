@@ -3,7 +3,7 @@
 # backups and pigeon-cli's snapshots (LIB-0040, LIB-0044). It has no zone, so
 # it lives under private/ in its own project, wg-personal-cold-storage, whose
 # only job is to hold the buckets' state. The custodial bucket is
-# custodial-storage's. The buckets sign in with the workload's own B2 key
+# custodial-cold-storage's. The buckets sign in with the workload's own B2 key
 # (LIB-0041).
 workload:
   name: personal-cold-storage
