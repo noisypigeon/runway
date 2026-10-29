@@ -14,10 +14,6 @@ workload:
   # change; the random code moved with its state (LIB-0040 §§1, 4).
   backblaze:
     bucket:
-      custodial-duck-jellyfish:
-        name_prefix: custodial
-        name_suffix: duck-jellyfish
-        description: "Custodial bucket: files held for Duck Jellyfish (alias)."
       deduplicated-misc:
         name_prefix: wg
         name_suffix: deduplicated-misc
