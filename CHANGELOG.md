@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-28
 
+- [ci] ci: rename the blog-changelog and interaction-limits callers (LIB-0047) ([#100](https://github.com/noisypigeon/runway/pull/100))
 - [terraform] feat(data-ops): move pigeon-cli's buckets into private/data-ops (LIB-0046) ([#99](https://github.com/noisypigeon/runway/pull/99))
 - [terraform] feat(data-ops): bootstrap private/data-ops with runway's project (LIB-0046) ([#98](https://github.com/noisypigeon/runway/pull/98))
 - [terraform] feat: enforce library policies; take workflows v9.2.0 and root.hcl 9.1.1 (LIB-0045) ([#97](https://github.com/noisypigeon/runway/pull/97))
