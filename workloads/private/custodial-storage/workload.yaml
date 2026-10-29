@@ -11,3 +11,11 @@ workload:
         name: custodial-storage
         prefix: cus
         suffix: custodial-storage
+  # The entry writes its old leaf's own name parts, so its name doesn't
+  # change; the random code moved with its state (LIB-0044 §3).
+  backblaze:
+    bucket:
+      custodial-duck-jellyfish:
+        name_prefix: custodial
+        name_suffix: duck-jellyfish
+        description: "Custodial bucket: files held for Duck Jellyfish (alias)."
