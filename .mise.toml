@@ -13,6 +13,7 @@ run = [
   "./fetch-lib.sh",
   ".lib-src/.github/scripts/resolve-root-hcl.sh",
   ".lib-src/.github/scripts/resolve-workloads.sh",
+  ".lib-src/.github/scripts/check-policies.sh",
 ]
 
 [tasks.plan]

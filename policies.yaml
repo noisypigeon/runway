@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://noisypigeon.garden/schemas/policies/v1.json
+# The library policies this spoke enforces, checked before every plan by
+# check-policies.sh (LIB-0045). Only the cold-storage workloads own Backblaze
+# buckets; another workload reaches one through a key its owner grants.
+policies:
+  backblaze-bucket-owners:
+    workloads:
+      - private/personal-cold-storage
+      - private/custodial-cold-storage
