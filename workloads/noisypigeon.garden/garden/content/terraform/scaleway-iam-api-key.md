@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "iam-api-key"
 latest_version = "0.3.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/scaleway/iam-api-key"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/iam-api-key"
 usage_example = """
 module "iam_api_key" {
   source         = "https://noisypigeon.garden/terraform/scaleway/iam-api-key/v0.1.0"

@@ -8,5 +8,5 @@ include_in_feeds = false
 hidden = true
 
 [extra]
-github_url = "https://github.com/noisypigeon/library/releases/tag/zola-site/v1.0.0"
+github_url = "https://github.com/noisypigeon/runway/releases/tag/zola-site/v1.0.0"
 +++

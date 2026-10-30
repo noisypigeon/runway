@@ -9,7 +9,7 @@ kind = "module"
 provider = "cloudflare"
 module = "dns-record"
 latest_version = "1.0.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/cloudflare/dns-record"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/cloudflare/dns-record"
 usage_example = """
 locals {
   records = {

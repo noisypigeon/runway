@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "public-gateway"
 latest_version = "0.1.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/scaleway/public-gateway"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/public-gateway"
 usage_example = """
 module "public_gateway" {
   source = "https://noisypigeon.garden/terraform/scaleway/public-gateway/v0.1.0"

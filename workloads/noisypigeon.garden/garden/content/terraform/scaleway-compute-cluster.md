@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "compute-cluster"
 latest_version = "5.0.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/scaleway/compute-cluster"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/compute-cluster"
 usage_example = """
 module "pigeon_jobs" {
   source = "https://noisypigeon.garden/terraform/scaleway/compute-cluster/v5.0.0"

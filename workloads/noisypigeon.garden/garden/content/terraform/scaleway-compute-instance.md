@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "compute-instance"
 latest_version = "8.0.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/scaleway/compute-instance"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/compute-instance"
 usage_example = """
 module "instance" {
   source      = "https://noisypigeon.garden/terraform/scaleway/compute-instance/v8.0.0"

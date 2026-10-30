@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "block-volume"
 latest_version = "4.0.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/scaleway/block-volume"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/block-volume"
 usage_example = ""
 versions = [{ version = "3.0.0", path = "terraform/scaleway/block-volume/v3.0.0" }, { version = "4.0.0", path = "terraform/scaleway/block-volume/v4.0.0" }]
 +++

@@ -8,6 +8,6 @@ include_in_feeds = false
 hidden = true
 
 [extra]
-git_source = "git::https://github.com/noisypigeon/library.git//terraform/scaleway/grafana-dashboard?ref=terraform/scaleway/grafana-dashboard/v0.2.0"
-github_url = "https://github.com/noisypigeon/library/releases/tag/terraform/scaleway/grafana-dashboard/v0.2.0"
+git_source = "git::https://github.com/noisypigeon/runway.git//lib/terraform/scaleway/grafana-dashboard?ref=terraform/scaleway/grafana-dashboard/v0.2.0"
+github_url = "https://github.com/noisypigeon/runway/releases/tag/terraform/scaleway/grafana-dashboard/v0.2.0"
 +++

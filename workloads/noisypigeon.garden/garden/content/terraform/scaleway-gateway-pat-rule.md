@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "gateway-pat-rule"
 latest_version = "0.1.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/scaleway/gateway-pat-rule"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/gateway-pat-rule"
 usage_example = """
 module "ssh" {
   source = "https://noisypigeon.garden/terraform/scaleway/gateway-pat-rule/v0.1.0"

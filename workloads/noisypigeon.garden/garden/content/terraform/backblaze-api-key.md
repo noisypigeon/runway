@@ -9,7 +9,7 @@ kind = "module"
 provider = "backblaze"
 module = "api-key"
 latest_version = "0.2.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/backblaze/api-key"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/backblaze/api-key"
 usage_example = """
 module "backup_key" {
   source       = "https://noisypigeon.garden/terraform/backblaze/api-key/v0.1.0"

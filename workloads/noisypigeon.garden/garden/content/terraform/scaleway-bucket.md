@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "bucket"
 latest_version = "5.0.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/scaleway/bucket"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/bucket"
 usage_example = ""
 versions = [{ version = "5.0.0", path = "terraform/scaleway/bucket/v5.0.0" }]
 +++

@@ -9,7 +9,7 @@ kind = "module"
 provider = "cloudflare"
 module = "api-token"
 latest_version = "0.1.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/cloudflare/api-token"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/cloudflare/api-token"
 usage_example = """
 module "token" {
   source = "https://noisypigeon.garden/terraform/cloudflare/api-token/v0.1.0"

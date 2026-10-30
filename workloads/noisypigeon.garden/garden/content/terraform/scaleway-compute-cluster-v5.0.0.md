@@ -8,6 +8,6 @@ include_in_feeds = false
 hidden = true
 
 [extra]
-git_source = "git::https://github.com/noisypigeon/library.git//terraform/scaleway/compute-cluster?ref=terraform/scaleway/compute-cluster/v5.0.0"
-github_url = "https://github.com/noisypigeon/library/releases/tag/terraform/scaleway/compute-cluster/v5.0.0"
+git_source = "git::https://github.com/noisypigeon/runway.git//lib/terraform/scaleway/compute-cluster?ref=terraform/scaleway/compute-cluster/v5.0.0"
+github_url = "https://github.com/noisypigeon/runway/releases/tag/terraform/scaleway/compute-cluster/v5.0.0"
 +++

@@ -8,6 +8,6 @@ include_in_feeds = false
 hidden = true
 
 [extra]
-git_source = "git::https://github.com/noisypigeon/library.git//terraform/backblaze/api-key?ref=terraform/backblaze/api-key/v0.1.0"
-github_url = "https://github.com/noisypigeon/library/releases/tag/terraform/backblaze/api-key/v0.1.0"
+git_source = "git::https://github.com/noisypigeon/runway.git//lib/terraform/backblaze/api-key?ref=terraform/backblaze/api-key/v0.1.0"
+github_url = "https://github.com/noisypigeon/runway/releases/tag/terraform/backblaze/api-key/v0.1.0"
 +++

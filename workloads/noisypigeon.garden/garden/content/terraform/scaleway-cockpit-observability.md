@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "cockpit-observability"
 latest_version = "0.1.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/scaleway/cockpit-observability"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/cockpit-observability"
 usage_example = """
 module "cockpit" {
   source = "https://noisypigeon.garden/terraform/scaleway/cockpit-observability/v0.1.0"

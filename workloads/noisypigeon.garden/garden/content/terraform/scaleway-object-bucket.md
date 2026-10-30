@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "object-bucket"
 latest_version = "4.2.0"
-github_url = "https://github.com/noisypigeon/library/tree/main/terraform/scaleway/object-bucket"
+github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/object-bucket"
 usage_example = ""
 versions = [{ version = "3.0.0", path = "terraform/scaleway/object-bucket/v3.0.0" }, { version = "4.0.0", path = "terraform/scaleway/object-bucket/v4.0.0" }, { version = "4.1.0", path = "terraform/scaleway/object-bucket/v4.1.0" }, { version = "4.1.1", path = "terraform/scaleway/object-bucket/v4.1.1" }, { version = "4.2.0", path = "terraform/scaleway/object-bucket/v4.2.0" }]
 +++
