@@ -18,7 +18,7 @@ consuming repo's committed `.claude/settings.json`:
 {
   "extraKnownMarketplaces": {
     "library": {
-      "source": { "source": "github", "repo": "noisypigeon/library", "ref": "claude-plugins/pigeon-cli/v1.0.0" }
+      "source": { "source": "github", "repo": "noisypigeon/runway", "ref": "claude-plugins/pigeon-cli/v1.0.1" }
     }
   },
   "enabledPlugins": { "pigeon-cli@library": true }

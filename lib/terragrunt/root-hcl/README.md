@@ -52,7 +52,7 @@ locals {
 
 ```sh
 ./fetch-lib.sh                                   # library at /.lib-version
-.lib-src/.github/scripts/resolve-root-hcl.sh     # writes ./root.hcl and ./secrets-schema.json
+.lib-src/lib/scripts/resolve-root-hcl.sh     # writes ./root.hcl and ./secrets-schema.json
 ```
 
 The committed copies are generated output; never edit them in the spoke. To
@@ -75,14 +75,14 @@ check through its `prepare_cmd` input. From `workflows/v3.0.0` it masks every
 `terraform/secrets/*.enc` by default, so a spoke passes no `secrets_files`:
 
 ```yaml
-prepare_cmd: ./fetch-lib.sh && .lib-src/.github/scripts/resolve-root-hcl.sh --check && .lib-src/.github/scripts/check-secrets.sh
+prepare_cmd: ./fetch-lib.sh && .lib-src/lib/scripts/resolve-root-hcl.sh --check && .lib-src/lib/scripts/check-secrets.sh
 ```
 
 Locally, the same check is a mise task:
 
 ```toml
 [tasks.secrets-check]
-run = ["./fetch-lib.sh", ".lib-src/.github/scripts/check-secrets.sh"]
+run = ["./fetch-lib.sh", ".lib-src/lib/scripts/check-secrets.sh"]
 ```
 
 ## Secrets (v4.0.0, LIB-0012)
@@ -159,7 +159,7 @@ value:
 - **At render time, by `root.hcl`,** per leaf, for the files that leaf
   decrypts. A missing file, a missing or empty key, a key outside its file, or
   a reserved `env.enc` name fails the render.
-- **Before anything decrypts, by `.github/scripts/check-secrets.sh`,**
+- **Before anything decrypts, by `lib/scripts/check-secrets.sh`,**
   spoke-wide. sops dotenv keeps key names in plaintext, so it reads them
   straight out of each file, reads `state_backend`, `state_backup` and
   `providers` out of `spoke.hcl`, and exits 1 on a missing required file, a
@@ -301,7 +301,7 @@ v3 renames every secret, so a spoke moves in one PR whose every leaf plans
    `workflows/v2.0.0`; commit both files.
 3. Pin the reusable workflows at `workflows/v2.0.0`. `state-backup.yml` lost its
    `state_bucket_secret` and `backup_*_secret` inputs, so delete them from its
-   callers. Append `&& .lib-src/.github/scripts/check-secrets.sh` to
+   callers. Append `&& .lib-src/lib/scripts/check-secrets.sh` to
    `prepare_cmd`.
 4. Check that every leaf plans `No changes.`
 
@@ -315,7 +315,7 @@ their names, apart from `env.enc` losing `ENV_`.
    later, from the spoke's root:
 
    ```sh
-   .lib-src/.github/scripts/split-secrets.sh
+   .lib-src/lib/scripts/split-secrets.sh
    ```
 
    It writes each `terraform/secrets/<file>.enc` from `terraform/secrets.enc`,
@@ -359,7 +359,7 @@ scaleway:
     apiKey: {}
 ```
 
-`.lib-src/.github/scripts/resolve-workloads.sh` turns it into one stub leaf per
+`.lib-src/lib/scripts/resolve-workloads.sh` turns it into one stub leaf per
 module, at `workloads/<workload>/<provider>/<module>/<instance>/terragrunt.hcl`.
 The stubs are generated, never committed: the spoke gitignores `/workloads/*/*/`,
 `mise run terraform-prepare` generates them locally, and `terragrunt-run.yml`
