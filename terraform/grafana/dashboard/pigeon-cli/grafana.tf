@@ -8,7 +8,7 @@ module "grafana_dashboard" {
 
   folder_title = "pigeon-cli"
   dashboards = {
-    overview = { url = "https://raw.githubusercontent.com/noisypigeon/library/refs/tags/grafana-dashboards/pigeon-cli/v1.0.0/grafana-dashboards/pigeon-cli/overview.json" }
+    overview = { url = "https://raw.githubusercontent.com/noisypigeon/runway/refs/tags/grafana-dashboards/pigeon-cli/v1.0.0/lib/grafana-dashboards/pigeon-cli/overview.json" }
   }
 
   # Scaleway's Grafana needs a first-access ping before any dashboard.

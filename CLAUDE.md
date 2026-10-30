@@ -58,8 +58,8 @@ scripts live under `lib/`, decision records under `adr/`, and runbooks under
 `runbooks/`. `lib/CLAUDE.md` is the library's own guide: read it before you
 change anything under `lib/`. The spoke still consumes the library only by
 pinned tag, so a change under `lib/` reaches this repo's plans only when a PR
-bumps the pin. Until the cutover bumps them, the pins still name
-`noisypigeon/library`.
+bumps the pin. `fetch-lib.sh` clones this repo itself into `.lib-src/` at
+`.lib-version`, and the callers name `noisypigeon/runway/...@workflows/vX.Y.Z`.
 
 ## Sensitive: read this first
 

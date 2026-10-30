@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Clones noisypigeon/library into /.lib-src/ at /.lib-version. Set LIB_SRC to use your own checkout.
+# Clones noisypigeon/runway, whose lib/ is the library (LIB-0047), into /.lib-src/ at /.lib-version. Set LIB_SRC to use your own checkout.
 set -euo pipefail
 
-LIB_REPO_URL="${LIB_REPO_URL:-https://github.com/noisypigeon/library.git}"
+LIB_REPO_URL="${LIB_REPO_URL:-https://github.com/noisypigeon/runway.git}"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
 if [ -n "${LIB_SRC:-}" ]; then
-  if [ ! -d "$LIB_SRC/.github/scripts" ]; then
-    echo "::error::LIB_SRC=$LIB_SRC has no .github/scripts/ directory" >&2
+  if [ ! -d "$LIB_SRC/lib/scripts" ]; then
+    echo "::error::LIB_SRC=$LIB_SRC has no lib/scripts/ directory" >&2
     exit 1
   fi
   echo "Library resolved -> $LIB_SRC (caller-supplied, left as-is)"
