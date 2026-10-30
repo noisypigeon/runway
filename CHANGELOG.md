@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-30
+
+- [adr] docs(adr): LIB-0047 done amendment ([#148](https://github.com/noisypigeon/runway/pull/148))
+
 ## 2026-10-29
 
 - [terraform] chore: take the library from runway's lib/ (LIB-0047) ([#104](https://github.com/noisypigeon/runway/pull/104))
