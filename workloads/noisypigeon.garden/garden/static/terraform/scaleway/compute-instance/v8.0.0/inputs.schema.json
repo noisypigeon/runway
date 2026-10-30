@@ -1,0 +1,293 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,2}$",
+      "description": "Pins this module: X.Y.Z exactly, X.Y or X to the newest release within it. Omitted, the newest release (LIB-0023 §3)."
+    },
+    "additional_volume_ids": {
+      "anyOf": [
+        {
+          "type": "array",
+          "default": []
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "IDs of block volumes to attach. Created by the caller (ADR-0153, reversing ADR-0120's internal block-volume composition). Note the instance only mounts /dev/sdb if its cloud-init was rendered with has_attached_volume = true."
+    },
+    "cloud_init": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Rendered cloud-init document for user_data[\"cloud-init\"], normally compute-instance-config's cloud_init output. null attaches no user_data at all. Changing it replaces the instance."
+    },
+    "enable_private_network": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Attach the instance to private_network_id with a standalone scaleway_instance_private_nic, so attaching or detaching never replaces the server (ADR-0145). An explicit bool rather than private_network_id != null, since count can't depend on an apply-time-unknown ID (compute-instance v5.6.0)."
+    },
+    "enabled": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Whether to create the instance. false destroys the server only; any IP, volume or IAM the caller created for it is untouched."
+    },
+    "image": {
+      "anyOf": [
+        {
+          "type": "string",
+          "default": "ubuntu_jammy"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Instance image label (e.g. ubuntu_jammy, ubuntu_noble, ubuntu_resolute)"
+    },
+    "ip_ids": {
+      "anyOf": [
+        {
+          "type": "array",
+          "default": []
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "IDs of scaleway_instance_ip resources to attach. Created by the caller (ADR-0153) -- an IP must exist before the server that references it, so this module cannot create one and attach it in the same step."
+    },
+    "name_prefix": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Instance name prefix"
+    },
+    "name_suffix": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Instance name suffix"
+    },
+    "private_network_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "ID of the Private Network to attach to when enable_private_network is true (LIB-0043)."
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Project the instance, and the IP public_ipv4 creates, live in (LIB-0043). Required since v8.0.0: the provider's own default project is rarely the one a caller means."
+    },
+    "public_ipv4": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Create a routed public IPv4 for the instance and attach it, beside any ip_ids (LIB-0043). The IP isn't gated by enabled, so it keeps its address across an enabled = false cycle. While a Public Gateway pushes its default route on the instance's Private Network, the IP works outbound only (ADR-0146)."
+    },
+    "ssh_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Public SSH key to authorize on the instance, passed through as an AUTHORIZED_KEY tag. Exactly one key, not a list (ADR-0118)."
+    },
+    "type": {
+      "anyOf": [
+        {
+          "type": "string",
+          "default": "STARDUST1-S"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Instance commercial type"
+    }
+  },
+  "$id": "https://noisypigeon.garden/terraform/scaleway/compute-instance/v8.0.0/inputs.schema.json"
+}

@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,2}$",
+      "description": "Pins this module: X.Y.Z exactly, X.Y or X to the newest release within it. Omitted, the newest release (LIB-0023 §3)."
+    },
+    "enable_ipv4": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Create and attach a routed IPv4 address (true/false)"
+    },
+    "enable_ipv6": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Create and attach a routed IPv6 address (true/false)"
+    },
+    "enabled": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Kill switch. false destroys every resource this module manages for this instance -- the server, its IP address(es), its block volume (and the volume's data -- this is a real data-loss event, not a pause), and its IAM policy/API key (ADR-0126) -- while the module block itself stays in the caller's configuration. true (default) runs normally. The instance's name (random suffix) stays stable across a disable/re-enable cycle."
+    },
+    "iam_config": {
+      "anyOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Composes an IAM policy + API key for this instance's application (ADR-0122). null (default): no policy/API key created. project_ids/project_permission_sets grant project-scoped permissions on the policy."
+    },
+    "instance_config": {
+      "anyOf": [
+        {
+          "type": "object",
+          "default": {}
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Instance-level configuration: image, commercial type, Cockpit/Alloy wiring (ADR-0102), block volume attachment (ADR-0120), and post-provision commands (ADR-0125). null cockpit disables Alloy entirely. null block_volume attaches nothing; block_volume.size unset skips creating a managed volume but still attaches block_volume.additional_volume_ids. post_provision_commands defaults to [] (nothing extra runs); when set, the commands run once, in order, as a systemd oneshot unit ordered after cloud-init's own completion (cloud-final.service) rather than blocking it -- inspect output with `journalctl -u pigeon-post-provision.service`."
+    },
+    "keyring": {
+      "anyOf": [
+        {
+          "type": "array",
+          "default": []
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "pigeon-cli keyring.toml entries. kind = \"bucket\" entries also generate an rclone.conf remote; any entry with secret_key set also exports PIGEON_SECRET_<ALIAS> on the instance. secret_key is never written into keyring.toml itself."
+    },
+    "name_prefix": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Instance name prefix"
+    },
+    "name_suffix": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Instance name suffix"
+    },
+    "user_config": {
+      "anyOf": [
+        {
+          "type": "object",
+          "default": {}
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Per-instance user/access configuration"
+    }
+  },
+  "$id": "https://noisypigeon.garden/terraform/scaleway/compute-instance/v5.3.0/inputs.schema.json"
+}

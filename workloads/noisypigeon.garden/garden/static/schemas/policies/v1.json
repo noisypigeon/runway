@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://noisypigeon.garden/schemas/policies/v1.json",
+  "title": "Spoke policies.yaml (LIB-0045)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "policies": {
+      "type": "object",
+      "description": "The policies this spoke enforces, each with its params",
+      "additionalProperties": false,
+      "properties": {
+        "backblaze-bucket-owners": {
+          "description": "Only these workloads own Backblaze buckets; a B2 key in a hand-written leaf fails too (LIB-0045 §5).",
+          "type": "object",
+          "required": [
+            "workloads"
+          ],
+          "properties": {
+            "workloads": {
+              "description": "The workload IDs, <parent>/<workload>, that may own Backblaze buckets.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "pattern": "^[^/]+/[a-z0-9-]+$"
+              }
+            },
+            "exempt": {
+              "type": "array",
+              "description": "Violations this spoke excuses, one per path; one that matches nothing fails",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "reason"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}

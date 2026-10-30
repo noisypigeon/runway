@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,2}$",
+      "description": "Pins this module: X.Y.Z exactly, X.Y or X to the newest release within it. Omitted, the newest release (LIB-0023 §3)."
+    },
+    "capabilities": {
+      "anyOf": [
+        {
+          "type": "array"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Capability strings the key grants (e.g. [\"listBuckets\", \"readFiles\", \"writeFiles\"]) -- see Backblaze's own capability catalog, not validated locally since it's provider-defined and subject to change"
+    },
+    "key_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Application key name"
+    },
+    "rotation_days": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Replace the key every this many days, create-before-destroy, and let each expire a week after its scheduled rotation (LIB-0041 §1). Overrides valid_duration_in_seconds. Null never rotates"
+    },
+    "valid_duration_in_seconds": {
+      "anyOf": [
+        {
+          "type": "number",
+          "default": 2592000
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Key validity duration in seconds, counted from creation. Defaults to 30 days (2592000 seconds); pass null for a key that never expires."
+    },
+    "buckets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^([a-z0-9]+(-[a-z0-9]+)*|[^/]+/[a-z0-9]+(-[a-z0-9]+)*/[a-z0-9]+(-[a-z0-9]+)*)$"
+      },
+      "description": "The workload's backblaze.bucket keys this key may reach, and <parent>/<workload>/<bucket> for a bucket another workload grants it (LIB-0029 §3, LIB-0045 §7)"
+    }
+  },
+  "$id": "https://noisypigeon.garden/terraform/backblaze/api-key/v0.2.0/granted.schema.json",
+  "required": [
+    "buckets",
+    "capabilities"
+  ]
+}
