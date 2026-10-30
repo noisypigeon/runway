@@ -11,9 +11,9 @@ TG_TF_PATH = "terraform"
 [tasks.terraform-prepare]
 run = [
   "./fetch-lib.sh",
-  ".lib-src/.github/scripts/resolve-root-hcl.sh",
-  ".lib-src/.github/scripts/resolve-workloads.sh",
-  ".lib-src/.github/scripts/check-policies.sh",
+  ".lib-src/lib/scripts/resolve-root-hcl.sh",
+  ".lib-src/lib/scripts/resolve-workloads.sh",
+  ".lib-src/lib/scripts/check-policies.sh",
 ]
 
 [tasks.plan]
