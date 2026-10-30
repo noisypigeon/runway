@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-29
+
+- [ci] feat: hoist the library into lib/ (LIB-0047) ([#101](https://github.com/noisypigeon/runway/pull/101))
+
 ## 2026-10-28
 
 - [ci] ci: rename the blog-changelog and interaction-limits callers (LIB-0047) ([#100](https://github.com/noisypigeon/runway/pull/100))
