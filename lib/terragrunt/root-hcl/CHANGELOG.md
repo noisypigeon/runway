@@ -4,6 +4,23 @@ All notable changes to this template are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [9.1.2] - 2026-10-29
+
+### Point the template, theme and plugin at runway (LIB-0047)
+
+The library now lives in `noisypigeon/runway` under `lib/` (LIB-0047). This release points the parts of the `root.hcl` template, the theme and the `pigeon-cli` plugin that name the library's address at runway instead. Nothing else about how any of them behaves changes.
+
+- **`terragrunt/root-hcl`:** a workload or zone leaf lists its module's tags from `https://github.com/noisypigeon/runway` when `LIB_TAG_REMOTE` is unset, rather than from the archived library. The tags have the same names in both, so a leaf resolves the same version either way. The header comment and the secrets schema now name the scripts at `lib/scripts/`. A spoke takes this by bumping `root_hcl_version` and regenerating `root.hcl`.
+- **`zola-site`:** the theme's `homepage` in `theme.toml` points at `lib/zola-site` in runway. Nothing a site renders changes.
+- **`claude-plugins/pigeon-cli`:** the marketplace at runway's root now finds the plugin at `./lib/claude-plugins/pigeon-cli`. The marketplace at the earlier tag still names the plugin's pre-hoist path, which doesn't exist in runway, so a consumer pinning the marketplace to runway must pin this tag or later. The plugin's `repository` now names runway too. Its skills are unchanged.
+
+The library's docs move with it: `lib/README.md`, `lib/CLAUDE.md` and the module and dashboard READMEs now give runway's URLs and paths, including the `lib/` segment in raw dashboard URLs and hand-written `git::` sources.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+
+[#103](https://github.com/noisypigeon/runway/pull/103)
+
 ## [9.1.1] - 2026-10-28
 
 ### Name the releases that brought Backblaze grants

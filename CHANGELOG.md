@@ -24,6 +24,9 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-29
 
+- [claude-plugins/pigeon-cli] Point the template, theme and plugin at runway (LIB-0047) ([#103](https://github.com/noisypigeon/runway/pull/103))
+- [terragrunt/root-hcl] Point the template, theme and plugin at runway (LIB-0047) ([#103](https://github.com/noisypigeon/runway/pull/103))
+- [zola-site] Point the template, theme and plugin at runway (LIB-0047) ([#103](https://github.com/noisypigeon/runway/pull/103))
 - [workflows] Address the library at its new home in runway (LIB-0047) ([#102](https://github.com/noisypigeon/runway/pull/102))
 - [ci] feat: hoist the library into lib/ (LIB-0047) ([#101](https://github.com/noisypigeon/runway/pull/101))
 
