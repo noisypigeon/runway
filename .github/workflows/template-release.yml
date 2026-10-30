@@ -1,0 +1,592 @@
+name: template-release
+
+# Disabled for the hoist (LIB-0047's 2026-10-28 amendment, item 1): on the
+# merge that brings lib/ in, every path is new, so this would act on every
+# unit. The rewiring PR restores the trigger with lib/ paths.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+# Its own group, not a shared main-writer one. GitHub keeps at most ONE
+# pending run per concurrency group and cancels any previously-pending run
+# when a third arrives -- so three workflows sharing a group means a .tf
+# merge (which triggers all three) silently loses one of them. That cost a
+# real module release: pigeon-lib#9 was cancelled while pending, between
+# root-changelog starting and module-docs arriving. Serialization against
+# the other main writers is handled by the push retry below instead.
+concurrency:
+  group: main-writer-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      # The newest main, not the merge commit. A changelog written on the merge
+      # commit conflicts with any line another run pushed after it -- which is
+      # how two releases merged back to back failed (#92). fetch-depth: 0 keeps
+      # the merge commit reachable, so detection still diffs it by SHA.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
+
+      - name: Determine bump level from PR labels
+        id: bump
+        env:
+          LABELS_JSON: ${{ toJSON(github.event.pull_request.labels) }}
+        run: |
+          if echo "$LABELS_JSON" | jq -e '.[] | select(.name=="release:major")' >/dev/null; then
+            echo "level=major" >> "$GITHUB_OUTPUT"
+          elif echo "$LABELS_JSON" | jq -e '.[] | select(.name=="release:minor")' >/dev/null; then
+            echo "level=minor" >> "$GITHUB_OUTPUT"
+          elif echo "$LABELS_JSON" | jq -e '.[] | select(.name=="release:patch")' >/dev/null; then
+            echo "level=patch" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No release:* label found on PR #${{ github.event.pull_request.number }}; defaulting to patch."
+            echo "level=patch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine changed module directories
+        id: modules
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+
+          MODULE_DIRS=$(find terraform -mindepth 3 -maxdepth 3 -name versions.tf -printf '%h\n' | sort)
+
+          CHANGED_MODULES=""
+          for dir in $MODULE_DIRS; do
+            if echo "$CHANGED_FILES" | grep -qE "^${dir}/.*\.tf$"; then
+              CHANGED_MODULES="$CHANGED_MODULES $dir"
+            fi
+          done
+
+          echo "changed=${CHANGED_MODULES# }" >> "$GITHUB_OUTPUT"
+
+      - name: Determine zola-site change
+        id: zola_site
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          if echo "$CHANGED_FILES" | grep -qE '^zola-site/(templates/|static/|theme\.toml$)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The spokes' root.hcl template (LIB-0003). Only the template itself and
+      # the secrets schema it reads (LIB-0010) are a release; its README.md and
+      # CHANGELOG.md are not, as with the theme.
+      - name: Determine root.hcl template change
+        id: root_hcl
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          if echo "$CHANGED_FILES" | grep -qE '^terragrunt/root-hcl/(root\.hcl|secrets-schema\.json)$'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Per-set release tracks, one per <root>/<set>/ directory, each tagged
+      # <root>/<set>/vX.Y.Z:
+      #   - grafana-dashboards/<set>/*.json (LIB-0004's willowgraysen.com
+      #     adoption), consumed by URL at its tag. Only the JSON is a release.
+      #   - observability/<set>/ (pigeon-cli's CLI-0161), a local Docker
+      #     Compose stack, consumed by checking out its tag.
+      #   - claude-plugins/<set>/ (pigeon-cli's CLI-0161), a Claude Code
+      #     plugin listed in /.claude-plugin/marketplace.json, consumed by
+      #     pinning the marketplace to its tag.
+      # A set's README.md/CHANGELOG.md are never a release on their own.
+      - name: Determine changed per-set release tracks
+        id: dashboards
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          SETS=$(echo "$CHANGED_FILES" \
+            | grep -E '^grafana-dashboards/[^/]+/[^/]+\.json$|^(observability|claude-plugins)/[^/]+/.+' \
+            | grep -vE '^(observability|claude-plugins)/[^/]+/(README|CHANGELOG)\.md$' \
+            | cut -d/ -f1-2 | sort -u | tr '\n' ' ')
+          echo "changed=${SETS% }" >> "$GITHUB_OUTPUT"
+
+      # The spokes call the reusable workflows and fetch root-changelog.sh, so
+      # all of .github/ travels under one version -- LIB-0001 invariant 2 says a
+      # spoke pins a version rather than tracking a branch, and DEV-0155 deferred
+      # exactly this track on the grounds that live @main was cheaper. It is no
+      # longer cheaper now that three spokes consume it.
+      #
+      # CHANGELOG.md is excluded: the automation writes it, and a release must
+      # not be able to trigger itself.
+      - name: Determine reusable-CI change
+        id: workflows
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          if echo "$CHANGED_FILES" | grep -qE '^\.github/(workflows/[^/]+\.yml|scripts/)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure git identity
+        if: steps.modules.outputs.changed != '' || steps.zola_site.outputs.changed == 'true' || steps.workflows.outputs.changed == 'true' || steps.root_hcl.outputs.changed == 'true' || steps.dashboards.outputs.changed != ''
+        run: |
+          git config user.name "istx25"
+          git config user.email "6799989+istx25@users.noreply.github.com"
+
+      - name: Update changelogs and compute versions
+        id: versions
+        if: steps.modules.outputs.changed != ''
+        env:
+          BUMP: ${{ steps.bump.outputs.level }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          CHANGED_MODULES: ${{ steps.modules.outputs.changed }}
+        run: |
+          TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
+          TAGS=""
+
+          for dir in $CHANGED_MODULES; do
+            LATEST=$(git tag -l "${dir}/v*" | sed "s#${dir}/v##" | sort -V | tail -n1)
+
+            # A renamed module has no tags under its new path yet. Its
+            # CHANGELOG.md names the old track's last tag in a
+            # "<!-- continues-from: <tag> -->" line, and the new track
+            # continues from that version rather than restarting at 0.1.0
+            # (LIB-0020 §4). The tag must exist, so a typo fails loudly here
+            # instead of cutting a wrong version.
+            if [ -z "$LATEST" ] && [ -f "${dir}/CHANGELOG.md" ]; then
+              FROM=$(sed -nE 's/^<!-- continues-from: (terraform\/[a-z0-9-]+\/[a-z0-9-]+\/v[0-9]+\.[0-9]+\.[0-9]+) -->$/\1/p' \
+                "${dir}/CHANGELOG.md" | head -n1)
+              if [ -n "$FROM" ]; then
+                if ! git rev-parse -q --verify "refs/tags/${FROM}" >/dev/null; then
+                  echo "::error::${dir}/CHANGELOG.md continues from ${FROM}, which is not a tag"
+                  exit 1
+                fi
+                LATEST="${FROM##*/v}"
+              fi
+            fi
+
+            if [ -z "$LATEST" ]; then
+              NEXT="0.1.0"
+            else
+              MA=$(echo "$LATEST" | cut -d. -f1)
+              MI=$(echo "$LATEST" | cut -d. -f2)
+              PA=$(echo "$LATEST" | cut -d. -f3)
+              case "$BUMP" in
+                major) NEXT="$((MA+1)).0.0" ;;
+                minor) NEXT="${MA}.$((MI+1)).0" ;;
+                patch) NEXT="${MA}.${MI}.$((PA+1))" ;;
+              esac
+            fi
+
+            CHANGELOG="${dir}/CHANGELOG.md"
+            if [ ! -f "$CHANGELOG" ]; then
+              cat > "$CHANGELOG" <<'HEADER'
+          # Changelog
+
+          All notable changes to this module are documented in this file.
+
+          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          HEADER
+            fi
+
+            ENTRY=$(mktemp)
+            {
+              echo ""
+              echo "## [${NEXT}] - ${TODAY}"
+              echo ""
+              echo "### ${PR_TITLE}"
+              echo ""
+              echo "${PR_BODY}"
+              echo ""
+              echo "[#${PR_NUMBER}](${PR_URL})"
+            } > "$ENTRY"
+
+            head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"
+            cat "$ENTRY" >> "${CHANGELOG}.new"
+            tail -n +6 "$CHANGELOG" >> "${CHANGELOG}.new"
+            mv "${CHANGELOG}.new" "$CHANGELOG"
+
+            git add "$CHANGELOG"
+            TAGS="$TAGS ${dir}/v${NEXT}"
+
+            # Also add a one-liner to the repo-wide root CHANGELOG.md (DEV-0160).
+            # Passing --date reuses the $TODAY above, so the rollup line and this
+            # module's own entry can never straddle a midnight boundary.
+            .github/scripts/root-changelog.sh \
+              --tag "${dir#terraform/}" \
+              --title "$PR_TITLE" \
+              --number "$PR_NUMBER" \
+              --url "$PR_URL" \
+              --date "$TODAY"
+            git add CHANGELOG.md
+          done
+
+          echo "tags=${TAGS# }" >> "$GITHUB_OUTPUT"
+
+      - name: Update zola-site changelog and compute version
+        id: zola_site_version
+        if: steps.zola_site.outputs.changed == 'true'
+        env:
+          BUMP: ${{ steps.bump.outputs.level }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
+          DIR="zola-site"
+
+          LATEST=$(git tag -l "${DIR}/v*" | sed "s#${DIR}/v##" | sort -V | tail -n1)
+
+          if [ -z "$LATEST" ]; then
+            NEXT="1.0.0"
+          else
+            MA=$(echo "$LATEST" | cut -d. -f1)
+            MI=$(echo "$LATEST" | cut -d. -f2)
+            PA=$(echo "$LATEST" | cut -d. -f3)
+            case "$BUMP" in
+              major) NEXT="$((MA+1)).0.0" ;;
+              minor) NEXT="${MA}.$((MI+1)).0" ;;
+              patch) NEXT="${MA}.${MI}.$((PA+1))" ;;
+            esac
+          fi
+
+          CHANGELOG="${DIR}/CHANGELOG.md"
+          if [ ! -f "$CHANGELOG" ]; then
+            cat > "$CHANGELOG" <<'HEADER'
+          # Changelog
+
+          All notable changes to this theme are documented in this file.
+
+          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          HEADER
+          fi
+
+          ENTRY=$(mktemp)
+          {
+            echo ""
+            echo "## [${NEXT}] - ${TODAY}"
+            echo ""
+            echo "### ${PR_TITLE}"
+            echo ""
+            echo "${PR_BODY}"
+            echo ""
+            echo "[#${PR_NUMBER}](${PR_URL})"
+          } > "$ENTRY"
+
+          head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"
+          cat "$ENTRY" >> "${CHANGELOG}.new"
+          tail -n +6 "$CHANGELOG" >> "${CHANGELOG}.new"
+          mv "${CHANGELOG}.new" "$CHANGELOG"
+          git add "$CHANGELOG"
+
+          # One-liner into the root CHANGELOG.md, same contract as above (DEV-0160).
+          .github/scripts/root-changelog.sh \
+            --tag "zola-site" \
+            --title "$PR_TITLE" \
+            --number "$PR_NUMBER" \
+            --url "$PR_URL" \
+            --date "$TODAY"
+          git add CHANGELOG.md
+
+          echo "tag=${DIR}/v${NEXT}" >> "$GITHUB_OUTPUT"
+
+      - name: Update root.hcl template changelog and compute version
+        id: root_hcl_version
+        if: steps.root_hcl.outputs.changed == 'true'
+        env:
+          BUMP: ${{ steps.bump.outputs.level }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
+          DIR="terragrunt/root-hcl"
+
+          LATEST=$(git tag -l "${DIR}/v*" | sed "s#${DIR}/v##" | sort -V | tail -n1)
+
+          if [ -z "$LATEST" ]; then
+            NEXT="1.0.0"
+          else
+            MA=$(echo "$LATEST" | cut -d. -f1)
+            MI=$(echo "$LATEST" | cut -d. -f2)
+            PA=$(echo "$LATEST" | cut -d. -f3)
+            case "$BUMP" in
+              major) NEXT="$((MA+1)).0.0" ;;
+              minor) NEXT="${MA}.$((MI+1)).0" ;;
+              patch) NEXT="${MA}.${MI}.$((PA+1))" ;;
+            esac
+          fi
+
+          CHANGELOG="${DIR}/CHANGELOG.md"
+          if [ ! -f "$CHANGELOG" ]; then
+            cat > "$CHANGELOG" <<'HEADER'
+          # Changelog
+
+          All notable changes to this template are documented in this file.
+
+          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          HEADER
+          fi
+
+          ENTRY=$(mktemp)
+          {
+            echo ""
+            echo "## [${NEXT}] - ${TODAY}"
+            echo ""
+            echo "### ${PR_TITLE}"
+            echo ""
+            echo "${PR_BODY}"
+            echo ""
+            echo "[#${PR_NUMBER}](${PR_URL})"
+          } > "$ENTRY"
+
+          head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"
+          cat "$ENTRY" >> "${CHANGELOG}.new"
+          tail -n +6 "$CHANGELOG" >> "${CHANGELOG}.new"
+          mv "${CHANGELOG}.new" "$CHANGELOG"
+          git add "$CHANGELOG"
+
+          .github/scripts/root-changelog.sh \
+            --tag "terragrunt/root-hcl" \
+            --title "$PR_TITLE" \
+            --number "$PR_NUMBER" \
+            --url "$PR_URL" \
+            --date "$TODAY"
+          git add CHANGELOG.md
+
+          echo "tag=${DIR}/v${NEXT}" >> "$GITHUB_OUTPUT"
+
+      - name: Update per-set changelogs and compute versions
+        id: dashboards_version
+        if: steps.dashboards.outputs.changed != ''
+        env:
+          BUMP: ${{ steps.bump.outputs.level }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          CHANGED_SETS: ${{ steps.dashboards.outputs.changed }}
+        run: |
+          TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
+          TAGS=""
+
+          for dir in $CHANGED_SETS; do
+            LATEST=$(git tag -l "${dir}/v*" | sed "s#${dir}/v##" | sort -V | tail -n1)
+
+            if [ -z "$LATEST" ]; then
+              NEXT="1.0.0"
+            else
+              MA=$(echo "$LATEST" | cut -d. -f1)
+              MI=$(echo "$LATEST" | cut -d. -f2)
+              PA=$(echo "$LATEST" | cut -d. -f3)
+              case "$BUMP" in
+                major) NEXT="$((MA+1)).0.0" ;;
+                minor) NEXT="${MA}.$((MI+1)).0" ;;
+                patch) NEXT="${MA}.${MI}.$((PA+1))" ;;
+              esac
+            fi
+
+            CHANGELOG="${dir}/CHANGELOG.md"
+            if [ ! -f "$CHANGELOG" ]; then
+              cat > "$CHANGELOG" <<'HEADER'
+          # Changelog
+
+          All notable changes to this release unit are documented in this file.
+
+          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          HEADER
+            fi
+
+            ENTRY=$(mktemp)
+            {
+              echo ""
+              echo "## [${NEXT}] - ${TODAY}"
+              echo ""
+              echo "### ${PR_TITLE}"
+              echo ""
+              echo "${PR_BODY}"
+              echo ""
+              echo "[#${PR_NUMBER}](${PR_URL})"
+            } > "$ENTRY"
+
+            head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"
+            cat "$ENTRY" >> "${CHANGELOG}.new"
+            tail -n +6 "$CHANGELOG" >> "${CHANGELOG}.new"
+            mv "${CHANGELOG}.new" "$CHANGELOG"
+            git add "$CHANGELOG"
+            TAGS="$TAGS ${dir}/v${NEXT}"
+
+            .github/scripts/root-changelog.sh \
+              --tag "$dir" \
+              --title "$PR_TITLE" \
+              --number "$PR_NUMBER" \
+              --url "$PR_URL" \
+              --date "$TODAY"
+            git add CHANGELOG.md
+          done
+
+          echo "tags=${TAGS# }" >> "$GITHUB_OUTPUT"
+
+      - name: Update reusable-CI changelog and compute version
+        id: workflows_version
+        if: steps.workflows.outputs.changed == 'true'
+        env:
+          BUMP: ${{ steps.bump.outputs.level }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
+
+          LATEST=$(git tag -l "workflows/v*" | sed "s#workflows/v##" | sort -V | tail -n1)
+
+          if [ -z "$LATEST" ]; then
+            NEXT="1.0.0"
+          else
+            MA=$(echo "$LATEST" | cut -d. -f1)
+            MI=$(echo "$LATEST" | cut -d. -f2)
+            PA=$(echo "$LATEST" | cut -d. -f3)
+            case "$BUMP" in
+              major) NEXT="$((MA+1)).0.0" ;;
+              minor) NEXT="${MA}.$((MI+1)).0" ;;
+              patch) NEXT="${MA}.${MI}.$((PA+1))" ;;
+            esac
+          fi
+
+          # Lives beside the workflows it versions. GitHub only reads *.yml from
+          # this directory, so a CHANGELOG.md here is inert to Actions.
+          CHANGELOG=".github/workflows/CHANGELOG.md"
+          if [ ! -f "$CHANGELOG" ]; then
+            cat > "$CHANGELOG" <<'HEADER'
+          # Changelog
+
+          All notable changes to the reusable CI are documented in this file.
+
+          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          HEADER
+          fi
+
+          ENTRY=$(mktemp)
+          {
+            echo ""
+            echo "## [${NEXT}] - ${TODAY}"
+            echo ""
+            echo "### ${PR_TITLE}"
+            echo ""
+            echo "${PR_BODY}"
+            echo ""
+            echo "[#${PR_NUMBER}](${PR_URL})"
+          } > "$ENTRY"
+
+          head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"
+          cat "$ENTRY" >> "${CHANGELOG}.new"
+          tail -n +6 "$CHANGELOG" >> "${CHANGELOG}.new"
+          mv "${CHANGELOG}.new" "$CHANGELOG"
+          git add "$CHANGELOG"
+
+          .github/scripts/root-changelog.sh \
+            --tag "workflows" \
+            --title "$PR_TITLE" \
+            --number "$PR_NUMBER" \
+            --url "$PR_URL" \
+            --date "$TODAY"
+          git add CHANGELOG.md
+
+          echo "tag=workflows/v${NEXT}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit changelog updates
+        if: steps.modules.outputs.changed != '' || steps.zola_site.outputs.changed == 'true' || steps.workflows.outputs.changed == 'true' || steps.root_hcl.outputs.changed == 'true' || steps.dashboards.outputs.changed != ''
+        run: |
+          git commit -m "chore: update changelog(s) for PR #${{ github.event.pull_request.number }}"
+          # Retry rather than fail on a rejected push: these writers no longer
+          # share a concurrency group, so two of them can legitimately race for
+          # main. This run wrote on the newest main, so a rebase conflict needs
+          # another workflow's changelog line pushed in the seconds since the
+          # checkout. The changelogs are written across several steps and can't
+          # simply be rewritten here, so that conflict stays fatal.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              echo "::error::rebase onto origin/main conflicted; refusing to guess"
+              exit 1
+            fi
+            if git push origin HEAD:main; then
+              echo "Pushed on attempt ${attempt}."
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}/5); another writer won the race."
+            sleep $((attempt * 5))
+          done
+          echo "::error::could not push to main after 5 attempts"
+          exit 1
+
+      - name: Tag and release each changed module/theme/CI version
+        if: steps.modules.outputs.changed != '' || steps.zola_site.outputs.changed == 'true' || steps.workflows.outputs.changed == 'true' || steps.root_hcl.outputs.changed == 'true' || steps.dashboards.outputs.changed != ''
+        env:
+          GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          RELEASE_TAGS: ${{ steps.versions.outputs.tags }} ${{ steps.zola_site_version.outputs.tag }} ${{ steps.workflows_version.outputs.tag }} ${{ steps.root_hcl_version.outputs.tag }} ${{ steps.dashboards_version.outputs.tags }}
+        run: |
+          NOTES=$(mktemp)
+          printf '%s\n\nPR: %s\n' "$PR_BODY" "$PR_URL" > "$NOTES"
+
+          for tag in $RELEASE_TAGS; do
+            git tag "$tag"
+            git push origin "$tag"
+            gh release create "$tag" --title "$tag" --notes-file "$NOTES"
+          done
+
+      # The hub hosts no site, so every deploy dispatch is cross-repo
+      # (LIB-0002). noisypigeon.garden's module redirect pages, overview
+      # pages, theme-version pages, release posts and schemas are generated
+      # and committed in runway's workloads/garden/ (LIB-0035 §§2, 4), so
+      # every release dispatches runway's garden-generate.yml. Its commit
+      # deploys itself, through runway's sites.yml and the
+      # noisypigeon/noisypigeon.garden shim; a release that changes no page
+      # commits nothing and deploys nothing. noisypigeon/noisypigeon.com only
+      # renders with the theme, so it rebuilds on a theme release only.
+      #
+      # Runs *after* the tags are pushed above: the generator reads this
+      # repo's tag list, so dispatching first would race the tag into
+      # existence.
+      #
+      # Both need BOT_GITHUB_TOKEN to carry actions: write on the target. If
+      # it doesn't, these steps fail loudly -- which is the point. A missed
+      # dispatch leaves a version tagged and released here whose short URL
+      # 404s on the site.
+      - name: Trigger garden generation
+        if: steps.modules.outputs.changed != '' || steps.zola_site.outputs.changed == 'true' || steps.workflows.outputs.changed == 'true' || steps.root_hcl.outputs.changed == 'true' || steps.dashboards.outputs.changed != ''
+        env:
+          GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+        run: gh workflow run garden-generate.yml -R noisypigeon/runway --ref main
+
+      # Replaces a dispatch at zola-sites-deploy.yml in noisypigeon/noisypigeon,
+      # which DEV-0159 removed from that repo -- so this step had been failing
+      # on every theme release until LIB-0002 repointed it here. The shim was
+      # renamed from noisypigeon/blog, and every shim's deploy is pages.yml
+      # (LIB-0034 §§4, 6).
+      - name: Trigger noisypigeon.com Pages deploy
+        if: steps.zola_site.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+        run: gh workflow run pages.yml -R noisypigeon/noisypigeon.com --ref main

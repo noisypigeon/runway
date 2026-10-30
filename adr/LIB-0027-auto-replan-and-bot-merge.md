@@ -1,0 +1,152 @@
+# LIB-0027: A staged apply re-plans by itself, and the last apply merges
+
+- **Author**: Willow Graysen ([@noisypigeon](https://github.com/noisypigeon)).
+- **Date**: 2026-10-22.
+- **Status**: Accepted; amended 2026-10-22 and 2026-10-25 (see `## Amendments`). Amends LIB-0022's apply, and LIB-0024's staged
+  applies.
+
+## Context
+
+Two steps of every Terragrunt PR are still done by hand, and neither needs a
+decision.
+
+- **The next stage's plan.** Under LIB-0024, an apply that leaves workload
+  leaves deferred keeps the gate pending, and asks for a `terragrunt plan`
+  comment to plan the next stage. That comment is the same every time, and
+  runway#38 needed it between stages. What a person must review is each
+  stage's apply, not the request for its plan.
+- **The merge.** After a final apply, `terragrunt-run.yml` merges the PR. On
+  runway, that has failed every time (#31, #38 and #41) with "Resource not
+  accessible by integration", and the PR was merged by hand.
+  - The callers grant `contents: read`, and the merge used the job's
+    `GITHUB_TOKEN`. Merging needs `contents: write`.
+  - Granting it wouldn't be enough. GitHub starts no workflow from an event
+    caused by `GITHUB_TOKEN`, so a merge made with it would skip what follows
+    a merge: the root changelog (`root-changelog.yml`, on `pull_request:
+    closed`) and garden's deploy.
+  - Every spoke already has a `BOT_GITHUB_TOKEN` secret, which reaches the
+    reusable through `secrets: inherit`.
+
+For the same reason, the re-plan can't be done by posting a `terragrunt plan`
+comment with `GITHUB_TOKEN`: the comment wouldn't start the plan workflow.
+
+## Decision
+
+### 1. An apply that leaves leaves deferred plans the next stage
+
+- **`terragrunt-run.yml` reports what it did.** Its `workflow_call` gains two
+  outputs:
+  - `deferred`, which is `'true'` when the run left workload leaves deferred
+    (LIB-0024 §3);
+  - `exit_code`.
+- **A spoke's apply caller gains a `replan` job.** It:
+  - needs the `apply` job, and runs only when that succeeded and reported
+    `deferred`;
+  - calls the same reusable with `command: plan`, at the PR's head;
+  - shares the PR's concurrency group, `terragrunt-pr-<n>`, so it starts only
+    once the apply has finished;
+  - takes `secrets: inherit`.
+- **Its plan says how it started.** The summary notes that it was planned
+  automatically after the previous stage's apply.
+- **Only the plan is automatic.** Each stage still needs its own `terragrunt
+  apply` comment, against its own reviewed plan (LIB-0022). The loop ends by
+  itself, when a plan defers nothing.
+
+### 2. The final apply merges with the bot token
+
+- **The reusable takes an optional `BOT_GITHUB_TOKEN` secret,** and merges
+  with it when it's set, falling back to `GITHUB_TOKEN`.
+- **A merge with the bot token starts the workflows that follow a merge,**
+  such as the root changelog and garden's deploy.
+- **The commit status stays on `GITHUB_TOKEN`,** which the callers already
+  grant `statuses: write`.
+- **A failed merge says why.** The comment names the token used, and that it
+  needs Contents and Pull requests write on the repository.
+- **A staged apply still never merges** (LIB-0024 §3).
+
+### 3. Release impact
+
+- **`workflows/` takes a minor version.** Callers that add no `replan` job
+  behave as before, apart from the merge.
+- **A spoke takes it in one PR,** with the new `replan` job. Selection doesn't
+  change (LIB-0024 §5). Since an apply runs the default branch's callers, it
+  works from the moment that PR merges.
+
+## Consequences
+
+- **A staged workload needs only its applies.** In runway#38's case, that's
+  two comments instead of three.
+- **PRs merge themselves,** and get their changelog entries, without a manual
+  merge.
+- **The bot token's reach matters.** It must hold Contents and Pull requests
+  write on every spoke. A token without them fails at the merge, and says so.
+
+## Out of scope
+
+- **Applying deferred stages automatically.** Every apply stays a person's
+  `terragrunt apply` against a plan they reviewed. A permanent boundary.
+- **A GitHub App in place of the bot token,** with installation tokens scoped
+  per repository. Deferred ([#131](https://github.com/noisypigeon/library/issues/131)).
+- **Building §§1–3,** and the spokes taking it, in later PRs that cite this
+  record ([#130](https://github.com/noisypigeon/library/issues/130)).
+
+## Verification
+
+Recorded 2026-10-22, on [runway#48](https://github.com/noisypigeon/runway/pull/48). Every item passed, on `workflows/v4.7.1`;
+v4.7.0's merge step crashed after applying (`getOctokit is not defined`),
+which [#134](https://github.com/noisypigeon/library/pull/134) fixed.
+
+1. **A staged apply re-plans by itself.** On runway, an apply that leaves a
+   leaf deferred is followed, without a comment, by a plan of the next stage.
+   - **Passed:** stage 1's apply was followed, with no comment, by a plan
+     "[_Planned automatically after the previous stage's apply_](https://github.com/noisypigeon/runway/pull/48#issuecomment-6348550487)",
+     which found `0 with changes, 5 with no changes`.
+2. **The last apply merges.** The final stage's apply turns the gate green,
+   and the PR merges without a hand.
+   - **Passed:** the final apply turned the gate green, and the PR merged
+     itself, as the bot token's user.
+3. **The merge is a real merge event.** The root changelog gets the PR's
+   entry.
+   - **Passed:** [`root-changelog`](https://github.com/noisypigeon/runway/actions/runs/39834281164)
+     ran for the merge, which a `GITHUB_TOKEN` merge wouldn't have started.
+
+## Amendments
+
+### 2026-10-22: a settled re-plan merges without a last apply
+
+On runway#48, the automatic re-plan found nothing left to change, and the PR
+still needed one more `terragrunt apply` to land. That apply did nothing.
+
+- **An automatic re-plan that settles closes the PR.** It sets
+  `terragrunt/apply` to `success` ("Re-plan found nothing left to apply") and
+  merges with the bot token, as a final apply does. A plan settles when:
+  - the run succeeded;
+  - every leaf is unchanged, with nothing to add, change or destroy;
+  - nothing is deferred or failed, and every leaf has a result.
+- **An output that changes is a change.** Counts now include a JSON plan's
+  `output_changes`, so a plan that changes only outputs, which an apply would
+  still write to state, never settles.
+- **Only the `replan` job's plan qualifies.** Its run was started by a
+  person's `terragrunt apply` on that PR. A plan from a push or from a
+  `terragrunt plan` comment never merges by itself, even with no changes
+  (LIB-0022).
+- Its summary ends "Nothing left to apply: merging."
+
+This ships as `workflows/v4.8.0`. Callers change nothing.
+
+### 2026-10-25: the re-plan says it's planning
+
+§1's re-plan posted nothing until its result, so for the 5–10 minutes it
+took, the PR showed only the apply's comment. That comment says the next stage
+plans by itself, but it gives no sign the re-plan has started.
+
+- **The re-plan announces itself.** Its first step after resolving the head
+  posts "⏳ Terragrunt plan: the next stage of `<sha>` is planning now", with a
+  link to its run. Only a re-plan started by a `terragrunt apply` comment does
+  this; a `terragrunt plan` comment already gets its 👀 (LIB-0022's
+  2026-10-25 amendment), and a push plan has no stage before it.
+- **Its result replaces it.** The announcement carries the plan comments'
+  marker, so the result step hides it as outdated along with every earlier
+  plan comment, whether the re-plan succeeds, fails or is cancelled.
+- **It ships in `workflows/` v5.4.0,** with no caller change.
+

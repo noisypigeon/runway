@@ -1,0 +1,1008 @@
+#!/usr/bin/env bash
+# Generates one Zola content page per
+# terraform/<provider>/<module>/vX.Y.Z git tag. Each page is a static
+# "redirect" page carrying a <meta name="terraform-get"> tag so
+# `terraform init` can resolve a short noisypigeon.garden module source URL to
+# the tagged git:: source. The public URL is "terraform/<provider>/<module>/vX.Y.Z"
+# (LIB-0009).
+# It matches the tag prefix by choice, not by derivation: it is a public
+# interface of its own, so moving the repo's internal layout never changes it.
+#
+# Every module tag lives in THIS repo (library), under the terraform
+# prefix -- DEV-0160 step 0 retired the last cross-repo mapping arm and
+# LIB-0002 flattened the prefix, so the mapping is a single constant.
+#
+# This script lives in the library and runs in a spoke's generation, not a
+# site's build: runway's garden-generate.yml runs it through site-generate.yml
+# and commits its output under workloads/garden/ (LIB-0035 §2). It reads from
+# two roots that are deliberately separate:
+#
+#   LIB_ROOT     -- the library clone this script was fetched into. Derived
+#                   from ${BASH_SOURCE[0]} two levels up (this script lives in
+#                   .github/scripts/), never from git rev-parse: the invoking
+#                   site is a different repo, so asking git for *its* toplevel
+#                   finds the wrong tree. Same property DEV-0154 gave
+#                   resolve-theme.sh, and the same path arithmetic to keep
+#                   right if this file ever moves again.
+#   CONTENT_ROOT -- the consuming site's content/ directory, passed with
+#                   --content-root. Required: only the caller knows it.
+#
+# Also generates one page per zola-site/vX.Y.Z tag (ADR-0114) — a
+# separate loop since the tag shape doesn't fit the provider/module pattern
+# above (zola-site is one flat unit, not a provider+module pair). Unlike the
+# terraform pages, there is no fetch-by-URL protocol for Zola themes, so these
+# pages are a human-facing redirect to the GitHub release page only, not a
+# build input.
+#
+# Also generates one post per module release under content/releases/, derived
+# from the modules' own CHANGELOG.md files (ADR-0141) — read off LIB_ROOT,
+# which since LIB-0002 is a fetched clone, not the site's own repo.
+#
+# With --static-root (the site's static/ directory), also publishes LIB-0023
+# §6's JSON Schemas there: one inputs.schema.json per terraform/scaleway
+# module version a workload can use, beside that version's redirect page, and
+# the workload schema at schemas/workload/v1.json that ties them together,
+# its v2 for a workload.yaml (LIB-0037), and the zone schema at
+# schemas/zone/v1.json (LIB-0036). Since LIB-0038 the current ones are
+# schemas/workload/v3.json and schemas/zone/v2.json, whose deployer is three
+# entries and whose apexRedirect is a shorthand. Since LIB-0039 they are
+# schemas/workload/v4.json and schemas/zone/v3.json, each file's content under
+# one key (workload or zone), its records at dnsRecords, and a zone's
+# services. Since LIB-0043 a workload's is schemas/workload/v5.json, with
+# Scaleway's compute kinds and iam.apiKey a mapping, and since LIB-0045
+# schemas/workload/v6.json, with a bucket's grants and a key's buckets of
+# another workload, from each Backblaze version's granted.schema.json. The
+# older ones stay published, unchanged, for files still pinned to them.
+# Since LIB-0045 it also publishes schemas/policies/v1.json, a spoke's
+# policies.yaml, from each policies/<id>.schema.json beside check-policies.sh.
+# Without it, nothing under static/ is touched.
+#
+# Regenerate-all semantics: every run wipes and rewrites every generated page
+# under content/terraform/, content/theme-versions/ and content/releases/
+# (except each directory's hand-authored _index.md) from the current set of
+# tags and changelogs. Safe to run repeatedly; fully idempotent.
+set -euo pipefail
+
+LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+TAG_REPO="${TAG_REPO:-noisypigeon/library}"
+CONTENT_ROOT=""
+STATIC_ROOT=""
+SCHEMA_BASE_URL="${SCHEMA_BASE_URL:-https://noisypigeon.garden}"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --content-root) CONTENT_ROOT="$2"; shift 2 ;;
+    --static-root) STATIC_ROOT="$2"; shift 2 ;;
+    --lib-root) LIB_ROOT="$2"; shift 2 ;;
+    --tag-repo) TAG_REPO="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+if [ -z "$CONTENT_ROOT" ]; then
+  echo "::error::--content-root is required (the consuming site's content/ directory)" >&2
+  exit 2
+fi
+if [ ! -d "$CONTENT_ROOT" ]; then
+  echo "::error::--content-root $CONTENT_ROOT is not a directory" >&2
+  exit 2
+fi
+if [ ! -d "$LIB_ROOT/terraform" ]; then
+  echo "::error::No terraform/ under $LIB_ROOT -- is the library fetched?" >&2
+  exit 1
+fi
+
+CONTENT_DIR="$CONTENT_ROOT/terraform"
+THEME_CONTENT_DIR="$CONTENT_ROOT/theme-versions"
+RELEASES_CONTENT_DIR="$CONTENT_ROOT/releases"
+
+templates_tags() { git -C "$LIB_ROOT" tag --list "$@"; }
+
+mkdir -p "$CONTENT_DIR"
+
+# Wipe only generated pages; keep the hand-authored section marker.
+find "$CONTENT_DIR" -maxdepth 1 -name '*.md' ! -name '_index.md' -delete
+
+count=0
+while IFS= read -r tag; do
+  [ -z "$tag" ] && continue
+
+  # Explicit allowlist, not a generic catch-all: legacy terraform/modules/...
+  # tags stay unredirected (ADR-0109's permanent boundary).
+  if [[ ! "$tag" =~ ^(terraform)/([a-z0-9-]+)/([a-z0-9-]+)/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+    echo "::warning::Skipping tag with unexpected shape: $tag" >&2
+    continue
+  fi
+
+  prefix="${BASH_REMATCH[1]}"
+  provider="${BASH_REMATCH[2]}"
+  module="${BASH_REMATCH[3]}"
+  version="${BASH_REMATCH[4]}"
+
+  slug="${provider}-${module}-v${version}"
+  full_tag="${prefix}/${provider}/${module}/v${version}"
+  repo="$TAG_REPO"
+  # The public URL is a fixed interface (LIB-0009 §1), written out here rather
+  # than built from ${prefix}, so a change of tag prefix can never move it.
+  url_path="terraform/${provider}/${module}/v${version}"
+  git_source="git::https://github.com/${repo}.git//${prefix}/${provider}/${module}?ref=${full_tag}"
+  github_url="https://github.com/${repo}/releases/tag/${full_tag}"
+
+  cat > "$CONTENT_DIR/${slug}.md" <<EOF
++++
+title = "${provider}/${module} v${version}"
+description = "Terraform module source redirect for terraform/${provider}/${module} v${version}."
+path = "${url_path}"
+template = "module-redirect.html"
+in_search_index = false
+include_in_feeds = false
+hidden = true
+
+[extra]
+git_source = "${git_source}"
+github_url = "${github_url}"
++++
+EOF
+
+  count=$((count + 1))
+done < <(templates_tags 'terraform/*/*/v*' | sort)
+
+echo "Generated ${count} module redirect page(s) under ${CONTENT_DIR#"$CONTENT_ROOT"/}."
+
+# Also generate one *visible* overview page per module (not per version),
+# alongside the hidden per-version redirect pages above — same directory, no
+# naming collision since these are named "<provider>-<module>.md" with no
+# "-vX.Y.Z" suffix. Each overview page carries a usage example extracted from
+# the module's own README.md ("## Usage" fenced ```hcl block, verbatim — not
+# rewritten to the latest version) when the README has one, and omits it
+# otherwise (ADR-0141: shows what the README has today, no backfilling and
+# no synthesized fallback).
+toml_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+module_pairs="$(templates_tags 'terraform/*/*/v*' \
+  | grep -E '^terraform/[a-z0-9-]+/[a-z0-9-]+/v[0-9]+\.[0-9]+\.[0-9]+$' \
+  | sed -E 's#^terraform/([a-z0-9-]+)/([a-z0-9-]+)/v.*#\1/\2#' \
+  | sort -u)"
+
+overview_count=0
+while IFS= read -r pair; do
+  [ -z "$pair" ] && continue
+  provider="${pair%%/*}"
+  module="${pair##*/}"
+
+  versions="$(templates_tags "terraform/${provider}/${module}/v*" \
+    | sed -E 's#.*/v([0-9]+\.[0-9]+\.[0-9]+)$#\1#' \
+    | sort -t. -k1,1n -k2,2n -k3,3n -u)"
+  latest_version="$(echo "$versions" | tail -1)"
+
+  readme="$LIB_ROOT/terraform/${provider}/${module}/README.md"
+  description=""
+  usage_example=""
+  if [ -f "$readme" ]; then
+    description="$(awk '
+      /^# / && !started { started = 1; next }
+      started && /^## / { exit }
+      started && /^<!-- BEGIN_TF_DOCS/ { exit }
+      started { print }
+    ' "$readme" | sed '/^$/d' | tr '\n' ' ' | sed -E 's/ +/ /g; s/^ //; s/ $//')"
+
+    usage_example="$(awk '
+      /^## Usage/ { in_usage = 1; next }
+      in_usage && /^<!-- BEGIN_TF_DOCS/ { exit }
+      in_usage && /^```hcl/ { in_block = 1; next }
+      in_usage && in_block && /^```/ { exit }
+      in_usage && in_block { print }
+    ' "$readme")"
+  fi
+
+  slug="${provider}-${module}"
+  github_url="https://github.com/${TAG_REPO}/tree/main/terraform/${provider}/${module}"
+
+  {
+    echo "+++"
+    echo "title = \"${provider}/${module}\""
+    echo "description = \"$(toml_escape "$description")\""
+    echo "template = \"module.html\""
+    echo "in_search_index = true"
+    echo
+    echo "[extra]"
+    echo "kind = \"module\""
+    echo "provider = \"${provider}\""
+    echo "module = \"${module}\""
+    echo "latest_version = \"${latest_version}\""
+    echo "github_url = \"${github_url}\""
+    if [ -n "$usage_example" ]; then
+      printf 'usage_example = """\n%s\n"""\n' "$usage_example"
+    else
+      echo 'usage_example = ""'
+    fi
+    printf 'versions = ['
+    first=1
+    while IFS= read -r v; do
+      [ -z "$v" ] && continue
+      [ "$first" -eq 0 ] && printf ', '
+      printf '{ version = "%s", path = "terraform/%s/%s/v%s" }' "$v" "$provider" "$module" "$v"
+      first=0
+    done <<<"$versions"
+    printf ']\n'
+    echo "+++"
+  } >"$CONTENT_DIR/${slug}.md"
+
+  overview_count=$((overview_count + 1))
+done <<<"$module_pairs"
+
+echo "Generated ${overview_count} module overview page(s) under ${CONTENT_DIR#"$CONTENT_ROOT"/}."
+
+# Workload schemas (LIB-0023 §6). Each module version's inputs schema is
+# generated from that tag's own module directory, so a pinned version
+# validates against the inputs it really has. The workload schema validates
+# each kind against its newest version, or the version its `version` pins.
+#
+# The module list is the third copy of the kind table; its twins are
+# resolve-workloads.sh's KINDS and root.hcl's workload_kinds. The workload
+# schema takes the kinds whose units include a workload, and the zone schema
+# (LIB-0036) those whose units include a zone.
+#
+# The workload state bucket, scaleway.state (LIB-0028), is a scaleway/bucket
+# with one input of its own, `prefix`. Each inputs schema refuses properties it
+# doesn't list, which a $ref can't relax, so every scaleway/bucket version also
+# gets a state.schema.json: its inputs schema plus `prefix`. Likewise each
+# backblaze/api-key version gets a workload.schema.json (LIB-0029 §6): its
+# inputs without bucket_ids, which a workload never writes, plus `buckets`.
+# cloudflare/bucket and cloudflare/ruleset get one too (LIB-0030 §7): without
+# account_id, which is the spoke's, and zone_id, since a workload names zones.
+# So does cloudflare/api-token, a workload's own token (LIB-0033 §4).
+if [ -n "$STATIC_ROOT" ]; then
+  if [ ! -d "$STATIC_ROOT" ]; then
+    echo "::error::--static-root $STATIC_ROOT is not a directory" >&2
+    exit 2
+  fi
+  find "$STATIC_ROOT/terraform" \( -name inputs.schema.json -o -name state.schema.json -o -name workload.schema.json -o -name granted.schema.json \) -type f -delete 2>/dev/null || true
+  rm -f "$STATIC_ROOT/schemas/workload/v1.json" "$STATIC_ROOT/schemas/workload/v2.json" "$STATIC_ROOT/schemas/workload/v3.json" "$STATIC_ROOT/schemas/workload/v4.json" "$STATIC_ROOT/schemas/workload/v5.json" "$STATIC_ROOT/schemas/workload/v6.json" "$STATIC_ROOT/schemas/zone/v1.json" "$STATIC_ROOT/schemas/zone/v2.json" "$STATIC_ROOT/schemas/zone/v3.json" "$STATIC_ROOT/schemas/policies/v1.json"
+
+  kinds_json='{}'
+  schema_count=0
+  for wmodule in scaleway/project scaleway/iam-application scaleway/iam-policy scaleway/terraform-deployer-iam scaleway/bucket scaleway/iam-api-key scaleway/block-volume scaleway/cockpit-observability scaleway/private-network scaleway/public-gateway scaleway/compute-instance scaleway/compute-instance-config scaleway/gateway-pat-rule backblaze/bucket backblaze/api-key cloudflare/bucket cloudflare/dns-record cloudflare/ruleset cloudflare/apex-redirect cloudflare/api-token; do
+    wversions="$(templates_tags "terraform/${wmodule}/v*" \
+      | sed -nE 's#.*/v([0-9]+\.[0-9]+\.[0-9]+)$#\1#p' \
+      | sort -t. -k1,1n -k2,2n -k3,3n -u)"
+    [ -z "$wversions" ] && continue
+    while IFS= read -r v; do
+      out="$STATIC_ROOT/terraform/${wmodule}/v${v}"
+      mkdir -p "$out"
+      tree="$(mktemp -d)"
+      git -C "$LIB_ROOT" archive "terraform/${wmodule}/v${v}" "terraform/${wmodule}" | tar -x -C "$tree"
+      "$LIB_ROOT/.github/scripts/module-inputs-schema.sh" "$tree/terraform/${wmodule}" \
+        --id "${SCHEMA_BASE_URL}/terraform/${wmodule}/v${v}/inputs.schema.json" >"$out/inputs.schema.json"
+      rm -rf "$tree"
+      schema_count=$((schema_count + 1))
+      if [ "$wmodule" = scaleway/bucket ]; then
+        jq --arg id "${SCHEMA_BASE_URL}/terraform/${wmodule}/v${v}/state.schema.json" '
+          ."$id" = $id
+          | .properties.prefix = {
+              type: "string",
+              pattern: "^[^/].*/$",
+              description: "Where this workload'"'"'s state keys start in its state bucket (LIB-0028 §3). Default: workloads/<workload>/"
+            }
+        ' "$out/inputs.schema.json" >"$out/state.schema.json"
+        schema_count=$((schema_count + 1))
+      fi
+      # Since LIB-0045 a bucket may grant other workloads, and a key name
+      # their buckets: granted.schema.json, for workload schema v6.
+      if [ "$wmodule" = backblaze/bucket ]; then
+        jq --arg id "${SCHEMA_BASE_URL}/terraform/${wmodule}/v${v}/granted.schema.json" '
+          ."$id" = $id
+          | .properties.grants = {
+              type: "object",
+              minProperties: 1,
+              propertyNames: {pattern: "^[^/]+/[a-z0-9]+(-[a-z0-9]+)*$"},
+              additionalProperties: {type: "array", minItems: 1, items: {type: "string"}},
+              description: "Other workloads, <parent>/<workload>, that may name this bucket in a key, each with the most its key may do here (LIB-0045 §6)"
+            }
+        ' "$out/inputs.schema.json" >"$out/granted.schema.json"
+        schema_count=$((schema_count + 1))
+      fi
+      if [ "$wmodule" = backblaze/api-key ]; then
+        jq --arg id "${SCHEMA_BASE_URL}/terraform/${wmodule}/v${v}/workload.schema.json" '
+          ."$id" = $id
+          | del(.properties.bucket_ids)
+          | .properties.buckets = {
+              type: "array",
+              minItems: 1,
+              items: {type: "string", pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"},
+              description: "The workload'"'"'s backblaze.bucket keys this key may reach (LIB-0029 §3)"
+            }
+          | .required = ["buckets", "capabilities"]
+        ' "$out/inputs.schema.json" >"$out/workload.schema.json"
+        jq --arg id "${SCHEMA_BASE_URL}/terraform/${wmodule}/v${v}/granted.schema.json" '
+          ."$id" = $id
+          | .properties.buckets.items.pattern = "^([a-z0-9]+(-[a-z0-9]+)*|[^/]+/[a-z0-9]+(-[a-z0-9]+)*/[a-z0-9]+(-[a-z0-9]+)*)$"
+          | .properties.buckets.description = "The workload'"'"'s backblaze.bucket keys this key may reach, and <parent>/<workload>/<bucket> for a bucket another workload grants it (LIB-0029 §3, LIB-0045 §7)"
+        ' "$out/workload.schema.json" >"$out/granted.schema.json"
+        schema_count=$((schema_count + 2))
+      fi
+      if [ "$wmodule" = cloudflare/bucket ] || [ "$wmodule" = cloudflare/ruleset ] || [ "$wmodule" = cloudflare/api-token ]; then
+        jq --arg id "${SCHEMA_BASE_URL}/terraform/${wmodule}/v${v}/workload.schema.json" '
+          ."$id" = $id | del(.properties.account_id, .properties.zone_id)
+        ' "$out/inputs.schema.json" >"$out/workload.schema.json"
+        schema_count=$((schema_count + 1))
+      fi
+    done <<<"$wversions"
+
+    # A kind: null (declared with no inputs), or a mapping whose `version`,
+    # if any, is one of the pins that exist, checked against the schema of
+    # the newest version that pin matches. $vs is oldest first.
+    kinds=("$wmodule|inputs")
+    if [ "$wmodule" = scaleway/bucket ]; then kinds+=("$wmodule#state|state"); fi
+    case "$wmodule" in
+      # A workload's own Backblaze key, backblaze.deployer, takes the module's
+      # plain inputs (LIB-0041 §1).
+      backblaze/api-key) kinds=("$wmodule#workload|workload" "$wmodule|inputs" "$wmodule#granted|granted") ;;
+      backblaze/bucket) kinds+=("$wmodule#granted|granted") ;;
+      cloudflare/bucket | cloudflare/ruleset | cloudflare/api-token) kinds=("$wmodule#workload|workload") ;;
+    esac
+    for wkind in "${kinds[@]}"; do
+      kinds_json="$(jq --arg m "$wmodule" --arg key "${wkind%|*}" --arg file "${wkind#*|}" --arg versions "$wversions" --arg base "$SCHEMA_BASE_URL" '
+        ($versions | split("\n") | map(select(. != ""))) as $vs
+        | ([$vs[] | split(".") as $p | $p[0], "\($p[0]).\($p[1])", .] | unique) as $pins
+        | def url($v): "\($base)/terraform/\($m)/v\($v)/\($file).schema.json";
+        . + {($key): {anyOf: [
+            {type: "null"},
+            {
+              type: "object",
+              properties: {version: {type: "string", enum: $pins}},
+              allOf: (
+                [{if: {not: {required: ["version"]}}, then: {"$ref": url($vs[-1])}}]
+                + [$pins[] as $pin | {
+                    if: {properties: {version: {const: $pin}}, required: ["version"]},
+                    then: {"$ref": url([$vs[] | select(. == $pin or startswith($pin + "."))] | last)}
+                  }]
+              )
+            }
+          ]}}
+      ' <<<"$kinds_json")"
+    done
+  done
+
+  mkdir -p "$STATIC_ROOT/schemas/workload"
+  jq --arg base "$SCHEMA_BASE_URL" '. as $k | {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "\($base)/schemas/workload/v1.json",
+    title: "Workload values.yaml (LIB-0023, LIB-0028, LIB-0029, LIB-0030, LIB-0033, LIB-0034)",
+    type: "object",
+    additionalProperties: false,
+    required: ["prefix", "suffix"],
+    properties: {
+      prefix: {type: "string", minLength: 1},
+      suffix: {type: "string", minLength: 1},
+      features: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        properties: {
+          githubPages: {
+            type: "object",
+            additionalProperties: false,
+            required: ["pagesShim", "pagesBaseUrl"],
+            description: "The Pages shim that deploys this site, and the host its custom domain points at. Implies cloudflare.dnsRecord.github-pages-root-cname and github-pages-www-cname, which an entry of the same key overrides field by field (LIB-0034 §§1-2)",
+            properties: {
+              pagesShim: {type: "string", pattern: "^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$", description: "The shim repo, as owner/name"},
+              pagesBaseUrl: {type: "string", pattern: "^[a-z0-9-]+(\\.[a-z0-9-]+)+$", description: "The Pages host, e.g. owner.github.io"}
+            }
+          }
+        }
+      },
+      scaleway: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        properties: {
+          project: ($k["scaleway/project"] // {}),
+          deployer: ($k["scaleway/terraform-deployer-iam"] // {}),
+          state: ($k["scaleway/bucket#state"] // {}),
+          bucket: {
+            type: ["object", "null"],
+            propertyNames: {pattern: "^[a-z0-9]+(-[a-z0-9]+)*$", not: {const: "state"}},
+            additionalProperties: ($k["scaleway/bucket"] // {})
+          },
+          iam: {
+            type: ["object", "null"],
+            additionalProperties: false,
+            properties: {
+              application: ($k["scaleway/iam-application"] // {}),
+              apiKey: ($k["scaleway/iam-api-key"] // {})
+            }
+          }
+        }
+      },
+      backblaze: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        properties: {
+          deployer: ($k["backblaze/api-key"] // {}),
+          bucket: {
+            type: ["object", "null"],
+            propertyNames: {pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"},
+            additionalProperties: ($k["backblaze/bucket"] // {})
+          },
+          apiKey: {
+            type: ["object", "null"],
+            propertyNames: {pattern: "^[a-z0-9]+(-[a-z0-9]+)*$", not: {const: "deployer"}},
+            additionalProperties: ($k["backblaze/api-key#workload"] // {})
+          }
+        }
+      },
+      cloudflare: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        properties: {
+          deployer: ($k["cloudflare/api-token#workload"] // {}),
+          zone: {type: "string", pattern: "^[a-z0-9-]+(\\.[a-z0-9-]+)+$", description: "The zone apex every zone entry uses unless it sets its own (LIB-0030 §3)"},
+          bucket: {
+            type: ["object", "null"],
+            propertyNames: {pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"},
+            additionalProperties: ($k["cloudflare/bucket#workload"] // {})
+          },
+          # ruleset and apexRedirect belong to a zone alone (LIB-0036 §3).
+          dnsRecord: {
+            type: ["object", "null"],
+            propertyNames: {pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"},
+            additionalProperties: ($k["cloudflare/dns-record"] // {})
+          }
+        }
+      }
+    }
+  }' <<<"$kinds_json" >"$STATIC_ROOT/schemas/workload/v1.json"
+
+  # A workload.yaml (LIB-0037 §§1-4): v1's kinds, with name and deployments
+  # in place of prefix, suffix and features, and no zone anywhere, since the
+  # directory names it.
+  jq --arg base "$SCHEMA_BASE_URL" '
+    ."$id" = "\($base)/schemas/workload/v2.json"
+    | .title = "Workload workload.yaml (LIB-0023, LIB-0028, LIB-0029, LIB-0030, LIB-0033, LIB-0037)"
+    | del(.required, .properties.prefix, .properties.suffix, .properties.features)
+    | .properties.scaleway.properties.project as $project
+    | del(.properties.scaleway.properties.project, .properties.cloudflare.properties.zone)
+    | .properties.cloudflare.properties.dnsRecord.additionalProperties |= {allOf: [., {not: {required: ["zone"]}}]}
+    | .properties = {
+        name: {type: "string", pattern: "^[a-z0-9]+(-[a-z0-9]+)*$", not: {const: "zone"}, description: "What the workload'"'"'s own resources carry in their names. Default: its directory (LIB-0037 §1)"},
+        deployments: {
+          type: ["object", "null"],
+          additionalProperties: false,
+          properties: {
+            scaleway: {
+              type: ["object", "null"],
+              additionalProperties: false,
+              properties: {
+                project: {allOf: [$project, {description: "Setting name, prefix or suffix gives the workload its own project; otherwise it lives in its zone'"'"'s, and prefix and suffix are the zone'"'"'s (LIB-0037 §2)"}, {anyOf: [{type: "null"}, {type: "object", properties: {prefix: {type: "string", minLength: 1}, suffix: {type: "string", minLength: 1}}}]}]}
+              }
+            },
+            githubPages: {
+              type: ["object", "null"],
+              additionalProperties: false,
+              description: "The site its host serves, deployed by the Pages shim <username>/<shim>. Implies the host'"'"'s Pages CNAMEs, which an entry of the same key overrides field by field (LIB-0037 §4)",
+              properties: {
+                username: {type: "string", minLength: 1, description: "Default: the spoke repo'"'"'s owner"},
+                shim: {type: "string", minLength: 1, description: "Default: the host as a domain, the zone for @"},
+                url: {type: "string", pattern: "^[a-z0-9-]+(\\.[a-z0-9-]+)+$", description: "Default: <username>.github.io"}
+              }
+            }
+          }
+        }
+      } + .properties
+  ' "$STATIC_ROOT/schemas/workload/v1.json" >"$STATIC_ROOT/schemas/workload/v2.json"
+
+  # A zone's zone.yaml (LIB-0036 §1): the kinds a zone takes, from the same
+  # table. A zone entry never names its zone, since its directory does.
+  mkdir -p "$STATIC_ROOT/schemas/zone"
+  jq --arg base "$SCHEMA_BASE_URL" '. as $k |
+    def zone_entries($kind): {
+      type: ["object", "null"],
+      propertyNames: {pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"},
+      additionalProperties: {allOf: [($k[$kind] // {}), {not: {required: ["zone"]}}]}
+    };
+    {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "\($base)/schemas/zone/v1.json",
+    title: "Zone zone.yaml (LIB-0036, LIB-0037)",
+    type: "object",
+    additionalProperties: false,
+    required: ["suffix"],
+    properties: {
+      name: {type: "string", minLength: 1, description: "The zone unit'"'"'s name, and its Scaleway project'"'"'s. Default: the zone apex, its directory (LIB-0036 §1)"},
+      prefix: {type: "string", pattern: "^[a-z0-9-]+$", description: "What every other resource'"'"'s name starts with. Default: name, with each character outside a-z, 0-9 and - as a dash (LIB-0036 §1)"},
+      suffix: {type: "string", minLength: 1},
+      workload: {type: "string", pattern: "^[a-z0-9]+(-[a-z0-9]+)*$", description: "The one workload that may also write records in this zone (LIB-0036 §§1, 3)"},
+      hosts: {
+        type: ["object", "null"],
+        propertyNames: {pattern: "^(@|[a-z0-9]([a-z0-9-]*[a-z0-9])?)$"},
+        additionalProperties: {type: "string", pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"},
+        description: "Who serves the apex (@) and each subdomain label: a workload under workloads/<zone>/, which writes records only at its host (LIB-0037 §3)"
+      },
+      scaleway: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        properties: {
+          project: ($k["scaleway/project"] // {}),
+          deployer: ($k["scaleway/terraform-deployer-iam"] // {}),
+          state: ($k["scaleway/bucket#state"] // {})
+        }
+      },
+      cloudflare: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        properties: {
+          deployer: ($k["cloudflare/api-token#workload"] // {}),
+          dnsRecord: zone_entries("cloudflare/dns-record"),
+          ruleset: zone_entries("cloudflare/ruleset#workload"),
+          apexRedirect: zone_entries("cloudflare/apex-redirect")
+        }
+      }
+    }
+  }' <<<"$kinds_json" >"$STATIC_ROOT/schemas/zone/v1.json"
+
+  # LIB-0038: the deployer is three entries (§1), one per module, and a
+  # zone's apexRedirect is a shorthand with the old module's four inputs (§3).
+  # v1 and v2 above keep the bundles, for files pinned to them.
+  deployer_schema="$(jq -c '. as $k | {
+    type: ["object", "null"],
+    additionalProperties: false,
+    description: "The unit'"'"'s deployer: an IAM application, its policy on the unit'"'"'s project and its API key, each at the instance deployer (LIB-0038 §1)",
+    properties: {
+      application: ($k["scaleway/iam-application"] // {}),
+      policy: ($k["scaleway/iam-policy"] // {}),
+      apiKey: ($k["scaleway/iam-api-key"] // {})
+    }
+  }' <<<"$kinds_json")"
+  jq --arg base "$SCHEMA_BASE_URL" --argjson deployer "$deployer_schema" '
+    ."$id" = "\($base)/schemas/workload/v3.json"
+    | .title = "Workload workload.yaml (LIB-0023, LIB-0028, LIB-0029, LIB-0030, LIB-0033, LIB-0037, LIB-0038)"
+    | .properties.scaleway.properties.deployer = $deployer
+  ' "$STATIC_ROOT/schemas/workload/v2.json" >"$STATIC_ROOT/schemas/workload/v3.json"
+  jq --arg base "$SCHEMA_BASE_URL" --argjson deployer "$deployer_schema" '
+    ."$id" = "\($base)/schemas/zone/v2.json"
+    | .title = "Zone zone.yaml (LIB-0036, LIB-0037, LIB-0038)"
+    | del(.properties.workload)
+    | .properties.scaleway.properties.deployer = $deployer
+    | .properties.cloudflare.properties.apexRedirect = {
+        type: ["object", "null"],
+        propertyNames: {pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"},
+        description: "A redirect of the apex, and by default www, to one URL. Each <key> implies cloudflare.dnsRecord.<key>-apex and <key>-www, the proxied placeholders, and cloudflare.ruleset.<key>, the redirect; an entry of the same key overrides field by field (LIB-0038 §3)",
+        additionalProperties: {
+          type: "object",
+          additionalProperties: false,
+          required: ["target_url"],
+          properties: {
+            target_url: {type: "string", pattern: "^https?://[^/]+", description: "URL every redirected request goes to. The path is not preserved"},
+            status_code: {type: "integer", enum: [301, 302, 303, 307, 308], description: "Default: 301"},
+            include_www: {type: "boolean", description: "Whether www is redirected too. Default: true"},
+            preserve_query_string: {type: "boolean", description: "Whether the query string is appended to target_url. Default: false"}
+          }
+        }
+      }
+  ' "$STATIC_ROOT/schemas/zone/v1.json" >"$STATIC_ROOT/schemas/zone/v2.json"
+
+  # LIB-0039: a file's content sits under one key (§1), its records at
+  # dnsRecords directly under it (§2), and a zone's services imply their
+  # provider's records (§3). The services table is the third twin of
+  # resolve-workloads.sh's service_dns and root.hcl's workload_cf_service_dns.
+  # shellcheck disable=SC2016 # a jq program, expanded by jq
+  wrap_jq='
+    def wrapped($key; $id; $title):
+      (.properties.cloudflare.properties.dnsRecord) as $dns
+      | del(."$schema", ."$id", .title, .properties.cloudflare.properties.dnsRecord)
+      | .properties.dnsRecords = $dns
+      | {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$id": $id,
+          title: $title,
+          type: "object",
+          additionalProperties: false,
+          required: [$key],
+          properties: {($key): .}
+        };'
+  jq --arg base "$SCHEMA_BASE_URL" "$wrap_jq"'
+    wrapped("workload"; "\($base)/schemas/workload/v4.json"; "Workload workload.yaml (LIB-0023, LIB-0028, LIB-0029, LIB-0030, LIB-0033, LIB-0037, LIB-0038, LIB-0039)")
+  ' "$STATIC_ROOT/schemas/workload/v3.json" >"$STATIC_ROOT/schemas/workload/v4.json"
+
+  # LIB-0043: Scaleway's compute kinds, and iam.policy and iam.apiKey as
+  # mappings (§1). privateNetwork, publicGateway and instance mix a module's
+  # inputs with keys of their own, which a module's inputs schema refuses, so
+  # theirs are built from the newest version's properties. The rules that
+  # reach across kinds are resolve-workloads.sh's and root.hcl's; this
+  # carries only E2 and E3 (§5), the ones an editor can see from one file.
+  # deployments.scaleway.project is built the same way, since prefix and
+  # suffix (LIB-0037 §2) aren't the project module's inputs, which v2 to v4
+  # refuse.
+  newest_props() {
+    local url
+    url="$(jq -r --arg m "$1" '.[$m].anyOf[1].allOf[0].then["$ref"] // empty' <<<"$kinds_json")"
+    if [ -n "$url" ] && [ -f "$STATIC_ROOT${url#"$SCHEMA_BASE_URL"}" ]; then
+      jq -c '.properties' "$STATIC_ROOT${url#"$SCHEMA_BASE_URL"}"
+    else
+      echo '{}'
+    fi
+  }
+  jq --arg base "$SCHEMA_BASE_URL" \
+    --argjson kinds "$kinds_json" \
+    --argjson pn "$(newest_props scaleway/private-network)" \
+    --argjson gw "$(newest_props scaleway/public-gateway)" \
+    --argjson ci "$(newest_props scaleway/compute-instance)" \
+    --argjson project "$(newest_props scaleway/project)" '
+    $kinds as $k
+    | def kebab: "^[a-z0-9]+(-[a-z0-9]+)*$";
+      def unwired($inputs): {not: {anyOf: [$inputs[] | {required: [.]}]}};
+      def entries($kind; $wired; $reserved): {
+        type: ["object", "null"],
+        propertyNames: {pattern: kebab, not: {anyOf: [{enum: $reserved}, {pattern: "^self-delete-"}]}},
+        additionalProperties: {allOf: [($k[$kind] // {}), unwired($wired)]}
+      };
+      def mixed($props; $extra; $drop):
+        {type: "object", additionalProperties: false, properties: (($props | del(.[$drop[]])) + $extra)};
+      def text: {anyOf: [{type: "string"}, {"$ref": "#/definitions/secretRef"}]};
+      def on($key): {required: [$key], properties: {($key): {not: {type: "object", required: ["enabled"], properties: {enabled: {const: false}}}}}};
+    ."$id" = "\($base)/schemas/workload/v5.json"
+    | .title = "Workload workload.yaml (LIB-0023, LIB-0028, LIB-0029, LIB-0030, LIB-0033, LIB-0037, LIB-0038, LIB-0039, LIB-0043)"
+    | .definitions = {
+        secretRef: {type: "object", required: ["secretRef"], additionalProperties: false, properties: {secretRef: {type: "string", description: "A name in secrets.workload.yaml'"'"'s env (LIB-0025)"}}},
+        keyring: {
+          type: ["object", "null"],
+          propertyNames: {pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"},
+          description: "Credentials cloud-init writes for the instance, by alias. A command names one as ${keyring.<alias>.alias} (LIB-0043 §4)",
+          additionalProperties: {
+            type: "object",
+            required: ["kind"],
+            properties: {kind: {enum: ["bucket", "email"]}},
+            allOf: [
+              {
+                if: {properties: {kind: {const: "bucket"}}},
+                then: {
+                  additionalProperties: false,
+                  required: ["bucket"],
+                  properties: {
+                    kind: {const: "bucket"},
+                    bucket: (text + {description: "A scaleway.bucket key, whose name and endpoint are wired, or the name of a bucket elsewhere, which then needs endpoint"}),
+                    endpoint: text,
+                    apiKey: {type: "string", pattern: kebab, description: "A scaleway.iam.apiKey key, whose credentials are wired"},
+                    access_key_id: text,
+                    secret_key: text
+                  },
+                  oneOf: [{required: ["apiKey"]}, {required: ["access_key_id", "secret_key"]}]
+                }
+              },
+              {
+                if: {properties: {kind: {const: "email"}}},
+                then: {
+                  additionalProperties: false,
+                  required: ["email", "provider", "host", "port", "secret"],
+                  properties: {
+                    kind: {const: "email"},
+                    email: text,
+                    provider: {enum: ["gmail", "fastmail", "icloud", "proton", "custom"]},
+                    host: text,
+                    port: {type: "integer"},
+                    secret: text,
+                    max_imap_connections: {type: "integer"}
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    | .properties.workload.properties.deployments.properties.scaleway.properties.project = {
+        anyOf: [{type: "null"}, mixed($project; {
+          version: {type: "string"},
+          prefix: {type: "string", pattern: "^[a-z0-9-]+$"},
+          suffix: {type: "string", minLength: 1}
+        }; [])],
+        description: "Setting name, prefix or suffix gives the workload its own project; otherwise it lives in its zone'"'"'s, and prefix and suffix are the zone'"'"'s (LIB-0037 §2)"
+      }
+    | .properties.workload.properties.scaleway |= (
+        .properties.iam.properties.policy = entries("scaleway/iam-policy"; ["application_id", "project_ids"]; ["deployer"])
+        | .properties.iam.properties.apiKey = entries("scaleway/iam-api-key"; ["application_id", "default_project_id"]; ["deployer"])
+        | .properties.blockVolume = {
+            type: ["object", "null"],
+            propertyNames: {pattern: kebab},
+            additionalProperties: {allOf: [($k["scaleway/block-volume"] // {}), {type: "object", required: ["size"]}, unwired(["project_id"])]}
+          }
+        | .properties.cockpit = {allOf: [($k["scaleway/cockpit-observability"] // {}), {anyOf: [{type: "null"}, unwired(["project_id"])]}], description: "Cockpit for the workload'"'"'s project. Every instance ships to it unless it sets cockpit: false"}
+        | .properties.privateNetwork = {anyOf: [{type: "null"}, mixed($pn; {
+            version: {type: "string"},
+            enabled: {type: "boolean", description: "false destroys the network and keeps its settings here. Default: true"}
+          }; ["project_id"])], description: "The workload'"'"'s one Private Network (LIB-0043 §5)"}
+        | .properties.publicGateway = {anyOf: [{type: "null"}, mixed($gw; {
+            version: {type: "string"},
+            enabled: {type: "boolean", description: "false destroys the gateway and keeps its settings here; every instance must then set network.publicIpv4: true. Default: true"},
+            type: {enum: ["VPC-GW-S", "VPC-GW-M", "VPC-GW-L", "VPC-GW-XL"], description: "Default: VPC-GW-S. Only ever upgraded in place"}
+          }; ["project_id", "private_network_id"])], description: "The workload'"'"'s one Public Gateway, egress and SSH for instances on the private network (LIB-0043 §5)"}
+        | .properties.instance = {
+            type: ["object", "null"],
+            propertyNames: {pattern: kebab, maxLength: 40, not: {enum: ["main", "deployer"]}},
+            description: "Each <key> is a compute-instance and its compute-instance-config, and with selfDelete its own IAM application, policy and key (LIB-0043 §§2-3)",
+            additionalProperties: mixed($ci | with_entries(select(.key | IN("type", "image", "enabled", "ssh_key", "name_prefix", "name_suffix"))); {
+              version: {type: "string"},
+              network: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  privateNetwork: {type: "boolean", description: "Attach a NIC on the private network. Default: whether scaleway.privateNetwork is on"},
+                  publicIpv4: {type: "boolean", description: "Give it a routed IPv4. With the gateway on and the instance on the network, the IP is outbound-only while the gateway pushes its default route. Default: false"},
+                  sshViaGateway: {type: "integer", minimum: 1, maximum: 65535, description: "The gateway port forwarded to its port 22; unique across instances"}
+                }
+              },
+              volumes: {type: "array", maxItems: 1, items: {type: "string", pattern: kebab}, description: "The scaleway.blockVolume key mounted at /mnt/data"},
+              cockpit: {type: "boolean", description: "Ship metrics and logs to scaleway.cockpit. Default: whether it is declared"},
+              transcoding: {type: "boolean", description: "Install transcoding tools; x86_64 types only"},
+              selfDelete: {type: "boolean", description: "Delete the instance once its commands exit, with its own application, policy and key. Default: false"},
+              commands: {type: "array", items: {type: "string"}},
+              keyring: {"$ref": "#/definitions/keyring"}
+            }; [])
+          }
+        | .properties.sharedKeyring = ({"$ref": "#/definitions/keyring"} + {description: "Merged under every instance'"'"'s keyring, which wins on a shared alias"})
+        | .allOf = [
+            {if: {not: on("publicGateway")}, then: {properties: {instance: {additionalProperties: {required: ["network"], properties: {network: {required: ["publicIpv4"], properties: {publicIpv4: {const: true}}}}}}}}},
+            {if: on("publicGateway"), then: on("privateNetwork")}
+          ]
+      )
+  ' "$STATIC_ROOT/schemas/workload/v4.json" >"$STATIC_ROOT/schemas/workload/v5.json"
+
+  # LIB-0045 §§6-8: a bucket's grants, and a key's buckets of another
+  # workload, from each version's granted.schema.json. v5 stays as it was.
+  jq --arg base "$SCHEMA_BASE_URL" --argjson kinds "$kinds_json" '
+    ."$id" = "\($base)/schemas/workload/v6.json"
+    | .title = "Workload workload.yaml (LIB-0023, LIB-0028, LIB-0029, LIB-0030, LIB-0033, LIB-0037, LIB-0038, LIB-0039, LIB-0043, LIB-0045)"
+    | .properties.workload.properties.backblaze.properties.bucket.additionalProperties = ($kinds["backblaze/bucket#granted"] // {})
+    | .properties.workload.properties.backblaze.properties.apiKey.additionalProperties = ($kinds["backblaze/api-key#granted"] // {})
+  ' "$STATIC_ROOT/schemas/workload/v5.json" >"$STATIC_ROOT/schemas/workload/v6.json"
+  jq --arg base "$SCHEMA_BASE_URL" "$wrap_jq"'
+    def dmarc: {
+      type: ["boolean", "string"],
+      pattern: "^v=DMARC1;",
+      description: "true (the default) implies the policy v=DMARC1; p=quarantine; pct=100; adkim=s; aspf=s at _dmarc, a string implies that policy instead, and false implies none (LIB-0039 §3)"
+    };
+    def service($desc; $props; $required):
+      {
+        type: ["object", "null"],
+        additionalProperties: false,
+        description: $desc,
+        properties: ({enabled: {type: "boolean", description: "Whether its records are implied. Default: false"}} + $props),
+        if: {required: ["enabled"], properties: {enabled: {const: true}}},
+        then: {required: $required}
+      };
+    (.properties.cloudflare.properties.apexRedirect.description |= sub("cloudflare\\.dnsRecord\\."; "dnsRecords."))
+    | .properties.services = {
+        type: ["object", "null"],
+        additionalProperties: false,
+        description: "Mail and identity providers. Each enabled one implies its records in dnsRecords, keyed <service>-<record>, which an entry of the same key overrides field by field. proton and fastmail are never both enabled (LIB-0039 §3)",
+        properties: {
+          proton: service("Proton Pass aliases: MX, DKIM, SPF, DMARC and the two verification records"; {
+            verification: {
+              type: "object",
+              additionalProperties: false,
+              required: ["pm", "protonmail"],
+              properties: {
+                pm: {type: "string", minLength: 1, description: "The pm-verification= value"},
+                protonmail: {type: "string", minLength: 1, description: "The protonmail-verification= value"}
+              }
+            },
+            dmarc: dmarc
+          }; ["verification"]),
+          fastmail: service("Fastmail: MX, DKIM, SPF and DMARC"; {dmarc: dmarc}; []),
+          googleSearch: service("Google Search Console site verification"; {
+            verification: {type: "string", minLength: 1, description: "The google-site-verification= value"}
+          }; ["verification"]),
+          bluesky: service("A Bluesky handle at the zone apex"; {
+            did: {type: "string", pattern: "^did:", description: "The account DID, served at _atproto"}
+          }; ["did"])
+        }
+      }
+    | wrapped("zone"; "\($base)/schemas/zone/v3.json"; "Zone zone.yaml (LIB-0036, LIB-0037, LIB-0038, LIB-0039)")
+  ' "$STATIC_ROOT/schemas/zone/v2.json" >"$STATIC_ROOT/schemas/zone/v3.json"
+
+  # A spoke's policies.yaml (LIB-0045 §4): one optional property per policy,
+  # its own params schema beside its filter plus `exempt`. A new policy adds
+  # one to v1 in place.
+  mkdir -p "$STATIC_ROOT/schemas/policies"
+  for pschema in "$LIB_ROOT"/.github/scripts/policies/*.schema.json; do
+    [ -f "$pschema" ] || continue
+    jq --arg id "$(basename "$pschema" .schema.json)" '{($id): .}' "$pschema"
+  done | jq -s --arg base "$SCHEMA_BASE_URL" 'add // {} | {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "\($base)/schemas/policies/v1.json",
+    title: "Spoke policies.yaml (LIB-0045)",
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      policies: {
+        type: "object",
+        description: "The policies this spoke enforces, each with its params",
+        additionalProperties: false,
+        properties: with_entries(.value |= (
+          .properties += {exempt: {
+            type: "array",
+            description: "Violations this spoke excuses, one per path; one that matches nothing fails",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["path", "reason"],
+              properties: {path: {type: "string", minLength: 1}, reason: {type: "string", minLength: 1}}
+            }
+          }}
+          | .additionalProperties = false))
+      }
+    }
+  }' >"$STATIC_ROOT/schemas/policies/v1.json"
+
+  echo "Generated ${schema_count} module inputs schema(s), and the workload, zone and policies schemas, under ${STATIC_ROOT}."
+fi
+
+mkdir -p "$THEME_CONTENT_DIR"
+find "$THEME_CONTENT_DIR" -maxdepth 1 -name '*.md' ! -name '_index.md' -delete
+
+theme_count=0
+while IFS= read -r tag; do
+  [ -z "$tag" ] && continue
+
+  if [[ ! "$tag" =~ ^(zola-site)/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+    echo "::warning::Skipping theme tag with unexpected shape: $tag" >&2
+    continue
+  fi
+
+  theme="${BASH_REMATCH[1]}"
+  version="${BASH_REMATCH[2]}"
+
+  slug="${theme}-v${version}"
+  url_path="templates/${theme}/v${version}"
+  github_url="https://github.com/${TAG_REPO}/releases/tag/${tag}"
+
+  cat > "$THEME_CONTENT_DIR/${slug}.md" <<EOF
++++
+title = "templates/${theme} v${version}"
+description = "templates/${theme} theme, version ${version}."
+path = "${url_path}"
+template = "theme-redirect.html"
+in_search_index = false
+include_in_feeds = false
+hidden = true
+
+[extra]
+github_url = "${github_url}"
++++
+EOF
+
+  theme_count=$((theme_count + 1))
+done < <(templates_tags 'zola-site/v*' | sort)
+
+echo "Generated ${theme_count} theme-version redirect page(s) under ${THEME_CONTENT_DIR#"$CONTENT_ROOT"/}."
+
+# One post per module release, from the modules' own CHANGELOG.md files
+# (ADR-0141's content, ADR-0154's mechanism). Each "## [X.Y.Z] - YYYY-MM-DD"
+# entry becomes a post: its "### " line is the description, everything after
+# is the body verbatim. Note the split is on the versioned heading
+# specifically, not any "## " -- at least one entry body contains its own
+# "## Test plan" heading.
+mkdir -p "$RELEASES_CONTENT_DIR"
+find "$RELEASES_CONTENT_DIR" -maxdepth 1 -name '*.md' ! -name '_index.md' -delete
+
+# Posts carry an America/Los_Angeles timestamp, matching what
+# template-release.yml stamps on the day it cuts a release. The offset is
+# whatever that date's was, so entries either side of a DST change differ --
+# precompute one offset per distinct date (GNU date first, BSD fallback).
+offset_for_date() {
+  local raw
+  raw="$(TZ="America/Los_Angeles" date -d "$1 12:00:00" +%z 2>/dev/null \
+    || TZ="America/Los_Angeles" date -j -f "%Y-%m-%d %H:%M:%S" "$1 12:00:00" +%z 2>/dev/null)"
+  if [ -z "$raw" ]; then
+    echo "::error::Could not compute UTC offset for date $1" >&2
+    exit 1
+  fi
+  echo "$raw" | sed -E 's/([+-][0-9]{2})([0-9]{2})/\1:\2/'
+}
+
+# Read each module's CHANGELOG.md from the library's default branch, not from the
+# working tree. LIB_ROOT is checked out at whatever ref a spoke pins in
+# .lib-version, which by construction predates any release cut after that pin --
+# so the working-tree copy is missing exactly the newest entry, the one a fresh
+# release most needs published. That asymmetry is subtle and bit once: a module
+# release published its redirect page (tag-derived, and tags are fetched in full)
+# while its release post silently did not appear (file-derived, and pinned).
+#
+# Deliberately origin/main rather than the version tag. The tag carries its own
+# entry, but it does NOT carry entries backfilled for *older* tags afterwards --
+# and four such entries exist, from the backfill of six previously undocumented
+# module tags. Reading the tag alone silently dropped them. Neither the tag nor
+# the pinned tree is a superset of the other; the default branch is a superset of
+# both.
+#
+# Release notes are append-only published history, and the tag graph above is
+# already read live, so pinning only the notes is what created the mismatch.
+#
+# Module list comes from the tag graph too, so a module released after the pin is
+# still covered.
+CHANGELOG_REF="${CHANGELOG_REF:-origin/main}"
+if ! git -C "$LIB_ROOT" rev-parse --verify --quiet "$CHANGELOG_REF" >/dev/null; then
+  echo "::error::$LIB_ROOT has no ref $CHANGELOG_REF to read release notes from" >&2
+  exit 1
+fi
+
+changelog_src="$(mktemp -d)"
+trap 'rm -rf "${changelog_src:?}"' EXIT
+
+while IFS= read -r mdir; do
+  [ -z "$mdir" ] && continue
+  rel="${mdir#terraform/}"
+  mkdir -p "${changelog_src}/${rel}"
+  if ! git -C "$LIB_ROOT" show "${CHANGELOG_REF}:${mdir}/CHANGELOG.md" \
+      > "${changelog_src}/${rel}/CHANGELOG.md" 2>/dev/null; then
+    echo "::warning::No CHANGELOG.md at ${CHANGELOG_REF}:${mdir}; skipping its release posts" >&2
+    rm -rf "${changelog_src:?}/${rel:?}"
+  fi
+done < <(templates_tags 'terraform/*/*/v*' \
+  | sed -E 's#/v[0-9]+\.[0-9]+\.[0-9]+$##' | sort -u)
+
+changelogs="$(find "$changelog_src" -mindepth 3 -maxdepth 3 -name CHANGELOG.md | sort)"
+
+offset_map=""
+while IFS= read -r d; do
+  [ -z "$d" ] && continue
+  offset_map="${offset_map}${d}=$(offset_for_date "$d");"
+done < <(echo "$changelogs" | xargs grep -hE '^## \[[0-9]+\.[0-9]+\.[0-9]+\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  | sed -E 's/^## \[[0-9.]+\] - ([0-9-]+)$/\1/' | sort -u)
+
+release_count=0
+while IFS= read -r changelog; do
+  [ -z "$changelog" ] && continue
+  module="$(basename "$(dirname "$changelog")")"
+  provider="$(basename "$(dirname "$(dirname "$changelog")")")"
+
+  written=$(awk -v provider="$provider" -v module="$module" \
+                -v outdir="$RELEASES_CONTENT_DIR" -v offsets="$offset_map" '
+    function offset_for(d,   n, i, parts, kv) {
+      n = split(offsets, parts, ";")
+      for (i = 1; i <= n; i++) {
+        if (split(parts[i], kv, "=") == 2 && kv[1] == d) return kv[2]
+      }
+      print "::error::No offset for date " d > "/dev/stderr"
+      exit 1
+    }
+    function flush(   path, i) {
+      if (version == "") return
+      while (nbody > 0 && body[nbody] == "") nbody--
+      path = outdir "/" provider "-" module "-v" version ".md"
+      printf "+++\n" > path
+      printf "title = \"%s/%s v%s\"\n", provider, module, version > path
+      printf "date = %sT12:00:00%s\n", date, offset_for(date) > path
+      printf "slug = \"%s-%s-v%s\"\n", provider, module, version > path
+      printf "description = \"%s\"\n", escaped_title > path
+      printf "+++\n\n" > path
+      for (i = 1; i <= nbody; i++) print body[i] > path
+      close(path)
+      written++
+    }
+    /^## \[[0-9]+\.[0-9]+\.[0-9]+\] - [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ {
+      flush()
+      version = $0; sub(/^## \[/, "", version); sub(/\].*$/, "", version)
+      date = $0; sub(/^.* - /, "", date)
+      escaped_title = ""; nbody = 0; seen_title = 0
+      next
+    }
+    version == "" { next }
+    !seen_title && /^### / {
+      escaped_title = substr($0, 5)
+      gsub(/\\/, "\\\\", escaped_title)
+      gsub(/"/, "\\\"", escaped_title)
+      seen_title = 1
+      skip_blank = 1
+      next
+    }
+    !seen_title { next }
+    skip_blank && $0 == "" { skip_blank = 0; next }
+    { skip_blank = 0; body[++nbody] = $0 }
+    END { flush(); print written + 0 }
+  ' "$changelog")
+
+  release_count=$((release_count + written))
+done <<<"$changelogs"
+
+echo "Generated ${release_count} release post(s) under ${RELEASES_CONTENT_DIR#"$CONTENT_ROOT"/}."
