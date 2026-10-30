@@ -10,8 +10,9 @@
 pigeon-cli's release of 0.4.60 was its first run through runway's
 `rust-crate-release.yml@workflows/v9.3.0` (LIB-0047). It was triggered by the
 merge of noisypigeon/pigeon-cli#146, and it ran at about 19:10 UTC on
-2026-10-30. Both `build-binaries` jobs on `macos-14` failed in one second,
-before any step ran:
+2026-10-30. GitHub cancelled both `build-binaries` jobs on `macos-14` within
+one second, before any step ran, so the run concluded `cancelled`. The
+annotation on each says:
 
 > This job failed because of a scheduled macOS 14 runner image brownout.
 > macOS 14 runner images will be retired on November 2, 2026.
@@ -120,16 +121,23 @@ image can do the same. x64 hosts still exist, as `macos-15-intel` and
      caller needs another image, and an input nobody sets only hides the
      label from the next audit.
 
-3. **0.4.60 is recovered by re-running its failed jobs, and only before
-   retirement.**
+3. **0.4.60 gets its two macOS tarballs and its image by re-running its
+   unsuccessful jobs, and only before retirement. The crate is never
+   republished.**
    - **Primary.** Run "Re-run failed jobs" on pigeon-cli run 41112699084
-     outside a brownout. The windows that remain are **Oct 31 00:00–14:00 UTC**
-     and **Nov 1 00:00–14:00 UTC**.
-     - **What it re-runs.** The two macOS `build-binaries` jobs, which attach
-       their tarballs to the existing Release, and then the `image` job that
-       depends on them, which pushes GHCR `0.4.60`. The succeeded `release`
-       job is not re-run, so nothing is cut, tagged or republished.
-       `crate-release.sh` is idempotent anyway (CLI-0150).
+     (`gh run rerun 41112699084 --failed`) outside a brownout. GitHub counts
+     cancelled jobs as failed for this. The windows that remain are
+     **Oct 31 00:00–14:00 UTC** and **Nov 1 00:00–14:00 UTC**.
+     - **What it re-runs.** The two cancelled macOS `build-binaries` jobs,
+       which attach `aarch64-apple-darwin` and `x86_64-apple-darwin` tarballs
+       to the existing `v0.4.60` Release. Then it runs the skipped `image` job
+       that depends on them, which pushes GHCR `0.4.60` from the `v0.4.60` tag.
+     - **What it leaves alone.** The succeeded `release` job, and with it
+       `crate-release.sh`, is not re-run, so nothing is bumped, committed,
+       tagged or published to crates.io.
+     - **Never "Re-run all jobs".** That would run `release` again from the
+       original commit. It would try to cut 0.4.60 a second time against a
+       `main` that has already moved past it.
      - **Why the timing matters.** A re-run reuses the workflow definition
        from the original commit, so it still asks for `macos-14`. The matrix
        change in §1 cannot help this run.
@@ -178,7 +186,7 @@ each pigeon-cli merge publishes to crates.io and can't be undone.
 
 | # | Where | Change | Label | Pins |
 |---|---|---|---|---|
-| 0 | pigeon-cli run 41112699084 | Re-run failed jobs, Oct 31 or Nov 1, 00:00–14:00 UTC (§3) | n/a | none |
+| 0 | pigeon-cli run 41112699084 | Re-run failed jobs (cancelled ones included; never "all jobs"), Oct 31 or Nov 1, 00:00–14:00 UTC (§3) | n/a | none |
 | 1 | runway | `docs(adr): LIB-0048 pin runner labels past macos-14`: this record | none (docs only) | none |
 | 2 | pigeon-cli | `ci(lib-0048): build macOS targets on macos-15`: both matrix entries (§1), plus the CLI-0161 amendment recording 0.4.60's outcome. Merge before Nov 2; it releases 0.4.61 | none (releases on merge) | none: the matrix is the caller's |
 | 3 | runway | `ci(lib-0048): pin runs-on to ubuntu-24.04`: every reusable and own job (§2) | `release:patch` → `workflows/v9.3.1` | none on its own; see 5 |
