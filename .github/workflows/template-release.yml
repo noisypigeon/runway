@@ -1,10 +1,16 @@
 name: template-release
 
-# Disabled for the hoist (LIB-0047's 2026-10-28 amendment, item 1): on the
-# merge that brings lib/ in, every path is new, so this would act on every
-# unit. The rewiring PR restores the trigger with lib/ paths.
+# Releases the library, which is runway's lib/ (LIB-0047). Every unit lives
+# under lib/ except the reusable workflows, which GitHub only runs from
+# .github/workflows/. A unit's tag is its path under lib/: lib/terraform/<p>/<m>
+# is tagged terraform/<p>/<m>/vX.Y.Z, as it was before the hoist.
 on:
-  workflow_dispatch: {}
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths:
+      - "lib/**"
+      - ".github/workflows/**"
 
 permissions:
   contents: write
@@ -56,8 +62,9 @@ jobs:
         id: modules
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        working-directory: lib
         run: |
-          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          CHANGED_FILES=$(git diff --relative --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
 
           MODULE_DIRS=$(find terraform -mindepth 3 -maxdepth 3 -name versions.tf -printf '%h\n' | sort)
 
@@ -74,8 +81,9 @@ jobs:
         id: zola_site
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        working-directory: lib
         run: |
-          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          CHANGED_FILES=$(git diff --relative --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
           if echo "$CHANGED_FILES" | grep -qE '^zola-site/(templates/|static/|theme\.toml$)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
@@ -89,8 +97,9 @@ jobs:
         id: root_hcl
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        working-directory: lib
         run: |
-          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          CHANGED_FILES=$(git diff --relative --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
           if echo "$CHANGED_FILES" | grep -qE '^terragrunt/root-hcl/(root\.hcl|secrets-schema\.json)$'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
@@ -111,8 +120,9 @@ jobs:
         id: dashboards
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        working-directory: lib
         run: |
-          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          CHANGED_FILES=$(git diff --relative --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
           SETS=$(echo "$CHANGED_FILES" \
             | grep -E '^grafana-dashboards/[^/]+/[^/]+\.json$|^(observability|claude-plugins)/[^/]+/.+' \
             | grep -vE '^(observability|claude-plugins)/[^/]+/(README|CHANGELOG)\.md$' \
@@ -133,7 +143,17 @@ jobs:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
-          if echo "$CHANGED_FILES" | grep -qE '^\.github/(workflows/[^/]+\.yml|scripts/)'; then
+          # A workflow is reusable if either side of the diff is called with
+          # workflow_call, so adding or deleting one counts too.
+          reusable_changed() {
+            for f in $(echo "$CHANGED_FILES" | grep -E '^\.github/workflows/[^/]+\.yml$'); do
+              for rev in "$MERGE_SHA" "${MERGE_SHA}~1"; do
+                git show "${rev}:${f}" 2>/dev/null | grep -qE '^  workflow_call:' && return 0
+              done
+            done
+            return 1
+          }
+          if reusable_changed || echo "$CHANGED_FILES" | grep -qE '^lib/scripts/'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -155,6 +175,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           CHANGED_MODULES: ${{ steps.modules.outputs.changed }}
+        working-directory: lib
         run: |
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
           TAGS=""
@@ -227,13 +248,14 @@ jobs:
             # Also add a one-liner to the repo-wide root CHANGELOG.md (DEV-0160).
             # Passing --date reuses the $TODAY above, so the rollup line and this
             # module's own entry can never straddle a midnight boundary.
-            .github/scripts/root-changelog.sh \
+            scripts/root-changelog.sh \
               --tag "${dir#terraform/}" \
               --title "$PR_TITLE" \
               --number "$PR_NUMBER" \
               --url "$PR_URL" \
-              --date "$TODAY"
-            git add CHANGELOG.md
+              --date "$TODAY" \
+              --file ../CHANGELOG.md
+            git add ../CHANGELOG.md
           done
 
           echo "tags=${TAGS# }" >> "$GITHUB_OUTPUT"
@@ -247,6 +269,7 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+        working-directory: lib
         run: |
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
           DIR="zola-site"
@@ -296,13 +319,14 @@ jobs:
           git add "$CHANGELOG"
 
           # One-liner into the root CHANGELOG.md, same contract as above (DEV-0160).
-          .github/scripts/root-changelog.sh \
+          scripts/root-changelog.sh \
             --tag "zola-site" \
             --title "$PR_TITLE" \
             --number "$PR_NUMBER" \
             --url "$PR_URL" \
-            --date "$TODAY"
-          git add CHANGELOG.md
+            --date "$TODAY" \
+            --file ../CHANGELOG.md
+          git add ../CHANGELOG.md
 
           echo "tag=${DIR}/v${NEXT}" >> "$GITHUB_OUTPUT"
 
@@ -315,6 +339,7 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+        working-directory: lib
         run: |
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
           DIR="terragrunt/root-hcl"
@@ -363,13 +388,14 @@ jobs:
           mv "${CHANGELOG}.new" "$CHANGELOG"
           git add "$CHANGELOG"
 
-          .github/scripts/root-changelog.sh \
+          scripts/root-changelog.sh \
             --tag "terragrunt/root-hcl" \
             --title "$PR_TITLE" \
             --number "$PR_NUMBER" \
             --url "$PR_URL" \
-            --date "$TODAY"
-          git add CHANGELOG.md
+            --date "$TODAY" \
+            --file ../CHANGELOG.md
+          git add ../CHANGELOG.md
 
           echo "tag=${DIR}/v${NEXT}" >> "$GITHUB_OUTPUT"
 
@@ -383,6 +409,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           CHANGED_SETS: ${{ steps.dashboards.outputs.changed }}
+        working-directory: lib
         run: |
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
           TAGS=""
@@ -433,13 +460,14 @@ jobs:
             git add "$CHANGELOG"
             TAGS="$TAGS ${dir}/v${NEXT}"
 
-            .github/scripts/root-changelog.sh \
+            scripts/root-changelog.sh \
               --tag "$dir" \
               --title "$PR_TITLE" \
               --number "$PR_NUMBER" \
               --url "$PR_URL" \
-              --date "$TODAY"
-            git add CHANGELOG.md
+              --date "$TODAY" \
+              --file ../CHANGELOG.md
+            git add ../CHANGELOG.md
           done
 
           echo "tags=${TAGS# }" >> "$GITHUB_OUTPUT"
@@ -502,7 +530,7 @@ jobs:
           mv "${CHANGELOG}.new" "$CHANGELOG"
           git add "$CHANGELOG"
 
-          .github/scripts/root-changelog.sh \
+          lib/scripts/root-changelog.sh \
             --tag "workflows" \
             --title "$PR_TITLE" \
             --number "$PR_NUMBER" \
@@ -556,11 +584,11 @@ jobs:
             gh release create "$tag" --title "$tag" --notes-file "$NOTES"
           done
 
-      # The hub hosts no site, so every deploy dispatch is cross-repo
-      # (LIB-0002). noisypigeon.garden's module redirect pages, overview
-      # pages, theme-version pages, release posts and schemas are generated
-      # and committed in runway's workloads/garden/ (LIB-0035 §§2, 4), so
-      # every release dispatches runway's garden-generate.yml. Its commit
+      # noisypigeon.garden's module redirect pages, overview pages,
+      # theme-version pages, release posts and schemas are generated and
+      # committed in this repo's workloads/noisypigeon.garden/garden/
+      # (LIB-0035 §§2, 4), so every release dispatches garden-generate.yml
+      # here. Since LIB-0047 that is no longer a cross-repo dispatch. Its commit
       # deploys itself, through runway's sites.yml and the
       # noisypigeon/noisypigeon.garden shim; a release that changes no page
       # commits nothing and deploys nothing. noisypigeon/noisypigeon.com only
@@ -570,15 +598,15 @@ jobs:
       # repo's tag list, so dispatching first would race the tag into
       # existence.
       #
-      # Both need BOT_GITHUB_TOKEN to carry actions: write on the target. If
-      # it doesn't, these steps fail loudly -- which is the point. A missed
-      # dispatch leaves a version tagged and released here whose short URL
-      # 404s on the site.
+      # Both need BOT_GITHUB_TOKEN to carry actions: write on their repo, this
+      # one and noisypigeon/noisypigeon.com. If it doesn't, these steps fail
+      # loudly -- which is the point. A missed dispatch leaves a version
+      # tagged and released here whose short URL 404s on the site.
       - name: Trigger garden generation
         if: steps.modules.outputs.changed != '' || steps.zola_site.outputs.changed == 'true' || steps.workflows.outputs.changed == 'true' || steps.root_hcl.outputs.changed == 'true' || steps.dashboards.outputs.changed != ''
         env:
           GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
-        run: gh workflow run garden-generate.yml -R noisypigeon/runway --ref main
+        run: gh workflow run garden-generate.yml -R "$GITHUB_REPOSITORY" --ref main
 
       # Replaces a dispatch at zola-sites-deploy.yml in noisypigeon/noisypigeon,
       # which DEV-0159 removed from that repo -- so this step had been failing

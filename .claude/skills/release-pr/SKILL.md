@@ -1,16 +1,19 @@
 ---
 name: release-pr
-description: Use this skill when making a change to one of this repo's terraform/ Terraform modules or the zola-site/ theme and getting it merged to main. This is the library hub repo; consumers are the spoke repos (noisypigeon, runway) and are bumped in a separate PR there. Covers branching off main, committing, opening the pull request, applying the required release:* label, merging, and syncing local main afterward. Trigger on requests like "open a PR for this", "release this module change", "ship this to main", or "merge this terraform module or zola-site theme change".
+description: Use this skill when making a change under lib/ — a lib/terraform/ module, the lib/zola-site/ theme, the lib/terragrunt/root-hcl/ template, a dashboard set, the observability stack, the plugin, lib/scripts/ or a reusable workflow — and getting it merged to main. lib/ is the library, hoisted into runway by LIB-0047; runway and the other consumers take a release by bumping their pin in a separate PR. Covers branching off main, committing, opening the pull request, applying the required release:* label, merging, and syncing local main afterward. Trigger on requests like "open a PR for this", "release this module change", "ship this to main", or "merge this module or theme change".
 ---
 
-# Releasing a terraform/ or zola-site/ change
+# Releasing a lib/ change
 
-This repo's release automation has no human reviewer and no branch-protection
-rules — this skill *is* the PR discipline. Follow it in full for every
-change, including trivial ones, because the PR body becomes that module's (or
-the theme's) changelog entry and GitHub Release notes verbatim, and the label
-drives the version bump. There is no separate "write good release notes" step
-later — get the PR body right the first time.
+The library's release automation has no human reviewer, and this skill *is*
+the PR discipline. Follow it in full for every change under `lib/`, including
+trivial ones. The PR body becomes the unit's changelog entry and GitHub
+Release notes verbatim, and the label drives the version bump. There is no
+separate "write good release notes" step later, so get the PR body right the
+first time.
+
+A PR that changes nothing under `lib/` and no reusable workflow is a runway
+change, not a release. It follows `CLAUDE.md`'s Terraform flow instead.
 
 ## Steps
 
@@ -21,85 +24,89 @@ later — get the PR body right the first time.
    git checkout -b <descriptive-branch-name>
    ```
 
-2. **Make the change and commit it.** Commit message content is not what
-   drives the changelog — the PR title and body are. Write commits for
-   git history, not for release notes.
+2. **Make the change and commit it.** Commit messages are for git history.
+   The PR title and body are what drive the changelog.
 
 3. **Open the PR with a body written for its second life as a changelog entry
    and release note**, not just for a reviewer:
-   - Title: short, imperative, human-readable — it becomes the changelog
+   - Title: short, imperative, human-readable. It becomes the changelog
      section heading verbatim (e.g. "Add versioning input to object-bucket").
-   - Body: written in full sentences a consumer of the module (or theme)
-     would want to read later, describing what changed and why it matters to
-     someone consuming it — not "fixed bug" or a raw commit list. It is
-     copied verbatim into that unit's own `CHANGELOG.md`
-     (`terraform/<provider>/<module>/CHANGELOG.md` or
-     `zola-site/CHANGELOG.md`) and into the GitHub Release notes by
-     `template-release.yml` on merge, with no editing pass in between.
+   - Body: full sentences a consumer of the unit would want to read later,
+     describing what changed and why it matters to them, not "fixed bug" or a
+     raw commit list. `template-release.yml` copies it verbatim into that
+     unit's own `CHANGELOG.md` (`lib/terraform/<provider>/<module>/CHANGELOG.md`,
+     `lib/zola-site/CHANGELOG.md`, `.github/workflows/CHANGELOG.md` for the
+     workflows track, and so on) and into the GitHub Release notes on merge,
+     with no editing pass in between.
    ```
    gh pr create --title "<title>" --body "<body>" --base main
    ```
 
-4. **Apply exactly one `release:*` label before merging** — this determines
-   the version bump for every module changed in this PR:
-   - `release:major` — breaking change to a module's inputs/outputs/behavior.
-   - `release:minor` — backwards-compatible addition.
-   - `release:patch` — fix or internal-only change. This is also what
-     `template-release.yml` defaults to if no `release:*` label is present, so
-     applying it explicitly isn't strictly required to get a release, but do
-     it anyway — an unlabeled PR is a signal something was skipped, not a
+4. **Apply exactly one `release:*` label before merging.** It sets the version
+   bump for every unit the PR changes:
+   - `release:major`: a breaking change to a unit's inputs, outputs or
+     behavior.
+   - `release:minor`: a backwards-compatible addition.
+   - `release:patch`: a fix or internal-only change. `template-release.yml`
+     also defaults to this when no label is present. Apply it explicitly
+     anyway: an unlabeled PR is a sign something was skipped, not a
      deliberate patch decision.
-   - A PR that doesn't touch any `terraform/<provider>/<module>/`
-     directory, `zola-site/templates/`, `static/`, or
-     `theme.toml`, `.github/workflows/*.yml` or `.github/scripts/`, or
-     `terragrunt/root-hcl/root.hcl` or `secrets-schema.json`, or `grafana-dashboards/<set>/*.json`, or anything under `observability/<set>/` or
-     `claude-plugins/<set>/` other than its README/CHANGELOG (e.g. root-doc, or
-     `zola-site/README.md`/`CHANGELOG.md`-only changes) doesn't
-     need a label at all — nothing will be tagged or released regardless. It
-     still gets a one-line entry in the root `CHANGELOG.md` from
-     `root-changelog.yml` (DEV-0160), so the PR title still has a second life as
-     published copy.
+
+   A unit releases when the PR changes:
+   - a `.tf` under `lib/terraform/<provider>/<module>/`;
+   - `lib/zola-site/templates/`, `static/` or `theme.toml`;
+   - `lib/terragrunt/root-hcl/root.hcl` or `secrets-schema.json`;
+   - a `lib/grafana-dashboards/<set>/*.json`;
+   - anything under `lib/observability/<set>/` or `lib/claude-plugins/<set>/`
+     other than its README or CHANGELOG;
+   - `lib/scripts/`, or a **reusable** workflow (one with `workflow_call`) in
+     `.github/workflows/`. runway's own callers live there too, and changing
+     one releases nothing.
+
+   Anything else under `lib/`, such as a README- or CHANGELOG-only change,
+   needs no label: nothing is tagged. It still gets one line in the root
+   `CHANGELOG.md` from `root-changelog.yml` (DEV-0160), so the PR title still
+   has a second life as published copy.
    ```
    gh pr edit <pr-number> --add-label "release:patch"
    ```
 
-5. **Merge the PR** once ready (no separate review gate exists — this is the
-   discipline checkpoint):
+5. **Merge the PR** once ready. There is no separate review gate, so this is
+   the discipline checkpoint:
    ```
    gh pr merge <pr-number> --squash --delete-branch
    ```
-   Merging triggers `template-release.yml` automatically (tags the changed
-   module(s), updates their `CHANGELOG.md` and the root one, cuts a GitHub
-   Release, then dispatches `garden-generate.yml` in `noisypigeon/runway`,
-   which regenerates this version's redirect page, overview entry and release
-   post, commits them under `workloads/garden/`, and so deploys them through
-   the `noisypigeon/noisypigeon.garden` shim) and, on any resulting `.tf`
-   changes, `module-docs.yml` (regenerates the module's `README.md`
-   input/output table). A `zola-site` release
-   additionally dispatches `pages.yml` in
-   `noisypigeon/noisypigeon.com`, the other site that renders with the theme.
-   None need triggering manually.
+   Merging triggers `template-release.yml`. It tags each changed unit, updates
+   its `CHANGELOG.md` and the root one, cuts a GitHub Release, then dispatches
+   `garden-generate.yml` in this repo. That regenerates noisypigeon.garden's
+   pages under `workloads/noisypigeon.garden/garden/` and commits them, which
+   deploys them through `sites.yml` and the `noisypigeon/noisypigeon.garden`
+   shim. A `lib/terraform/` change also triggers `module-docs.yml`, which
+   regenerates the module's `README.md` input/output table. A theme release
+   additionally dispatches `pages.yml` in `noisypigeon/noisypigeon.com`. None
+   of these need triggering by hand.
 
-   Watch those dispatch steps. This repo hosts no site, so **every** deploy it
-   triggers reaches another repo, and each fails if `BOT_GITHUB_TOKEN` loses
-   `actions: write` there — the symptom being a tagged, released version whose
-   short `noisypigeon.garden/terraform/...` URL 404s, not an obviously broken release.
+   Watch the noisypigeon.com dispatch: it's the one that crosses a repo, and
+   it fails if `BOT_GITHUB_TOKEN` loses `actions: write` there. A release whose
+   garden generation fails shows up as a tagged, released version whose short
+   `noisypigeon.garden/terraform/...` URL 404s, not as an obviously broken
+   release.
 
-6. **Sync local `main`.** "Run on main" here means syncing your local clone
-   after the automation has landed its own commits — not re-running any
-   workflow manually:
+6. **Sync local `main`.** That means pulling the automation's commits, not
+   re-running any workflow:
    ```
    git checkout main
    git pull
    ```
-   Pulling after merge picks up both the squash-merge commit and the
-   automated changelog/docs commits that landed on top of it.
+   This picks up the squash-merge commit and the automated changelog and docs
+   commits on top of it.
 
-7. **Bump the consumer, if there is one.** Module consumers live in
-   `noisypigeon/noisypigeon`, pinned by exact version in
-   `*/terraform/**/*.tf` as `source = "https://noisypigeon.garden/terraform/<provider>/<module>/vX.Y.Z"`.
-   Theme consumers are runway's `garden` and `blog` site workloads, each
-   pinning a version in its `config.toml` per LIB-0001 invariant 2. Either bump is a separate PR in
-   that repo, and it can only be opened once this release's deploy has
-   finished — the short URL has to resolve before `terragrunt init` can fetch
-   it.
+7. **Bump the consumers, each in its own PR.** A consumer takes a release only
+   by moving its pin (LIB-0001 invariant 2), and only once garden has deployed
+   the release, so its short URL resolves before `terragrunt init` fetches
+   it:
+   - **runway itself:** a module's `source` in a hand-written leaf, a
+     workload's module version, `.lib-version` for the workflows track,
+     `root_hcl_version` in `spoke.hcl`, or a site's `theme_version` in its
+     `config.toml`;
+   - **the shims and pigeon-cli,** at the `@workflows/vX.Y.Z` they call.

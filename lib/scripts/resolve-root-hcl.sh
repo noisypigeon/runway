@@ -25,7 +25,7 @@
 # The library root is resolved from this script's own location rather than by
 # asking git, for the reason DEV-0154 gave resolve-theme.sh: the copy that runs
 # is the one in the spoke's fetched .lib-src/, and `git rev-parse` from the
-# spoke would find the spoke. Lives under .github/scripts/ so the workflows/
+# spoke would find the spoke. Lives under lib/scripts/ so the workflows/
 # track versions it -- resolve-theme.sh, under zola-site/, is covered by no
 # release predicate at all.
 set -euo pipefail
@@ -37,8 +37,11 @@ case "${1:-}" in
   *) echo "usage: $0 [--check]" >&2; exit 2 ;;
 esac
 
-LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE_DIR="terragrunt/root-hcl"
+# lib/ is a directory of its repo (LIB-0047), so a path read from a tag's
+# tree carries its prefix: "lib/" in runway, "" in an older checkout.
+LIB_PREFIX="$(git -C "$LIB_ROOT" rev-parse --show-prefix 2>/dev/null || true)"
 # The template's files, each materialized at the spoke root under its own name.
 FILES="root.hcl secrets-schema.json"
 SPOKE_DIR="$(pwd)"
@@ -78,8 +81,8 @@ else
     exit 1
   fi
   for f in $FILES; do
-    if git -C "$LIB_ROOT" cat-file -e "${TAG}:${TEMPLATE_DIR}/$f" 2>/dev/null; then
-      git -C "$LIB_ROOT" show "${TAG}:${TEMPLATE_DIR}/$f" > "$TMP_DIR/$f"
+    if git -C "$LIB_ROOT" cat-file -e "${TAG}:${LIB_PREFIX}${TEMPLATE_DIR}/$f" 2>/dev/null; then
+      git -C "$LIB_ROOT" show "${TAG}:${LIB_PREFIX}${TEMPLATE_DIR}/$f" > "$TMP_DIR/$f"
     fi
   done
   SOURCE="$TAG"

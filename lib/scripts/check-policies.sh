@@ -29,7 +29,7 @@
 #
 # It never decrypts anything and needs no network: a spoke runs it in
 # terragrunt-run.yml's prepare_cmd, after resolve-workloads.sh --check, so a
-# violation fails the PR before the first plan. Lives under .github/scripts/
+# violation fails the PR before the first plan. Lives under lib/scripts/
 # so the workflows/ track versions it.
 #
 # --inventory prints the inventory as JSON and checks nothing.

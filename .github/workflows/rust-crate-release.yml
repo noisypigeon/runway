@@ -5,7 +5,7 @@
 #
 # Hoisted from pigeon-cli by its CLI-0161. The release mechanics are its
 # CLI-0117 and CLI-0150 (push before publish, idempotent publish); see
-# .github/scripts/crate-release.sh.
+# lib/scripts/crate-release.sh.
 #
 # Unlike every other spoke, the caller writes its own tags (LIB-0001's
 # 2026-10-19 amendment): a crate's vX.Y.Z must point at its own commits. This
@@ -51,10 +51,10 @@ on:
         required: false
         default: "fetch-lib.sh"
       scripts_dir:
-        description: "Path (relative to the caller's repo root) to the library's .github/scripts, as left by fetch_script."
+        description: "Path (relative to the caller's repo root) to the library's lib/scripts, as left by fetch_script."
         type: string
         required: false
-        default: ".lib-src/.github/scripts"
+        default: ".lib-src/lib/scripts"
     secrets:
       CARGO_REGISTRY_TOKEN:
         required: true

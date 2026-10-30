@@ -17,9 +17,9 @@
 # and commits its output under workloads/garden/ (LIB-0035 §2). It reads from
 # two roots that are deliberately separate:
 #
-#   LIB_ROOT     -- the library clone this script was fetched into. Derived
-#                   from ${BASH_SOURCE[0]} two levels up (this script lives in
-#                   .github/scripts/), never from git rev-parse: the invoking
+#   LIB_ROOT     -- the library clone's lib/ this script was fetched into.
+#                   Derived from ${BASH_SOURCE[0]} one level up (this script
+#                   lives in lib/scripts/), never from git rev-parse: the invoking
 #                   site is a different repo, so asking git for *its* toplevel
 #                   finds the wrong tree. Same property DEV-0154 gave
 #                   resolve-theme.sh, and the same path arithmetic to keep
@@ -63,8 +63,8 @@
 # tags and changelogs. Safe to run repeatedly; fully idempotent.
 set -euo pipefail
 
-LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-TAG_REPO="${TAG_REPO:-noisypigeon/library}"
+LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TAG_REPO="${TAG_REPO:-noisypigeon/runway}"
 CONTENT_ROOT=""
 STATIC_ROOT=""
 SCHEMA_BASE_URL="${SCHEMA_BASE_URL:-https://noisypigeon.garden}"
@@ -91,6 +91,10 @@ if [ ! -d "$LIB_ROOT/terraform" ]; then
   echo "::error::No terraform/ under $LIB_ROOT -- is the library fetched?" >&2
   exit 1
 fi
+
+# lib/ is a directory of its repo (LIB-0047), so a path read from a tag's
+# tree carries its prefix: "lib/" in runway, "" in an older checkout.
+LIB_PREFIX="$(git -C "$LIB_ROOT" rev-parse --show-prefix 2>/dev/null || true)"
 
 CONTENT_DIR="$CONTENT_ROOT/terraform"
 THEME_CONTENT_DIR="$CONTENT_ROOT/theme-versions"
@@ -125,7 +129,7 @@ while IFS= read -r tag; do
   # The public URL is a fixed interface (LIB-0009 §1), written out here rather
   # than built from ${prefix}, so a change of tag prefix can never move it.
   url_path="terraform/${provider}/${module}/v${version}"
-  git_source="git::https://github.com/${repo}.git//${prefix}/${provider}/${module}?ref=${full_tag}"
+  git_source="git::https://github.com/${repo}.git//${LIB_PREFIX}${prefix}/${provider}/${module}?ref=${full_tag}"
   github_url="https://github.com/${repo}/releases/tag/${full_tag}"
 
   cat > "$CONTENT_DIR/${slug}.md" <<EOF
@@ -198,7 +202,7 @@ while IFS= read -r pair; do
   fi
 
   slug="${provider}-${module}"
-  github_url="https://github.com/${TAG_REPO}/tree/main/terraform/${provider}/${module}"
+  github_url="https://github.com/${TAG_REPO}/tree/main/${LIB_PREFIX}terraform/${provider}/${module}"
 
   {
     echo "+++"
@@ -273,8 +277,10 @@ if [ -n "$STATIC_ROOT" ]; then
       out="$STATIC_ROOT/terraform/${wmodule}/v${v}"
       mkdir -p "$out"
       tree="$(mktemp -d)"
+      # From $LIB_ROOT, archive's pathspec and output are both relative to it,
+      # so this needs no $LIB_PREFIX (unlike a TAG:path read).
       git -C "$LIB_ROOT" archive "terraform/${wmodule}/v${v}" "terraform/${wmodule}" | tar -x -C "$tree"
-      "$LIB_ROOT/.github/scripts/module-inputs-schema.sh" "$tree/terraform/${wmodule}" \
+      "$LIB_ROOT/scripts/module-inputs-schema.sh" "$tree/terraform/${wmodule}" \
         --id "${SCHEMA_BASE_URL}/terraform/${wmodule}/v${v}/inputs.schema.json" >"$out/inputs.schema.json"
       rm -rf "$tree"
       schema_count=$((schema_count + 1))
@@ -804,7 +810,7 @@ if [ -n "$STATIC_ROOT" ]; then
   # its own params schema beside its filter plus `exempt`. A new policy adds
   # one to v1 in place.
   mkdir -p "$STATIC_ROOT/schemas/policies"
-  for pschema in "$LIB_ROOT"/.github/scripts/policies/*.schema.json; do
+  for pschema in "$LIB_ROOT"/scripts/policies/*.schema.json; do
     [ -f "$pschema" ] || continue
     jq --arg id "$(basename "$pschema" .schema.json)" '{($id): .}' "$pschema"
   done | jq -s --arg base "$SCHEMA_BASE_URL" 'add // {} | {
@@ -933,7 +939,7 @@ while IFS= read -r mdir; do
   [ -z "$mdir" ] && continue
   rel="${mdir#terraform/}"
   mkdir -p "${changelog_src}/${rel}"
-  if ! git -C "$LIB_ROOT" show "${CHANGELOG_REF}:${mdir}/CHANGELOG.md" \
+  if ! git -C "$LIB_ROOT" show "${CHANGELOG_REF}:${LIB_PREFIX}${mdir}/CHANGELOG.md" \
       > "${changelog_src}/${rel}/CHANGELOG.md" 2>/dev/null; then
     echo "::warning::No CHANGELOG.md at ${CHANGELOG_REF}:${mdir}; skipping its release posts" >&2
     rm -rf "${changelog_src:?}/${rel:?}"

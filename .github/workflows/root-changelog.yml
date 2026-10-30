@@ -14,12 +14,59 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  rollup:
+  # template-release.yml writes the root line for a PR that releases a library
+  # unit (LIB-0047). Its detection predicates are duplicated here on purpose so
+  # that no PR ever gets two lines, or none: change one copy and you change its
+  # twin (DEV-0160, LIB-0002; library#301). Paths are runway's, so each unit's
+  # predicate carries lib/.
+  releases:
     if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      releases: ${{ steps.check.outputs.releases }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Does this PR release a library unit?
+        id: check
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          reusable_changed() {
+            for f in $(echo "$CHANGED_FILES" | grep -E '^\.github/workflows/[^/]+\.yml$'); do
+              for rev in "$MERGE_SHA" "${MERGE_SHA}~1"; do
+                git show "${rev}:${f}" 2>/dev/null | grep -qE '^  workflow_call:' && return 0
+              done
+            done
+            return 1
+          }
+          if echo "$CHANGED_FILES" | grep -qE '^lib/terraform/[^/]+/[^/]+/.*\.tf$' \
+            || echo "$CHANGED_FILES" | grep -qE '^lib/zola-site/(templates/|static/|theme\.toml$)' \
+            || echo "$CHANGED_FILES" | grep -qE '^lib/terragrunt/root-hcl/(root\.hcl|secrets-schema\.json)$' \
+            || echo "$CHANGED_FILES" | grep -qE '^lib/grafana-dashboards/[^/]+/[^/]+\.json$' \
+            || echo "$CHANGED_FILES" | grep -E '^lib/(observability|claude-plugins)/[^/]+/.+' \
+                 | grep -qvE '^lib/(observability|claude-plugins)/[^/]+/(README|CHANGELOG)\.md$' \
+            || echo "$CHANGED_FILES" | grep -qE '^lib/scripts/' \
+            || reusable_changed; then
+            echo "This PR releases a library unit; template-release.yml writes its root entry."
+            echo "releases=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "releases=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  rollup:
+    needs: releases
+    if: github.event.pull_request.merged == true && needs.releases.outputs.releases == 'false'
     uses: noisypigeon/library/.github/workflows/spoke-root-changelog.yml@workflows/v9.2.0
     with:
       # First match wins.
       precedence: |
         ^(terraform/|root\.hcl$|spoke\.hcl$|\.sops\.yaml$)=terraform
+        ^lib/=lib
+        ^adr/=adr
+        ^runbooks/=docs
         ^\.github/=ci
     secrets: inherit

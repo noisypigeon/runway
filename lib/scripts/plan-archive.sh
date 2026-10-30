@@ -24,7 +24,7 @@
 # reads to plan only that stage, and stage.txt, which marks a plan of one
 # stage for its apply (LIB-0042 §2).
 #
-# Lives under .github/scripts/ so the workflows/ track versions it.
+# Lives under lib/scripts/ so the workflows/ track versions it.
 set -euo pipefail
 
 usage() { echo "usage: $0 pack <out-dir> <units-file> <archive> [<extra-file>...] | unpack <archive> <out-dir>" >&2; exit 2; }

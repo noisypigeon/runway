@@ -24,7 +24,7 @@
 #
 # A spoke runs it in terragrunt-run.yml's prepare_cmd, after
 # resolve-root-hcl.sh --check, so a key in the wrong file fails the PR before
-# the first plan. Lives under .github/scripts/ so the workflows/ track versions
+# the first plan. Lives under lib/scripts/ so the workflows/ track versions
 # it, like resolve-root-hcl.sh.
 #
 # --allow-v3-file tolerates a leftover v3 terraform/secrets.enc, which
