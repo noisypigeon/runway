@@ -387,3 +387,79 @@ Two smaller things the check settled:
   runway has no `release` trigger.
 - **The hoist PR needs merge commits for one PR.** The owner turns them on for
   that PR and off again after it merges, as RUN-0000 §4 did.
+
+### 2026-10-30: done
+
+The cutover ran as the 2026-10-28 entry describes, in its order, and is
+finished. The library is archived. Where this entry and the text above
+disagree, this entry is what happened.
+
+1. **The move.**
+   - The rewrite carried 508 commits with their authors and dates.
+     Every bare `#N` in a commit message became `noisypigeon/library#N`, so no
+     reference resolves to one of runway's own PRs.
+   - All 197 tags were recreated under their own names, and each tag's tree
+     matches the library's file for file under the §1 path map.
+   - All 144 Releases were recreated with their titles and notes, with the
+     same `#N` qualification. Their dates show the day they were recreated.
+   - noisypigeon/runway#100 renamed the two runway callers that collided.
+     noisypigeon/runway#101 merged the history with a merge commit and landed
+     the four disabled workflows.
+2. **The rewiring found three things the plan missed.**
+   noisypigeon/runway#102 cut `workflows/v9.3.0`, the first release from
+   runway.
+   - **The `workflows` track releases only for a reusable workflow.** runway's
+     own callers share `.github/workflows/`, so the library's "any `.yml`"
+     predicate would have cut a release on every caller edit. A workflow
+     counts only if it has a `workflow_call` trigger on either side of the
+     diff, or if the change is under `lib/scripts/`.
+   - **`module-docs.yml` had to move to `lib/terraform`.** It ran over
+     `terraform/`, which in runway holds runway's own leaves.
+   - **The root-changelog stand-down was missing two tracks.** The library's
+     copy had no `observability/` or `claude-plugins/` arm, so a plugin PR
+     would have got two root lines. It is now folded into runway's
+     `root-changelog.yml` as a `releases` job, matching `template-release.yml`
+     exactly.
+
+   noisypigeon/runway#103 then cut `terragrunt/root-hcl/v9.1.2`,
+   `zola-site/v1.3.1` and `claude-plugins/pigeon-cli/v1.0.1`. In `root.hcl`,
+   the tag lookup's default remote was the only line that named the library,
+   because module sources already go through the short URL.
+3. **The pin bump couldn't be applied before it merged.**
+   noisypigeon/runway#104 planned `No changes.` across all 101 leaves. But an
+   `issue_comment` apply runs `main`'s workflow file with the PR's
+   `fetch-lib.sh`. So the old `prepare_cmd` looked for scripts at their
+   pre-hoist path, inside a clone of the new version, and failed before
+   Terraform ran. The owner merged it through the ruleset's bypass. Any PR
+   that changes both the fetcher and the paths its callers read has the same
+   problem.
+4. **The shims had to move with the pin bump, not after it.** The Pages shims
+   ran the library's `site-pages.yml` at `workflows/v6.1.0` against runway's
+   `fetch-lib.sh`. Once noisypigeon/runway#104 merged, that combination looked
+   for the theme script at its old path, and garden's next deploy failed. The
+   live site stayed on its previous build, so no short URL broke.
+   noisypigeon/noisypigeon.garden#75 and noisypigeon/noisypigeon.com#58 moved
+   both shims to runway's `site-pages.yml` at `workflows/v9.3.0`, and both
+   redeployed. §9 should have put the shim repoint in the same step as the
+   pin bump.
+5. **pigeon-cli moved, and its first release from runway was partial.**
+   noisypigeon/pigeon-cli#146 moved its three pins, after checking that
+   `rust-crate-release.yml` changes only a default path between `v3.4.0` and
+   `v9.3.0`, and amended CLI-0161. Its merge released 0.4.60 through runway's
+   pipeline: cut, tag, crates.io and the Linux binaries. The macOS builds were
+   cancelled by GitHub's brownout of the `macos-14` image, so the GitHub
+   Release has no macOS binaries and no image was pushed. That is a runner
+   problem, not a hoist one, and a separate record decides it.
+6. **The library is closed.**
+   - Its one label runway lacked, `out-of-scope`, was created.
+   - Its 41 open issues moved to runway, as noisypigeon/runway#105 to #145.
+   - noisypigeon/library#241 replaced its README with a stub.
+   - It was archived.
+
+   After the archive, all 197 tags are still served, a
+   `git::…/library.git//terraform/...?ref=<tag>` source still initializes,
+   and a pinned raw URL still returns 200.
+
+Two cleanups are left to the owner: turning merge commits off on runway again
+(RUN-0000 §4), and deleting the `lib-history` branch, which `main` now
+contains.
