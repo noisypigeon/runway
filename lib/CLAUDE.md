@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-This is `library`, the **hub** of the hub-and-spoke architecture LIB-0001
-defines. It holds everything in this family that is reusable and versioned, and
-nothing that is deployed:
+`lib/` is `library`, the **hub** of the hub-and-spoke architecture LIB-0001
+defines, hoisted into runway by LIB-0047 (see below). It holds everything in
+this family that is reusable and versioned, and nothing that is deployed:
 
 - `terraform/<provider>/<module>/` — Terraform modules (Scaleway, Cloudflare, Backblaze, Grafana),
   tagged `terraform/<provider>/<module>/vX.Y.Z`, each self-contained (own
@@ -10,14 +10,14 @@ nothing that is deployed:
   `noisypigeon.garden/terraform/<provider>/<module>/vX.Y.Z` URLs that resolve
   through go-getter's HTTP discovery protocol to a `git::` source against this
   repo. **That URL is a stable public interface of its own** (LIB-0009): its
-  `terraform/` matches this repo's prefix by choice, and moving the internal
+  `terraform/` matches the directory's name by choice, and moving the internal
   layout never changes it.
 - `zola-site/` — a reusable Zola theme, tagged `zola-site/vX.Y.Z`, consumed by a
   site setting `[extra].theme_version` and running `resolve-theme.sh`.
   That script resolves everything relative to its **own** location rather than
   asking git, so it works wherever the consuming site fetched it to (ADR-0154).
 - `terragrunt/root-hcl/` — the spokes' `root.hcl` template, tagged
-  `terragrunt/root-hcl/vX.Y.Z` (LIB-0003). `.github/scripts/resolve-root-hcl.sh`
+  `terragrunt/root-hcl/vX.Y.Z` (LIB-0003). `scripts/resolve-root-hcl.sh`
   copies it, with the `secrets-schema.json` it reads from beside itself, to a
   spoke's root at the version the spoke's `spoke.hcl` pins. The template reads
   the spoke's instance values back out of `spoke.hcl`: its `state_backend`, and
@@ -28,7 +28,7 @@ nothing that is deployed:
   `env`; LIB-0012). Which files are required, and exactly which keys each
   holds, follows from those values; the schema says so, and both the template
   (per leaf, decrypting only the files that leaf needs) and
-  `.github/scripts/check-secrets.sh` (spoke-wide, from key names alone)
+  `scripts/check-secrets.sh` (spoke-wide, from key names alone)
   enforce it. A provider's entry may also set `breakglass = { leaves = [...] }`:
   only those leaves then read that provider's credentials, and the state
   backend's when it's the same provider, from
@@ -39,14 +39,14 @@ nothing that is deployed:
   key mints each unit's own token or key (LIB-0041). It also builds every unit leaf's module block:
   a workload's from `workloads/<w>/values.yaml`, and a zone's from
   `zones/<zone>/zone.yaml`, which names the one workload that may also write
-  in that zone (LIB-0036; `.github/scripts/resolve-workloads.sh` generates
+  in that zone (LIB-0036; `scripts/resolve-workloads.sh` generates
   both kinds of stub). Since LIB-0037 a workload may also live in its zone,
   as `workloads/<zone>/<w>/workload.yaml` (or `workloads/private/<w>/` with
   no zone), in the zone's project, writing only at the host the zone's
   `hosts` gives it; both layouts are read until the major that drops the old. Since LIB-0039 each
   file's content sits under one key, `zone:` or `workload:`, with its records
   at `dnsRecords`, and a zone's `services` imply its mail and identity
-  records. `.github/scripts/split-secrets.sh` is the one-time v3→v4
+  records. `scripts/split-secrets.sh` is the one-time v3→v4
   migration a spoke's owner runs. The spoke
   **commits** those generated copies, because
   Terragrunt's git filter plans inside worktrees where only tracked files exist,
@@ -55,7 +55,7 @@ nothing that is deployed:
   own directory (LIB-0001 invariant 4).
 - `grafana-dashboards/<set>/` — versioned Grafana dashboard JSON, tagged
   `grafana-dashboards/<set>/vX.Y.Z` per set. Consumers fetch a dashboard by its
-  tag's raw URL (`raw.githubusercontent.com/noisypigeon/library/refs/tags/<tag>/<path>`),
+  tag's raw URL (`raw.githubusercontent.com/noisypigeon/runway/refs/tags/<tag>/lib/<path>`),
   which is what `grafana/dashboard`'s `url` input does, so the same
   pinned file can feed both Terraform and anything else that ships it.
 - `observability/<set>/` — a local Docker Compose observability stack, tagged
@@ -72,9 +72,9 @@ nothing that is deployed:
   `workflows/vX.Y.Z`. Reusable workflows must live in `.github/workflows/`, so
   they sit beside this repo's own release automation rather than under a
   templates convention (DEV-0155).
-- `.github/scripts/root-changelog.sh` — the one implementation of DEV-0160's
+- `scripts/root-changelog.sh` — the one implementation of DEV-0160's
   root-changelog contract, used by this repo and fetched by the spokes.
-- `.github/workflows/rust-crate-release.yml` and `.github/scripts/crate-*.sh`,
+- `.github/workflows/rust-crate-release.yml` and `scripts/crate-*.sh`,
   `adr-issue.sh` — the Rust crate release pipeline and ADR out-of-scope issue
   filer, hoisted from `pigeon-cli` by its CLI-0161. Run in the *caller's* repo
   after its `fetch-lib.sh`; the caller writes its own `vX.Y.Z` tags and
@@ -94,7 +94,7 @@ nothing that is deployed:
   image before anything is pushed, then publishes one multi-arch,
   provenance-attested tag set (`X.Y.Z`, `X.Y`, `latest`) to GHCR (LIB-0019).
   The Dockerfile, image name and smoke test stay in the spoke.
-- `.github/scripts/generate-module-redirects.sh` — generates the `noisypigeon.garden` site's module
+- `scripts/generate-module-redirects.sh` — generates the `noisypigeon.garden` site's module
   redirect pages, overview pages, theme-version pages and release posts from
   this repo's tags, READMEs and CHANGELOGs. Runs in a *spoke's* generation,
   runway's `garden-generate.yml` through `site-generate.yml`, which commits its
@@ -102,12 +102,12 @@ nothing that is deployed:
   finds the clone it was fetched into rather than the site's repo, and
   `--content-root`, which only the caller knows.
 
-- `.github/scripts/check-policies.sh` — checks a spoke against the policies
+- `scripts/check-policies.sh` — checks a spoke against the policies
   its committed `policies.yaml` turns on, before every plan (LIB-0045). Each
   policy is a jq filter over one inventory of the spoke's leaves, with its
-  params' schema beside it, under `.github/scripts/policies/`.
+  params' schema beside it, under `scripts/policies/`.
 
-These scripts, `resolve-root-hcl.sh`, `check-secrets.sh`, `check-policies.sh` and `split-secrets.sh` live under `.github/scripts/` so the
+These scripts, `resolve-root-hcl.sh`, `check-secrets.sh`, `check-policies.sh` and `split-secrets.sh` live under `scripts/` so the
 `workflows/vX.Y.Z` track covers them: a spoke pins one version and gets the
 reusable workflows and every script at that version, which is what invariant 2
 asks for.
@@ -115,30 +115,38 @@ asks for.
 See `README.md` for the consumption contract and `terraform/README.md` for the
 module index.
 
-## This repo hosts nothing
+## lib/ is a directory of runway
 
-There is no site, no Terraform state, no live `root.hcl` (only the template the spokes copy) and no secrets here. The
-practical consequence: **every deploy dispatch is cross-repo.** Every release
-dispatches `garden-generate.yml` in `noisypigeon/runway`, which regenerates
-`noisypigeon.garden`'s pages and commits them under `workloads/garden/`. That
-commit then deploys itself through runway's `sites.yml` and the
-`noisypigeon/noisypigeon.garden` shim (LIB-0035). A theme release additionally
-dispatches `pages.yml` in `noisypigeon/noisypigeon.com`, the Pages shim that
-builds runway's `workloads/blog/` (LIB-0031, LIB-0032, LIB-0034). Both need
-`BOT_GITHUB_TOKEN` to carry `actions: write` on the target, and both fail loudly
-if it does not — the symptom otherwise is a tagged, released version whose short
-URL 404s.
+LIB-0047 hoisted the library into `noisypigeon/runway`. Paths in this file are
+relative to `lib/`, except `.github/`, `.claude/` and `.claude-plugin/`, which
+sit at runway's root. Tags keep their names, so a unit's tag still reads
+`terraform/<provider>/<module>/vX.Y.Z` while its tree is under `lib/`. The
+archived `noisypigeon/library` repo keeps every tag it had, so an old pin still
+resolves.
+
+runway still consumes `lib/` only by pinned tag (LIB-0001 invariant 2): a change
+here reaches runway's plans only when a separate PR bumps the pin. Every release
+dispatches runway's own `garden-generate.yml`, which regenerates
+`noisypigeon.garden`'s pages and commits them under
+`workloads/noisypigeon.garden/garden/`. That commit then deploys itself through
+`sites.yml` and the `noisypigeon/noisypigeon.garden` shim (LIB-0035). A theme
+release additionally dispatches `pages.yml` in `noisypigeon/noisypigeon.com`,
+the Pages shim that builds runway's blog workload (LIB-0031, LIB-0032,
+LIB-0034). That one crosses a repo, so it needs `BOT_GITHUB_TOKEN` to carry
+`actions: write` on the shim, and fails loudly if it does not. The symptom of a
+failed garden generation is a tagged, released version whose short URL 404s.
 
 The shims' `pages.yml` deliberately does **not** live here: `actions/deploy-pages`
 always targets the calling repo's own Pages site, so that caller has to live in
-the repo whose site it deploys (DEV-0156 — a constraint, not a style choice).
+the repo whose site it deploys (DEV-0156, a constraint, not a style choice).
 Its body does: each shim's `pages.yml` only calls `site-pages.yml` with its
 spoke and workload (LIB-0035 §3).
 
 ## Where the decisions live
 
-ADRs live at `docs/adr/LIB-NNNN-<slug>.md`, numbered from `0001` within that
-directory. `LIB-0001` defines the architecture; `LIB-0002` created this repo.
+ADRs live at runway's `adr/LIB-NNNN-<slug>.md`, numbered from `0001` within that
+directory. `LIB-0001` defines the architecture; `LIB-0002` created the library
+repo, and `LIB-0047` hoisted it here.
 
 **This is also where the spokes' decisions live.** The one spoke is runway.
 blog and garden are now only Pages shims, `noisypigeon/noisypigeon.com`
@@ -149,7 +157,7 @@ record whose standard it applies, or a new `LIB-` record. Their old records
 are all here:
 
 - `DEV-` (garden's, mostly the family's pre-hub history) verbatim in
-  `docs/adr/archive/`. That domain is frozen and closed; see its `README.md`.
+  `adr/archive/`. That domain is frozen and closed; see its `README.md`.
 - `COM-` (blog's) and `RUN-` (runway's), plus DEV-0162 to DEV-0165, as
   amendments whose headings carry the ID. LIB-0017 §2 says which record each
   one went into.
@@ -160,7 +168,7 @@ cited here reads as `CLI-NNNN`.
 
 Filing one, by hand:
 
-- **Number**: max+1 within `docs/adr/`.
+- **Number**: max+1 within `adr/`.
 - **Filename and H1 agree**: `LIB-0002-<slug>.md` holds `# LIB-0002: <title>`.
 - **Author is always** `Willow Graysen ([@noisypigeon](https://github.com/noisypigeon)).`
 - **Sections**: `## Context` / `## Decision` / `## Consequences` /
@@ -169,14 +177,14 @@ Filing one, by hand:
 - Cite `LIB-NNNN`. Older IDs stay valid and are never rewritten: `DEV-NNNN`
   (bare `ADR-NNNN` in older prose is an alias, DEV-0160), `COM-NNNN` (`NPC-NNNN`
   is an alias) and `RUN-NNNN`. No new number is issued in any of those.
-- Genuinely-deferred `## Out of scope` items get a GitHub issue in this repo,
+- Genuinely-deferred `## Out of scope` items get a GitHub issue in runway,
   labelled `out-of-scope` (DEV-0031, LIB-0017 §6); permanent design boundaries
   do not. The `noisypigeon/noisypigeon#NNN` links in older records point at the
   deleted monorepo and no longer resolve.
 
 ## Runbooks
 
-Operational procedures live at `docs/runbooks/<slug>.md`: step-by-step, for
+Operational procedures live at runway's `runbooks/<slug>.md`: step-by-step, for
 any spoke, citing the ADR they serve. Today there are three:
 
 - `restore-terraform-state-from-b2.md` (LIB-0007 §4) puts one leaf's state
@@ -207,14 +215,14 @@ needing a ref in the repo whose tree it resolves to.
 Detection is by path, and the predicates are narrow on purpose: a module
 release needs a changed `.tf` under `terraform/<provider>/<module>/`, and a
 theme release needs a change under `zola-site/templates/`, `zola-site/static/`
-or `zola-site/theme.toml`, a CI release a change to `.github/workflows/*.yml` or
-`.github/scripts/`, and a template release a change to
+or `zola-site/theme.toml`, a CI release a change to a reusable (`workflow_call`) workflow in
+`.github/workflows/` or to `scripts/`, and a template release a change to
 `terragrunt/root-hcl/root.hcl` or `terragrunt/root-hcl/secrets-schema.json`, and a dashboard release a changed
 `grafana-dashboards/<set>/*.json`. A README- or CHANGELOG-only change releases
-nothing. `root-changelog.yml` duplicates all five predicates to stand down for a
+nothing. runway's `root-changelog.yml` duplicates every predicate, in its `releases` job, to stand down for a
 releasing PR — change one and you must change its twin (#301).
 
-Every merged PR also gets exactly one line in the root `CHANGELOG.md`, under a
+Every merged PR also gets exactly one line in runway's root `CHANGELOG.md`, under a
 `## YYYY-MM-DD` section, newest first (DEV-0160). The
 `<!-- entries below; newest first -->` marker is where entries get inserted —
 `root-changelog.sh` refuses to write without it.

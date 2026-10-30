@@ -184,7 +184,7 @@ matching lines, the schema may have drifted -- fall back to
 `jq 'select(.target | startswith("pigeon::"))'` to see everything, or
 re-grep the relevant job's source for new `tracing::` call sites. **Update
 this cheat sheet whenever the logging code changes** -- don't let it go
-stale silently. Since CLI-0161 it lives in `noisypigeon/library`'s
+stale silently. Since CLI-0161 it lives in `noisypigeon/runway`'s
 `claude-plugins/pigeon-cli/`, so that means a library PR (released as
 `claude-plugins/pigeon-cli/vX.Y.Z`) plus a pin bump in pigeon-cli's
 `.claude/settings.json`, alongside the pigeon-cli PR that changed the logging.

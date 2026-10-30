@@ -1,10 +1,10 @@
 # the library's spoke root.hcl template (LIB-0001 §6, LIB-0003).
 #
-# GENERATED in a spoke -- do not edit there. .github/scripts/resolve-root-hcl.sh
+# GENERATED in a spoke -- do not edit there. lib/scripts/resolve-root-hcl.sh
 # copies this file to the spoke's repo root at the version the spoke's
 # spoke.hcl pins (root_hcl_version); the spoke commits the copy, and its CI runs
 # the same script with --check to fail on any drift. To change it, change it in
-# library and bump root_hcl_version. Every leaf under <spoke>/terraform/
+# runway's lib/ and bump root_hcl_version. Every leaf under <spoke>/terraform/
 # includes it with find_in_parent_folders("root.hcl"). Materialized rather than
 # included from the library clone because Terragrunt does not support nested
 # includes (DEV-0059), and because a leaf's path_relative_to_include() -- its
@@ -1289,7 +1289,7 @@ locals {
       for c in ["ls-remote"] : run_cmd(
         "--terragrunt-quiet", local.is_workload_leaf ? "git" : "true",
         "ls-remote", "--sort=-v:refname", "--tags",
-        get_env("LIB_TAG_REMOTE", "https://github.com/noisypigeon/library"),
+        get_env("LIB_TAG_REMOTE", "https://github.com/noisypigeon/runway"),
         "refs/tags/terraform/${local.workload_module}/${local.workload_tag_pattern}",
       ) if local.workload_tag_list == ""
     ],

@@ -76,7 +76,7 @@ write by hand:
 
 ```hcl
 module "state_bucket" {
-  source = "git::https://github.com/noisypigeon/library.git//terraform/scaleway/bucket?ref=terraform/scaleway/bucket/v5.0.0"
+  source = "git::https://github.com/noisypigeon/runway.git//lib/terraform/scaleway/bucket?ref=terraform/scaleway/bucket/v5.0.0"
   ...
 }
 ```
@@ -93,8 +93,8 @@ For local iteration against an unreleased module change (no network fetch, no
 tag required), clone this repo as a sibling directory and reference it by path:
 
 ```
-git clone git@github.com:noisypigeon/library.git ../library
+git clone git@github.com:noisypigeon/runway.git ../runway
 ```
 
-then reference modules under `terraform/`, e.g.
-`../library/terraform/scaleway/bucket`.
+then reference modules under `lib/terraform/`, e.g.
+`../runway/lib/terraform/scaleway/bucket`.
