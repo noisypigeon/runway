@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-29
 
+- [workflows] Address the library at its new home in runway (LIB-0047) ([#102](https://github.com/noisypigeon/runway/pull/102))
 - [ci] feat: hoist the library into lib/ (LIB-0047) ([#101](https://github.com/noisypigeon/runway/pull/101))
 
 ## 2026-10-28

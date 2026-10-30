@@ -4,6 +4,42 @@ All notable changes to the reusable CI are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [9.3.0] - 2026-10-29
+
+### Address the library at its new home in runway (LIB-0047)
+
+The library now lives in `noisypigeon/runway` under `lib/` (LIB-0047), and this is the first release cut from there. Every reusable workflow and script addresses the library at that home. Each one's inputs, outputs and behavior are otherwise unchanged.
+
+**What a caller changes to take this version:**
+
+- **Call the workflows from runway:** `uses: noisypigeon/runway/.github/workflows/<workflow>.yml@workflows/vX.Y.Z` instead of `noisypigeon/library/...`. The version numbers continue from the library's, so this is the next one.
+- **Fetch runway, not the library.** A caller's `fetch-lib.sh` clones `https://github.com/noisypigeon/runway.git` into `.lib-src/` at `.lib-version`. The scripts are then under `.lib-src/lib/scripts/`, and the theme resolver is at `.lib-src/lib/zola-site/resolve-theme.sh`. Defaults that named `.lib-src/.github/scripts` now name `.lib-src/lib/scripts`: `scripts_dir` in `terragrunt-run.yml` and `rust-crate-release.yml`, and `changelog_script` in `spoke-root-changelog.yml` and `blog-changelog.yml`. `theme_script` in `zola-site-pages.yml` moves the same way. A `prepare_cmd` or `generate_cmd` that runs a script by path moves the same way too.
+- **Take the template that matches.** A spoke on this version also takes the `terragrunt/root-hcl` release cut with it, whose `root.hcl` runs its scripts from `.lib-src/lib/scripts/`.
+
+**What changed inside:**
+
+- **Tag lookups default to runway.** `LIB_TAG_REMOTE` defaults to `https://github.com/noisypigeon/runway` in `terragrunt-run.yml` and `resolve-workloads.sh`.
+- **Scripts find their tree at a prefix.** A script that reads files out of a tag's tree (`resolve-root-hcl.sh`, `generate-module-redirects.sh`) asks git where `lib/` sits in its repo and reads at that prefix. So a recreated pre-hoist tag resolves exactly as its library original did.
+- **The generator emits runway sources.** `generate-module-redirects.sh` defaults `TAG_REPO` to `noisypigeon/runway`. Every redirect page's `terraform-get` now names `git::https://github.com/noisypigeon/runway.git//lib/terraform/<provider>/<module>?ref=<tag>`, and every source and release link points to runway. The short URLs themselves don't change (LIB-0009).
+- **`terragrunt-run.yml` never plans `lib/`.** Its git filter excludes `./lib/**` (LIB-0047 §7).
+
+**Release automation**, which no caller consumes:
+
+- **`template-release.yml`** reads every unit from `lib/`, with tags unchanged, and writes each root changelog line to runway's `CHANGELOG.md`. It dispatches garden generation in this repo rather than across repos.
+- **The `workflows` track** releases only when a reusable workflow (one with `workflow_call`) or `lib/scripts/` changes. runway's own callers share `.github/workflows/`, and changing one releases nothing.
+- **runway's `root-changelog.yml` stands down for a releasing PR.** It uses the same predicates as `template-release.yml`, now including the observability and plugin tracks the library's copy had missed. That copy, `lib-root-changelog.yml`, is gone.
+- **`module-docs.yml` and `scripts-test.yml`** run over `lib/terraform/` and `lib/scripts/` again.
+
+Verified locally:
+
+- **Generator:** run against runway's own tags, its output is byte-identical to the pre-hoist generator's across all 309 garden files, except the intended rewrites (78 sources, 84 release links, 25 source-tree links). Every one of the 78 sources resolves at its tag.
+- **Template:** `resolve-root-hcl.sh --check` matches runway's committed `root.hcl` at `terragrunt/root-hcl/v9.1.1`, read through the new prefix, and still catches a hand edit.
+- **Tests:** all 50 script tests pass, before and after, with the pinned `yq`.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+[#102](https://github.com/noisypigeon/runway/pull/102)
+
 ## [9.2.0] - 2026-10-28
 
 ### Owner-granted cross-workload Backblaze keys, and workload schema v6 (LIB-0045)
