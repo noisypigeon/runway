@@ -50,4 +50,4 @@ jobs:
       src_dir: workloads/${{ inputs.workload }}
       build_cmd: "SITE_COMMIT_SHA=$(git rev-parse --short HEAD) zola build"
       fetch_script: fetch-lib.sh
-      theme_script: .lib-src/zola-site/resolve-theme.sh
+      theme_script: .lib-src/lib/zola-site/resolve-theme.sh

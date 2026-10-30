@@ -41,7 +41,7 @@ on:
         description: "Path (relative to the caller's repo root) to root-changelog.sh, as left by fetch_script."
         type: string
         required: false
-        default: ".lib-src/.github/scripts/root-changelog.sh"
+        default: ".lib-src/lib/scripts/root-changelog.sh"
       git_user_name:
         type: string
         required: false

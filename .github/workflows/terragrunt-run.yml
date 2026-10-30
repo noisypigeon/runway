@@ -98,10 +98,10 @@ on:
         required: false
         default: ""
       scripts_dir:
-        description: "Path (relative to the caller's repo root) to the library's .github/scripts, as left by prepare_cmd's fetcher."
+        description: "Path (relative to the caller's repo root) to the library's lib/scripts, as left by prepare_cmd's fetcher."
         type: string
         required: false
-        default: ".lib-src/.github/scripts"
+        default: ".lib-src/lib/scripts"
     secrets:
       SOPS_AGE_KEY:
         required: true
@@ -297,7 +297,7 @@ jobs:
           # workload leaf's module version from rather than asking the
           # remote on every parse (LIB-0042 §4). A root.hcl older than v8.2.0
           # ignores it.
-          git ls-remote --sort=-v:refname --tags "${LIB_TAG_REMOTE:-https://github.com/noisypigeon/library}" 'refs/tags/terraform/*' > "$RUNNER_TEMP/lib-tags.txt"
+          git ls-remote --sort=-v:refname --tags "${LIB_TAG_REMOTE:-https://github.com/noisypigeon/runway}" 'refs/tags/terraform/*' > "$RUNNER_TEMP/lib-tags.txt"
           export LIB_TAG_LIST="$RUNNER_TEMP/lib-tags.txt"
           echo "LIB_TAG_LIST=$LIB_TAG_LIST" >> "$GITHUB_ENV"
 
@@ -306,10 +306,12 @@ jobs:
           if [ -d workloads ] || [ -d zones ] || git cat-file -e "$base:workloads" 2>/dev/null || git cat-file -e "$base:zones" 2>/dev/null; then
             workloads=true
           fi
+          # lib/ holds the library's modules and root.hcl template (LIB-0047 §7).
+          # Nothing under it is a unit, so it is never planned.
           if [ "$workloads" = true ]; then
-            FILTER_ARGS=(--filter '[main...HEAD] | !./workloads/** | !./zones/**')
+            FILTER_ARGS=(--filter '[main...HEAD] | !./workloads/** | !./zones/** | !./lib/**')
           else
-            FILTER_ARGS=(--filter '[main...HEAD]')
+            FILTER_ARGS=(--filter '[main...HEAD] | !./lib/**')
           fi
           git_units=$(terragrunt --no-color find "${FILTER_ARGS[@]}" --filter-allow-destroy --json | jq -r '.[].path')
           dirs=""

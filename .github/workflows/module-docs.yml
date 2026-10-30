@@ -1,9 +1,10 @@
 name: module-docs
 
-# Disabled for the hoist (LIB-0047's 2026-10-28 amendment, item 1): on the
-# merge that brings lib/ in, every path is new, so this would act on every
-# unit. The rewiring PR restores the trigger with lib/ paths.
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/terraform/**/*.tf'
   workflow_dispatch: {}
 
 permissions:
@@ -26,10 +27,11 @@ jobs:
       - name: Generate module docs
         uses: terraform-docs/gh-actions@v1.4.1
         with:
-          # Every directory under terraform/ holding a .tf, found at run time,
-          # so a new module can't silently miss regeneration the way a
-          # hard-coded working-dir list did.
-          find-dir: terraform
+          # Every directory under lib/terraform/ holding a .tf, found at run
+          # time, so a new module can't silently miss regeneration the way a
+          # hard-coded working-dir list did. Never terraform/: that is this
+          # repo's own leaves (LIB-0047).
+          find-dir: lib/terraform
           output-file: README.md
           output-method: inject
           output-format: markdown table

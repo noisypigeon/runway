@@ -6,7 +6,7 @@
 # than merely different.
 #
 # No caller vendors the theme any more: since LIB-0002 the theme lives in
-# noisypigeon/library and every site fetches it. So a caller passes
+# the library, now runway's lib/ (LIB-0047), and every site fetches it. So a caller passes
 # fetch_script (a script in its own checkout that materializes the library at
 # the version that site pins) and theme_script (where that leaves
 # resolve-theme.sh). Both are paths in the caller's checkout, not hardcoded
@@ -69,10 +69,10 @@ on:
         required: false
         default: ""
       theme_script:
-        description: "Path (relative to the caller's repo root) to zola-site/resolve-theme.sh, as left by fetch_script."
+        description: "Path (relative to the caller's repo root) to lib/zola-site/resolve-theme.sh, as left by fetch_script."
         type: string
         required: false
-        default: ".lib-src/zola-site/resolve-theme.sh"
+        default: ".lib-src/lib/zola-site/resolve-theme.sh"
 
 permissions:
   contents: read
