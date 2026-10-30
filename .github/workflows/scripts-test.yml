@@ -4,11 +4,11 @@ name: scripts-test
 # among them (LIB-0026 §6), on any PR that touches .github/scripts/. This is
 # the library's own CI, not a reusable workflow: no spoke calls it.
 
+# Disabled for the hoist (LIB-0047's 2026-10-28 amendment, item 1): on the
+# merge that brings lib/ in, every path is new, so this would act on every
+# unit. The rewiring PR restores the trigger with lib/ paths.
 on:
-  pull_request:
-    paths:
-      - ".github/scripts/**"
-      - ".github/workflows/scripts-test.yml"
+  workflow_dispatch: {}
 
 permissions:
   contents: read

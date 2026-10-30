@@ -53,8 +53,13 @@ The Scaleway project everything under `terraform/scaleway/` lives in is the
 are the workload's `scaleway.bucket` entries; its cluster, Cockpit and IAM,
 and the spoke's state bucket, stay hand-written in the project for now.
 
-It is a spoke of `noisypigeon/library`. Modules, CI logic, scripts and
-decision records all live there. Don't add them here.
+The library is hoisted into this repo (LIB-0047). Modules, CI logic and
+scripts live under `lib/`, decision records under `adr/`, and runbooks under
+`runbooks/`. `lib/CLAUDE.md` is the library's own guide: read it before you
+change anything under `lib/`. The spoke still consumes the library only by
+pinned tag, so a change under `lib/` reaches this repo's plans only when a PR
+bumps the pin. Until the cutover bumps them, the pins still name
+`noisypigeon/library`.
 
 ## Sensitive: read this first
 
