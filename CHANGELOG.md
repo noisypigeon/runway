@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-29
 
+- [terraform] chore: take the library from runway's lib/ (LIB-0047) ([#104](https://github.com/noisypigeon/runway/pull/104))
 - [claude-plugins/pigeon-cli] Point the template, theme and plugin at runway (LIB-0047) ([#103](https://github.com/noisypigeon/runway/pull/103))
 - [terragrunt/root-hcl] Point the template, theme and plugin at runway (LIB-0047) ([#103](https://github.com/noisypigeon/runway/pull/103))
 - [zola-site] Point the template, theme and plugin at runway (LIB-0047) ([#103](https://github.com/noisypigeon/runway/pull/103))
