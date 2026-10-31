@@ -4,6 +4,10 @@ All notable changes to this template are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [10.1.0] - 2026-10-30
+
+- feat(lib-0051): deployments.cloudflare, its zone rulesets, and site-r2.yml ([#166](https://github.com/noisypigeon/runway/pull/166))
+
 ## [10.0.0] - 2026-10-30
 
 - feat(lib-0050)!: the CI unit under tools/github/, fetched into .pigeon/ ([#161](https://github.com/noisypigeon/runway/pull/161))

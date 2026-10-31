@@ -24,6 +24,8 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [github/workflows] feat(lib-0051): deployments.cloudflare, its zone rulesets, and site-r2.yml ([#166](https://github.com/noisypigeon/runway/pull/166))
+- [github/terragrunt] feat(lib-0051): deployments.cloudflare, its zone rulesets, and site-r2.yml ([#166](https://github.com/noisypigeon/runway/pull/166))
 - [cloudflare/r2-custom-domain] feat(lib-0051): cloudflare/r2-custom-domain, and bucket-scoped api-token policies ([#165](https://github.com/noisypigeon/runway/pull/165))
 - [cloudflare/api-token] feat(lib-0051): cloudflare/r2-custom-domain, and bucket-scoped api-token policies ([#165](https://github.com/noisypigeon/runway/pull/165))
 - [adr] docs(adr): LIB-0051 sites on Cloudflare R2, LIB-0052 spoke config in .config/ ([#164](https://github.com/noisypigeon/runway/pull/164))
