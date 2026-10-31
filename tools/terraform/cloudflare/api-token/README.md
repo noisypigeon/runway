@@ -3,6 +3,12 @@
 One account-owned Cloudflare API token, `cloudflare_account_token`, with its
 policies written by name (LIB-0033 §3).
 
+A policy may instead name `r2_buckets`, in R2's `eu` jurisdiction (LIB-0006).
+For example, `{ permission_groups = ["Workers R2 Storage Bucket Item Write"], r2_buckets = ["example.com"] }`
+writes one bucket's objects. The `s3_access_key_id` and
+`s3_secret_access_key` outputs then sign in to R2's S3 API as that token
+(LIB-0051 §2).
+
 - **Permission groups by name,** such as `"DNS Write"`, resolved through the
   account's permission-groups list at the scope each policy needs. An unknown
   name fails the plan, and so does one the signing-in token may not grant.
