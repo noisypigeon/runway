@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [lib] chore(lib-0049): take workflows/v9.4.2 and the library plugin ([#153](https://github.com/noisypigeon/runway/pull/153))
 - [workflows] feat(lib-0049): release-pr as the library plugin, marketplace under lib/ ([#152](https://github.com/noisypigeon/runway/pull/152))
 - [claude-plugins/library] feat(lib-0049): release-pr as the library plugin, marketplace under lib/ ([#152](https://github.com/noisypigeon/runway/pull/152))
 - [workflows] feat(lib-0049): garden pages for each workflows version ([#151](https://github.com/noisypigeon/runway/pull/151))
