@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [adr] chore(lib-0050): runway fetches through .pigeon/ at github/workflows/v10.0.0 ([#163](https://github.com/noisypigeon/runway/pull/163))
 - [observability/lgtm-stack] feat(lib-0050): theme, plugins, stack and dashboards on their new tracks ([#162](https://github.com/noisypigeon/runway/pull/162))
 - [claude/plugins/pigeon-cli] feat(lib-0050): theme, plugins, stack and dashboards on their new tracks ([#162](https://github.com/noisypigeon/runway/pull/162))
 - [claude/plugins/library] feat(lib-0050): theme, plugins, stack and dashboards on their new tracks ([#162](https://github.com/noisypigeon/runway/pull/162))
