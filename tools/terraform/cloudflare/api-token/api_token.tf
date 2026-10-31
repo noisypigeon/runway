@@ -34,6 +34,14 @@ locals {
   # Names with no group at that scope, or one the caller may not grant.
   unknown    = distinct(flatten([for i, p in var.policies : [for j, name in p.permission_groups : name if local.resolved[i][j] == null]]))
   unselected = distinct(flatten([for i, p in var.policies : [for g in local.resolved[i] : g.name if g != null && !g.is_selectable]]))
+  # For an unknown name, the groups that share a word of four letters or
+  # more with it, with their scopes, so the error names what does exist.
+  near = distinct(flatten([
+    for name in local.unknown : [
+      for g in local.groups : "${g.name} (${join(", ", [for sc in g.scopes : trimprefix(sc, "com.cloudflare.")])})"
+      if anytrue([for w in split(" ", lower(name)) : length(w) >= 4 && strcontains(lower(g.name), w) && !contains(["read", "write"], w)])
+    ]
+  ]))
 
   resources = [
     for p in var.policies : (
@@ -83,7 +91,7 @@ resource "cloudflare_account_token" "this" {
 
     precondition {
       condition     = length(local.unknown) == 0
-      error_message = "No permission group named ${join(", ", local.unknown)} at the scope its policy needs."
+      error_message = "No permission group named ${join(", ", local.unknown)} at the scope its policy needs. Groups with a word in common: ${length(local.near) > 0 ? join("; ", local.near) : "none"}."
     }
     precondition {
       condition     = length(local.unselected) == 0
