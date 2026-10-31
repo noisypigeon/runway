@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [adr] docs(adr): LIB-0050 lib/ becomes tools/ ([#159](https://github.com/noisypigeon/runway/pull/159))
 - [lib] docs(lib-0049): backfill every unit changelog to one line per release ([#158](https://github.com/noisypigeon/runway/pull/158))
 - [ci] chore(lib-0049): take workflows/v9.4.3 and library v1.0.1 ([#157](https://github.com/noisypigeon/runway/pull/157))
 - [workflows] feat(lib-0049): one-line unit changelogs, release posts from Releases ([#156](https://github.com/noisypigeon/runway/pull/156))
