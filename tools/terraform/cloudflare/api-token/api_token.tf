@@ -15,13 +15,16 @@ data "cloudflare_zone" "this" {
 }
 
 locals {
+  # bucket_scope is an R2 bucket, by account, jurisdiction and name. Every
+  # family bucket is in the eu jurisdiction (LIB-0006).
   zone_scope    = "com.cloudflare.api.account.zone"
   account_scope = "com.cloudflare.api.account"
+  bucket_scope  = "com.cloudflare.edge.r2.bucket"
   groups        = data.cloudflare_account_api_token_permission_groups_list.all.result
 
   # A name may exist at several scopes, so each policy resolves its names at
   # the scope its resources need.
-  wanted = [for p in var.policies : p.account ? local.account_scope : local.zone_scope]
+  wanted = [for p in var.policies : p.account ? local.account_scope : length(p.r2_buckets) > 0 ? local.bucket_scope : local.zone_scope]
   resolved = [
     for i, p in var.policies : [
       for name in p.permission_groups :
@@ -36,6 +39,7 @@ locals {
     for p in var.policies : (
       p.account ? jsonencode({ "${local.account_scope}.${var.account_id}" = "*" }) :
       p.all_zones ? jsonencode({ "${local.account_scope}.${var.account_id}" = { "${local.zone_scope}.*" = "*" } }) :
+      length(p.r2_buckets) > 0 ? jsonencode({ for b in p.r2_buckets : "${local.bucket_scope}.${var.account_id}_eu_${b}" => "*" }) :
       jsonencode({ for z in p.zones : "${local.zone_scope}.${data.cloudflare_zone.this[z].id}" => "*" })
     )
   ]

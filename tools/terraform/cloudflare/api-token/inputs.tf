@@ -14,16 +14,17 @@ variable "policies" {
     zones             = optional(list(string), [])
     all_zones         = optional(bool, false)
     account           = optional(bool, false)
+    r2_buckets        = optional(list(string), [])
     effect            = optional(string, "allow")
   }))
-  description = "The token's policies. Each names its permission groups (e.g. \"DNS Write\") and exactly one resource: zones by apex domain, all_zones for every zone in the account, or account for the account itself"
+  description = "The token's policies. Each names its permission groups (e.g. \"DNS Write\") and exactly one resource: zones by apex domain, all_zones for every zone in the account, account for the account itself, or r2_buckets by name, each in R2's eu jurisdiction (LIB-0006, LIB-0051 §2)"
 
   validation {
     condition = alltrue([
       for p in var.policies :
-      (length(p.zones) > 0 ? 1 : 0) + (p.all_zones ? 1 : 0) + (p.account ? 1 : 0) == 1
+      (length(p.zones) > 0 ? 1 : 0) + (p.all_zones ? 1 : 0) + (p.account ? 1 : 0) + (length(p.r2_buckets) > 0 ? 1 : 0) == 1
     ])
-    error_message = "Each policy needs exactly one of zones, all_zones or account."
+    error_message = "Each policy needs exactly one of zones, all_zones, account or r2_buckets."
   }
 
   validation {
