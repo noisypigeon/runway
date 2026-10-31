@@ -1,8 +1,9 @@
-# grafana-dashboards/pigeon-cli
+# observability/dashboards/pigeon-cli
 
 Grafana dashboards for [`pigeon-cli`](https://github.com/noisypigeon/pigeon-cli)
 jobs, against the metrics and logs its jobs push to Scaleway Cockpit. Versioned
-as `grafana-dashboards/pigeon-cli/vX.Y.Z`.
+as `observability/dashboards/pigeon-cli/vX.Y.Z`, continuing
+`grafana-dashboards/pigeon-cli/vX.Y.Z` (LIB-0050).
 
 | File | Dashboard |
 | --- | --- |
@@ -14,14 +15,17 @@ Fetch a dashboard by its tag's raw URL. The `refs/tags/` form is needed because
 the tag itself contains slashes:
 
 ```
-https://raw.githubusercontent.com/noisypigeon/runway/refs/tags/grafana-dashboards/pigeon-cli/v1.0.0/lib/grafana-dashboards/pigeon-cli/overview.json
+https://raw.githubusercontent.com/noisypigeon/runway/refs/tags/observability/dashboards/pigeon-cli/vX.Y.Z/tools/observability/dashboards/pigeon-cli/overview.json
 ```
 
+A version cut before LIB-0050 is at its old tag and path:
+`refs/tags/grafana-dashboards/pigeon-cli/v1.1.0/lib/grafana-dashboards/pigeon-cli/overview.json`.
+
 From Terraform, pass that URL to
-[`scaleway/grafana-dashboard`](../../terraform/scaleway/grafana-dashboard)'s
+[`grafana/dashboard`](../../../terraform/grafana/dashboard)'s
 `dashboards = { overview = { url = "…" } }`.
 
-[`observability/pigeon-cli`](../../observability/pigeon-cli) mounts this
+[`observability/lgtm-stack`](../../lgtm-stack) mounts this
 directory from the same checkout, so pigeon-cli's local stack renders this JSON
 rather than a copy of its own (pigeon-cli's CLI-0161). The `instance`
 variable's "All" is `.*`, so the pigeon panels still populate on a stack with no

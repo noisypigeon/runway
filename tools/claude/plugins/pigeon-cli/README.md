@@ -1,8 +1,9 @@
-# claude-plugins/pigeon-cli
+# claude/plugins/pigeon-cli
 
 A Claude Code plugin with the skills for working on
 [`pigeon-cli`](https://github.com/noisypigeon/pigeon-cli), hoisted from that
-repo by its CLI-0161. Versioned as `claude-plugins/pigeon-cli/vX.Y.Z` and
+repo by its CLI-0161. Versioned as `claude/plugins/pigeon-cli/vX.Y.Z`, continuing
+`claude-plugins/pigeon-cli/vX.Y.Z` (LIB-0050), and
 listed in [`../marketplace.json`](../marketplace.json), which each plugin tag copies to
 `/.claude-plugin/marketplace.json` (LIB-0049 §4).
 
@@ -19,7 +20,7 @@ consuming repo's committed `.claude/settings.json`:
 {
   "extraKnownMarketplaces": {
     "library": {
-      "source": { "source": "github", "repo": "noisypigeon/runway", "ref": "claude-plugins/pigeon-cli/v1.0.1" }
+      "source": { "source": "github", "repo": "noisypigeon/runway", "ref": "claude/plugins/pigeon-cli/vX.Y.Z" }
     }
   },
   "enabledPlugins": { "pigeon-cli@library": true }

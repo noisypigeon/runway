@@ -11,3 +11,5 @@ One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 ## [1.0.0] - 2026-10-30
 
 - feat(lib-0049): release-pr as the library plugin, marketplace under lib/ ([#152](https://github.com/noisypigeon/runway/pull/152))
+
+<!-- continues-from: claude-plugins/library/v1.0.1 -->
