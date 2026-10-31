@@ -66,7 +66,7 @@ A site sets `theme = "zola-site"` and `[extra].theme_version` in its
 Every change ships through a labelled PR — the PR body becomes the changelog
 entry and GitHub Release notes verbatim, and the `release:*` label drives the
 version bump. See
-[`.claude/skills/release-pr/SKILL.md`](../.claude/skills/release-pr/SKILL.md),
+the `release-pr` skill, in the [`library` plugin](claude-plugins/library/skills/release-pr/SKILL.md),
 which is the discipline; [`template-release.yml`](../.github/workflows/template-release.yml) is the
 automation that acts on it.
 
