@@ -24,6 +24,8 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [workflows] feat(lib-0049): one-line unit changelogs, release posts from Releases ([#156](https://github.com/noisypigeon/runway/pull/156))
+- [claude-plugins/library] feat(lib-0049): one-line unit changelogs, release posts from Releases ([#156](https://github.com/noisypigeon/runway/pull/156))
 - [lib] docs(lib-0049): one CLAUDE.md and one .gitignore ([#155](https://github.com/noisypigeon/runway/pull/155))
 - [adr] docs(lib-0049): move adr/ and runbooks/ under lib/docs/ ([#154](https://github.com/noisypigeon/runway/pull/154))
 - [lib] chore(lib-0049): take workflows/v9.4.2 and the library plugin ([#153](https://github.com/noisypigeon/runway/pull/153))

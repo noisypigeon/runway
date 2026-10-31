@@ -4,6 +4,10 @@ All notable changes to the reusable CI are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [9.4.3] - 2026-10-30
+
+- feat(lib-0049): one-line unit changelogs, release posts from Releases ([#156](https://github.com/noisypigeon/runway/pull/156))
+
 ## [9.4.2] - 2026-10-30
 
 ### feat(lib-0049): release-pr as the library plugin, marketplace under lib/
