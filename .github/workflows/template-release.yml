@@ -166,7 +166,6 @@ jobs:
         env:
           BUMP: ${{ steps.bump.outputs.level }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           CHANGED_MODULES: ${{ steps.modules.outputs.changed }}
@@ -216,20 +215,18 @@ jobs:
 
           All notable changes to this module are documented in this file.
 
-          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          One line per release; its full notes are its GitHub Release (LIB-0049 §7).
           HEADER
             fi
 
+            # One line per release, the PR title (LIB-0049 §7). The PR body is the
+            # Release's notes, below.
             ENTRY=$(mktemp)
             {
               echo ""
               echo "## [${NEXT}] - ${TODAY}"
               echo ""
-              echo "### ${PR_TITLE}"
-              echo ""
-              echo "${PR_BODY}"
-              echo ""
-              echo "[#${PR_NUMBER}](${PR_URL})"
+              echo "- ${PR_TITLE} ([#${PR_NUMBER}](${PR_URL}))"
             } > "$ENTRY"
 
             head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"
@@ -261,7 +258,6 @@ jobs:
         env:
           BUMP: ${{ steps.bump.outputs.level }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         working-directory: lib
@@ -291,20 +287,18 @@ jobs:
 
           All notable changes to this theme are documented in this file.
 
-          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          One line per release; its full notes are its GitHub Release (LIB-0049 §7).
           HEADER
           fi
 
+          # One line per release, the PR title (LIB-0049 §7). The PR body is the
+          # Release's notes, below.
           ENTRY=$(mktemp)
           {
             echo ""
             echo "## [${NEXT}] - ${TODAY}"
             echo ""
-            echo "### ${PR_TITLE}"
-            echo ""
-            echo "${PR_BODY}"
-            echo ""
-            echo "[#${PR_NUMBER}](${PR_URL})"
+            echo "- ${PR_TITLE} ([#${PR_NUMBER}](${PR_URL}))"
           } > "$ENTRY"
 
           head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"
@@ -331,7 +325,6 @@ jobs:
         env:
           BUMP: ${{ steps.bump.outputs.level }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         working-directory: lib
@@ -361,20 +354,18 @@ jobs:
 
           All notable changes to this template are documented in this file.
 
-          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          One line per release; its full notes are its GitHub Release (LIB-0049 §7).
           HEADER
           fi
 
+          # One line per release, the PR title (LIB-0049 §7). The PR body is the
+          # Release's notes, below.
           ENTRY=$(mktemp)
           {
             echo ""
             echo "## [${NEXT}] - ${TODAY}"
             echo ""
-            echo "### ${PR_TITLE}"
-            echo ""
-            echo "${PR_BODY}"
-            echo ""
-            echo "[#${PR_NUMBER}](${PR_URL})"
+            echo "- ${PR_TITLE} ([#${PR_NUMBER}](${PR_URL}))"
           } > "$ENTRY"
 
           head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"
@@ -400,7 +391,6 @@ jobs:
         env:
           BUMP: ${{ steps.bump.outputs.level }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           CHANGED_SETS: ${{ steps.dashboards.outputs.changed }}
@@ -432,20 +422,18 @@ jobs:
 
           All notable changes to this release unit are documented in this file.
 
-          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          One line per release; its full notes are its GitHub Release (LIB-0049 §7).
           HEADER
             fi
 
+            # One line per release, the PR title (LIB-0049 §7). The PR body is the
+            # Release's notes, below.
             ENTRY=$(mktemp)
             {
               echo ""
               echo "## [${NEXT}] - ${TODAY}"
               echo ""
-              echo "### ${PR_TITLE}"
-              echo ""
-              echo "${PR_BODY}"
-              echo ""
-              echo "[#${PR_NUMBER}](${PR_URL})"
+              echo "- ${PR_TITLE} ([#${PR_NUMBER}](${PR_URL}))"
             } > "$ENTRY"
 
             head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"
@@ -473,7 +461,6 @@ jobs:
         env:
           BUMP: ${{ steps.bump.outputs.level }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
@@ -502,20 +489,18 @@ jobs:
 
           All notable changes to the reusable CI are documented in this file.
 
-          The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+          One line per release; its full notes are its GitHub Release (LIB-0049 §7).
           HEADER
           fi
 
+          # One line per release, the PR title (LIB-0049 §7). The PR body is the
+          # Release's notes, below.
           ENTRY=$(mktemp)
           {
             echo ""
             echo "## [${NEXT}] - ${TODAY}"
             echo ""
-            echo "### ${PR_TITLE}"
-            echo ""
-            echo "${PR_BODY}"
-            echo ""
-            echo "[#${PR_NUMBER}](${PR_URL})"
+            echo "- ${PR_TITLE} ([#${PR_NUMBER}](${PR_URL}))"
           } > "$ENTRY"
 
           head -n 5 "$CHANGELOG" > "${CHANGELOG}.new"

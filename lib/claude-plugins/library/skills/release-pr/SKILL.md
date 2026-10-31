@@ -7,8 +7,9 @@ description: Use this skill when making a change under lib/ — a lib/terraform/
 
 The library's release automation has no human reviewer, and this skill *is*
 the PR discipline. Follow it in full for every change under `lib/`, including
-trivial ones. The PR body becomes the unit's changelog entry and GitHub
-Release notes verbatim, and the label drives the version bump. There is no
+trivial ones. The PR title becomes the unit's one-line changelog entry, the PR
+body becomes its GitHub Release notes verbatim, and garden's release post
+shows that body (LIB-0049 §7). The label drives the version bump. There is no
 separate "write good release notes" step later, so get the PR body right the
 first time.
 
@@ -27,17 +28,18 @@ change, not a release. It follows `CLAUDE.md`'s Terraform flow instead.
 2. **Make the change and commit it.** Commit messages are for git history.
    The PR title and body are what drive the changelog.
 
-3. **Open the PR with a body written for its second life as a changelog entry
-   and release note**, not just for a reviewer:
-   - Title: short, imperative, human-readable. It becomes the changelog
-     section heading verbatim (e.g. "Add versioning input to object-bucket").
+3. **Open the PR with a title and body written for their second life as a
+   changelog line and release note**, not just for a reviewer:
+   - Title: short, imperative, human-readable. It becomes the unit's
+     changelog line verbatim, as `- <title> ([#N](url))` under the version's
+     heading, in `lib/terraform/<provider>/<module>/CHANGELOG.md`,
+     `lib/zola-site/CHANGELOG.md`, `lib/github-workflows/CHANGELOG.md` and so
+     on (e.g. "Add versioning input to object-bucket").
    - Body: full sentences a consumer of the unit would want to read later,
      describing what changed and why it matters to them, not "fixed bug" or a
-     raw commit list. `template-release.yml` copies it verbatim into that
-     unit's own `CHANGELOG.md` (`lib/terraform/<provider>/<module>/CHANGELOG.md`,
-     `lib/zola-site/CHANGELOG.md`, `lib/github-workflows/CHANGELOG.md` for the
-     workflows track, and so on) and into the GitHub Release notes on merge,
-     with no editing pass in between.
+     raw commit list. `template-release.yml` copies it verbatim into the
+     GitHub Release notes on merge, with no editing pass in between, and
+     garden's release post shows it.
    ```
    gh pr create --title "<title>" --body "<body>" --base main
    ```

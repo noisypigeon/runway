@@ -346,3 +346,16 @@ Where this entry and the text above disagree, this entry is what runs.
 5. **The Pages shims stayed on `workflows/v9.3.0` in step 5.** `site-pages.yml`
    reads the same paths at `v9.3.0` and at `v9.4.2`, so LIB-0047's split can't
    recur. Each shim moves on its own schedule.
+6. **Steps 8 and 9 were one PR, and a pin bump comes before the backfill.**
+   - **Why one PR.** The posts that read the Release and the one-line writer
+     ship together, so no release is ever written in the new format while
+     garden still reads bodies from the changelogs.
+   - **The token.** The generator reads the Releases with `gh`, so
+     `site-generate.yml` passes `BOT_GITHUB_TOKEN` to it.
+   - **The extra pin bump.** garden only runs the new generator once runway
+     pins its version. So a pin bump lands between that PR and step 10's
+     backfill.
+   - **The header.** Each unit changelog's fifth header line becomes "One
+     line per release; its full notes are its GitHub Release". The fifth line
+     is the one `template-release.yml` inserts after, so the header keeps its
+     length.

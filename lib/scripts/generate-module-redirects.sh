@@ -1065,10 +1065,12 @@ echo "Generated ${plugins_count} plugin version page(s) under ${PLUGINS_CONTENT_
 
 # One post per module release, from the modules' own CHANGELOG.md files
 # (ADR-0141's content, ADR-0154's mechanism). Each "## [X.Y.Z] - YYYY-MM-DD"
-# entry becomes a post: its "### " line is the description, everything after
-# is the body verbatim. Note the split is on the versioned heading
-# specifically, not any "## " -- at least one entry body contains its own
-# "## Test plan" heading.
+# entry becomes a post, dated by that heading. Its description is the entry's
+# "### " line, or, in LIB-0049's one-line format, the "- <title> ([#N](url))"
+# line's title. Its body is the tag's GitHub Release notes, which hold the PR
+# body, and the entry's own body only for a tag with no Release (LIB-0049 §7).
+# Note the split is on the versioned heading specifically, not any "## " -- at
+# least one entry body contains its own "## Test plan" heading.
 mkdir -p "$RELEASES_CONTENT_DIR"
 find "$RELEASES_CONTENT_DIR" -maxdepth 1 -name '*.md' ! -name '_index.md' -delete
 
@@ -1114,7 +1116,23 @@ if ! git -C "$LIB_ROOT" rev-parse --verify --quiet "$CHANGELOG_REF" >/dev/null; 
 fi
 
 changelog_src="$(mktemp -d)"
-trap 'rm -rf "${changelog_src:?}"' EXIT
+notes_dir="$(mktemp -d)"
+trap 'rm -rf "${changelog_src:?}" "${notes_dir:?}"' EXIT
+
+# Every Release's notes, one file per tag with its slashes as "__", in one
+# paginated call. Without gh or a token, every post falls back to its
+# CHANGELOG.md entry, which since LIB-0049 is one line: say so loudly.
+if command -v gh >/dev/null 2>&1 \
+    && gh api --paginate "repos/${TAG_REPO}/releases?per_page=100" \
+         --jq '.[] | [.tag_name, ((.body // "") | @base64)] | @tsv' >"${notes_dir}/index.tsv" 2>/dev/null; then
+  while IFS=$'\t' read -r rtag rbody; do
+    [ -z "$rtag" ] && continue
+    printf '%s' "$rbody" | base64 -d | tr -d '\r' >"${notes_dir}/${rtag//\//__}"
+  done <"${notes_dir}/index.tsv"
+  rm -f "${notes_dir}/index.tsv"
+else
+  echo "::warning::Could not read ${TAG_REPO}'s Releases; release posts use their CHANGELOG.md entries" >&2
+fi
 
 while IFS= read -r mdir; do
   [ -z "$mdir" ] && continue
@@ -1124,7 +1142,18 @@ while IFS= read -r mdir; do
       > "${changelog_src}/${rel}/CHANGELOG.md" 2>/dev/null; then
     echo "::warning::No CHANGELOG.md at ${CHANGELOG_REF}:${mdir}; skipping its release posts" >&2
     rm -rf "${changelog_src:?}/${rel:?}"
+    continue
   fi
+  # LIB-0049 §7's backfill cut every entry to one line, and not every old tag
+  # has a Release to hold its long form. So also keep the newest revision of
+  # this CHANGELOG.md still in long form, with "### " titles, as LONG.md: an
+  # entry with no Release takes its body from there.
+  while IFS= read -r rev; do
+    if git -C "$LIB_ROOT" show "${rev}:${LIB_PREFIX}${mdir}/CHANGELOG.md" 2>/dev/null | grep -q '^### '; then
+      git -C "$LIB_ROOT" show "${rev}:${LIB_PREFIX}${mdir}/CHANGELOG.md" >"${changelog_src}/${rel}/LONG.md"
+      break
+    fi
+  done < <(git -C "$LIB_ROOT" log --format=%H -n 50 "$CHANGELOG_REF" -- ":/${LIB_PREFIX}${mdir}/CHANGELOG.md")
 done < <(templates_tags 'terraform/*/*/v*' \
   | sed -E 's#/v[0-9]+\.[0-9]+\.[0-9]+$##' | sort -u)
 
@@ -1144,7 +1173,8 @@ while IFS= read -r changelog; do
   provider="$(basename "$(dirname "$(dirname "$changelog")")")"
 
   written=$(awk -v provider="$provider" -v module="$module" \
-                -v outdir="$RELEASES_CONTENT_DIR" -v offsets="$offset_map" '
+                -v outdir="$RELEASES_CONTENT_DIR" -v offsets="$offset_map" \
+                -v notesdir="$notes_dir" -v longfile="$(dirname "$changelog")/LONG.md" '
     function offset_for(d,   n, i, parts, kv) {
       n = split(offsets, parts, ";")
       for (i = 1; i <= n; i++) {
@@ -1153,8 +1183,44 @@ while IFS= read -r changelog; do
       print "::error::No offset for date " d > "/dev/stderr"
       exit 1
     }
-    function flush(   path, i) {
+    # The long form of each entry, by version, from LONG.md when there is one:
+    # every line after the entry heading and its "### " title.
+    BEGIN {
+      while ((getline line < longfile) > 0) {
+        if (line ~ /^## \[[0-9]+\.[0-9]+\.[0-9]+\] - [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) {
+          # Keyed by version and occurrence: a track restarted at its old
+          # number (grafana/dashboard) holds one version twice.
+          lv = line; sub(/^## \[/, "", lv); sub(/\].*$/, "", lv)
+          lv = lv SUBSEP (++lseen[lv])
+          ltitled = 0; lskip = 0
+          continue
+        }
+        if (lv == "") continue
+        if (!ltitled) { if (line ~ /^### /) { ltitled = 1; lskip = 1 }; continue }
+        if (lskip && line == "") { lskip = 0; continue }
+        lskip = 0
+        if (lv in long) long[lv] = long[lv] "\n" line
+        else if (line != "") long[lv] = line
+      }
+      close(longfile)
+    }
+    function flush(   path, i, notes, line, nnotes, note, nlong, lines) {
       if (version == "") return
+      # The Release, when there is one, holds the long form.
+      notes = notesdir "/terraform__" provider "__" module "__v" version
+      nnotes = 0
+      while ((getline line < notes) > 0) note[++nnotes] = line
+      close(notes)
+      while (nnotes > 0 && note[nnotes] == "") nnotes--
+      if (nnotes > 0) {
+        nbody = 0
+        for (i = 1; i <= nnotes; i++) body[++nbody] = note[i]
+      } else if ((version SUBSEP occ) in long) {
+        # No Release: the long form from before the backfill.
+        nbody = 0
+        nlong = split(long[version SUBSEP occ], lines, "\n")
+        for (i = 1; i <= nlong; i++) body[++nbody] = lines[i]
+      }
       while (nbody > 0 && body[nbody] == "") nbody--
       path = outdir "/" provider "-" module "-v" version ".md"
       printf "+++\n" > path
@@ -1170,11 +1236,22 @@ while IFS= read -r changelog; do
     /^## \[[0-9]+\.[0-9]+\.[0-9]+\] - [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ {
       flush()
       version = $0; sub(/^## \[/, "", version); sub(/\].*$/, "", version)
+      occ = ++seen[version]
       date = $0; sub(/^.* - /, "", date)
       escaped_title = ""; nbody = 0; seen_title = 0
       next
     }
     version == "" { next }
+    !seen_title && /^- / {
+      # The one-line format of LIB-0049 §7: "- <title> ([#N](url))".
+      escaped_title = substr($0, 3)
+      sub(/ \(\[#[0-9]+\]\([^)]*\)\)$/, "", escaped_title)
+      gsub(/\\/, "\\\\", escaped_title)
+      gsub(/"/, "\\\"", escaped_title)
+      seen_title = 1
+      skip_blank = 1
+      next
+    }
     !seen_title && /^### / {
       escaped_title = substr($0, 5)
       gsub(/\\/, "\\\\", escaped_title)
