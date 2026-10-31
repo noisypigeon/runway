@@ -227,3 +227,8 @@ Where this entry and the text above disagree, this entry is what runs.
      that doesn't exist yet.
    - **How it showed.** The first apply of garden's test host failed on the
      token for both reasons.
+   - **The bucket's output is sensitive.** Its `endpoint` carries the
+     account ID, which every Cloudflare leaf takes as a sensitive input, so
+     Terraform refused to plan the bucket until its kind was marked
+     sensitive. `site-r2.yml` reads it with `terragrunt output -json`, which
+     prints sensitive values.
