@@ -1,6 +1,6 @@
 # the library's spoke root.hcl template (LIB-0001 §6, LIB-0003).
 #
-# GENERATED in a spoke -- do not edit there. lib/scripts/resolve-root-hcl.sh
+# GENERATED in a spoke -- do not edit there. tools/github/scripts/resolve-root-hcl.sh
 # copies this file to the spoke's repo root at the version the spoke's
 # spoke.hcl pins (root_hcl_version); the spoke commits the copy, and its CI runs
 # the same script with --check to fail on any drift. To change it, change it in
@@ -209,7 +209,7 @@ locals {
     local.is_workload_leaf &&
     local.leaf_provider == "cloudflare" &&
     local.workload_module == "cloudflare/api-token" &&
-    local.workload_instance == "deployer"
+    contains(["deployer", "site-deploy"], local.workload_instance)
   )
   # So is a workload's own Backblaze key leaf (LIB-0041 §1), which a key that
   # can only mint can mint.
@@ -745,24 +745,110 @@ locals {
       } : k => v if contains(keys(local.workload_services), "bluesky")
     },
   )
+  # deployments.cloudflare (LIB-0051 §2): the bucket site, named for the
+  # host, under any explicit entry of that key; a custom domain per name it
+  # serves, apex for @; and site-deploy, the token that writes its objects.
+  # resolve-workloads.sh's expand_workload is its twin.
+  workload_r2_on    = local.is_nested_workload && !local.is_private_workload && local.workload_host != "" && contains(try(keys(local.workload_raw.deployments), []), "cloudflare")
+  workload_r2_fqdn  = local.workload_host == "@" ? local.workload_parent : "${local.workload_host}.${local.workload_parent}"
+  workload_r2_hosts = try([for h in local.workload_raw.deployments.cloudflare.hosts : tostring(h)], local.workload_host == "@" ? ["@", "www"] : [local.workload_host])
+  workload_r2_bucket = { for k, v in { site = { exact_name = local.workload_r2_fqdn } } : k => v if local.workload_r2_on }
+  workload_r2_domains = {
+    for h in local.workload_r2_hosts : (h == "@" ? "apex" : replace(h, ".", "-")) => {
+      domain      = h == "@" ? local.workload_parent : "${h}.${local.workload_parent}"
+      bucket_name = local.workload_r2_fqdn
+    } if local.workload_r2_on
+  }
+  workload_r2_tokens = {
+    for k, v in {
+      "site-deploy" = { policies = [{ permission_groups = ["Workers R2 Storage Bucket Item Write"], r2_buckets = [local.workload_r2_fqdn] }] }
+    } : k => v if local.workload_r2_on
+  }
+  workload_cf_bucket_map = merge(local.workload_r2_bucket, {
+    for k, v in merge({}, try(local.workload_cloudflare.bucket, null)) :
+    k => merge(lookup(local.workload_r2_bucket, k, {}), merge({}, v))
+  })
+  # The sites a zone's hosts serve from R2 (LIB-0051 §2), read from each host
+  # workload's workload.yaml: they imply ruleset sites-root, which serves each
+  # site's / from /index.html, and for a site that serves www, sites-www, which
+  # redirects www to the apex. resolve-workloads.sh's expand_zone is its twin.
+  zone_site_raw = {
+    for h, w in(local.is_zone_unit ? try(local.zones[local.workload].hosts, {}) : {}) :
+    h => try(yamldecode(file("${get_parent_terragrunt_dir()}/workloads/${local.workload}/${w}/workload.yaml")).workload, null)
+  }
+  zone_site_names = {
+    for h, wr in local.zone_site_raw : h => try([for x in wr.deployments.cloudflare.hosts : tostring(x)], h == "@" ? ["@", "www"] : [h])
+    if can(wr.deployments.cloudflare)
+  }
+  zone_sites = flatten([
+    for h, names in local.zone_site_names : [
+      for n in names : {
+        fqdn = n == "@" ? local.workload : "${n}.${local.workload}"
+        www  = n == "@" && contains(names, "www")
+      } if !(n == "www" && h == "@")
+    ]
+  ])
+  zone_site_rulesets = merge(
+    {
+      for k, v in {
+        "sites-root" = {
+          name  = "${local.workload} sites root"
+          kind  = "zone"
+          phase = "http_request_transform"
+          rules = [for site in local.zone_sites : {
+            expression        = "(http.host eq \"${site.fqdn}\" and http.request.uri.path eq \"/\")"
+            description       = "serve ${site.fqdn}/ from /index.html"
+            action            = "rewrite"
+            action_parameters = { uri = { path = { value = "/index.html" } } }
+          }]
+        }
+      } : k => v if length(local.zone_sites) > 0
+    },
+    {
+      for k, v in {
+        "sites-www" = {
+          name  = "${local.workload} sites www"
+          kind  = "zone"
+          phase = "http_request_dynamic_redirect"
+          rules = [for site in local.zone_sites : {
+            expression  = "(http.host eq \"www.${site.fqdn}\")"
+            description = "redirect www.${site.fqdn} to ${site.fqdn}"
+            action      = "redirect"
+            action_parameters = {
+              from_value = {
+                status_code           = 301
+                target_url            = { expression = "concat(\"https://${site.fqdn}\", http.request.uri.path)" }
+                preserve_query_string = true
+              }
+            }
+          } if site.www]
+        }
+      } : k => v if length([for site in local.zone_sites : site if site.www]) > 0
+    },
+  )
   workload_cf_implied = merge(local.workload_pages_dns, local.workload_cf_redirect_dns, local.workload_cf_service_dns)
   workload_cf_dns = merge(local.workload_cf_implied, {
     for k, v in merge({}, try(local.workload_cloudflare.dnsRecord, null)) :
     k => merge(lookup(local.workload_cf_implied, k, {}), merge({}, v))
   })
-  workload_cf_rulesets = merge(local.workload_cf_redirect_rulesets, {
+  workload_cf_ruleset_implied = merge(local.workload_cf_redirect_rulesets, local.zone_site_rulesets)
+  workload_cf_rulesets = merge(local.workload_cf_ruleset_implied, {
     for k, v in merge({}, try(local.workload_cloudflare.ruleset, null)) :
-    k => merge(lookup(local.workload_cf_redirect_rulesets, k, {}), merge({}, v))
+    k => merge(lookup(local.workload_cf_ruleset_implied, k, {}), merge({}, v))
   })
   workload_cf_maps = {
-    "cloudflare/bucket"     = try(local.workload_cloudflare.bucket, null)
-    "cloudflare/dns-record" = local.workload_cf_dns
-    "cloudflare/ruleset"    = local.workload_cf_rulesets
+    "cloudflare/bucket"           = local.workload_cf_bucket_map
+    "cloudflare/dns-record"       = local.workload_cf_dns
+    "cloudflare/ruleset"          = local.workload_cf_rulesets
+    "cloudflare/r2-custom-domain" = local.workload_r2_domains
+    "cloudflare/api-token"        = local.workload_r2_tokens
   }
   workload_cf_yaml = {
-    "cloudflare/bucket"     = "bucket"
-    "cloudflare/dns-record" = "dnsRecord"
-    "cloudflare/ruleset"    = "ruleset"
+    "cloudflare/bucket"           = "bucket"
+    "cloudflare/dns-record"       = "dnsRecord"
+    "cloudflare/ruleset"          = "ruleset"
+    "cloudflare/r2-custom-domain" = "_implied.customDomain"
+    "cloudflare/api-token"        = "_implied.siteToken"
   }
   workload_cf_entry     = try(local.workload_cf_maps[local.workload_module][local.workload_instance], null)
   workload_cf_declared  = contains(try(keys(local.workload_cf_maps[local.workload_module]), []), local.workload_instance)
@@ -782,10 +868,10 @@ locals {
   # A nested workload's token reaches its zone only when it has a host there
   # (LIB-0037 §3).
   workload_cf_owned    = local.is_zone_unit ? [local.workload] : [for z in [local.workload_parent] : z if local.workload_host != ""]
-  workload_cf_buckets  = length(try(keys(local.workload_cloudflare.bucket), [])) > 0
+  workload_cf_buckets  = length(keys(local.workload_cf_bucket_map)) > 0
   workload_cf_deployer = local.is_zone_unit || length(local.workload_cf_owned) > 0 || local.workload_cf_buckets
   workload_cf_policies = concat(
-    [for z in [local.workload_cf_owned] : { permission_groups = concat(["Zone Read", "DNS Write"], local.is_zone_unit ? ["Dynamic URL Redirects Write"] : []), zones = z } if length(z) > 0],
+    [for z in [local.workload_cf_owned] : { permission_groups = concat(["Zone Read", "DNS Write"], local.is_zone_unit ? ["Dynamic URL Redirects Write"] : [], local.is_zone_unit && length(local.zone_sites) > 0 ? ["Zone Transform Rules Write"] : []), zones = z } if length(z) > 0],
     [for b in [local.workload_cf_buckets] : { permission_groups = ["Workers R2 Storage Write"], account = true } if b],
   )
   # Scaleway's compute kinds (LIB-0043). An instance expands into its
@@ -1172,10 +1258,44 @@ locals {
       entry        = local.workload_cf_entry
       secrets      = local.workload_cf_secrets
       wiring       = {}
-      defaults     = { name_prefix = "${local.workload_prefix}${local.workload_name_tag}-${local.workload_instance}", name_suffix = local.workload_suffix }
+      # An entry with exact_name takes no name_prefix or name_suffix, which
+      # the module refuses beside it.
+      defaults = {
+        for k, v in { name_prefix = "${local.workload_prefix}${local.workload_name_tag}-${local.workload_instance}", name_suffix = local.workload_suffix } :
+        k => v if !can(local.workload_cf_entry.exact_name)
+      }
       spoke_inputs = { account_id = local.cloudflare_account_id }
       sensitive    = false
       credentials  = "workload"
+      state        = "workload"
+      units        = ["workload"]
+    }
+    # deployments.cloudflare's custom domains (LIB-0051 §2), signed in with
+    # the workload's token, in the workload's zone.
+    "cloudflare/r2-custom-domain" = {
+      declared     = local.workload_cf_declared
+      entry        = local.workload_cf_entry
+      secrets      = local.workload_cf_secrets
+      wiring       = {}
+      defaults     = local.workload_cf_zone_set
+      spoke_inputs = { account_id = local.cloudflare_account_id }
+      sensitive    = false
+      credentials  = "workload"
+      state        = "workload"
+      units        = ["workload"]
+    }
+    # deployments.cloudflare's site-deploy token (LIB-0051 §2), minted with
+    # the spoke's breakglass token as the workload's own is, since a minted
+    # token can't mint. It writes only its site's bucket.
+    "cloudflare/api-token" = {
+      declared     = local.workload_cf_declared
+      entry        = local.workload_cf_entry
+      secrets      = local.workload_cf_secrets
+      wiring       = {}
+      defaults     = { name = "${local.workload_prefix}-${local.workload_suffix}${local.unit_tag}-${local.workload_instance}", rotation_days = 30 }
+      spoke_inputs = { account_id = local.cloudflare_account_id }
+      sensitive    = true
+      credentials  = "spoke"
       state        = "workload"
       units        = ["workload"]
     }
@@ -1398,6 +1518,7 @@ locals {
     fileexists("${get_parent_terragrunt_dir()}/${local.unit_dir}/secrets.yaml") ? "secrets.yaml is refused; rename it secrets.workload.yaml (LIB-0037 §§1, 6)" : "",
     !local.is_private_workload && local.workload_zone_raw == null ? "zone ${local.workload_parent} has no zones/${local.workload_parent}/zone.yaml (LIB-0037 §1)" : "",
     local.workload_pages_on && local.is_private_workload ? "deployments.githubPages needs a host, which a private workload never has (LIB-0037 §§1, 4)" : "",
+    local.is_nested_workload && contains(try(keys(local.workload_raw.deployments), []), "cloudflare") && local.workload_host == "" ? "deployments.cloudflare needs a host; give this workload one in zones/${local.workload_parent}/zone.yaml (LIB-0051 §2)" : "",
     local.workload_pages_on && !local.is_private_workload && local.workload_host == "" ? "deployments.githubPages needs a host; give this workload one in zones/${local.workload_parent}/zone.yaml (LIB-0037 §4)" : "",
     local.workload_pages_on && local.workload_host != "" && local.workload_pages_user == "" ? "deployments.githubPages.username defaults to the spoke repo's owner, but neither GITHUB_REPOSITORY_OWNER nor origin's URL gives one (LIB-0037 §4)" : "",
     local.workload_cf_zone_kind && local.workload_host == "" && !local.is_private_workload ? "${local.workload_cf_path}.${local.workload_instance}: this workload has no host in zones/${local.workload_parent}/zone.yaml, so it can't write records (LIB-0037 §3)" : "",
