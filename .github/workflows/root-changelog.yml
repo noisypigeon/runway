@@ -35,6 +35,10 @@ jobs:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
+          # LIB-0050 step 2: the pure move releases nothing, so it writes its
+          # own line. Step 3 restores the predicates under tools/.
+          echo "releases=false" >> "$GITHUB_OUTPUT"
+          exit 0
           if echo "$CHANGED_FILES" | grep -qE '^lib/terraform/[^/]+/[^/]+/.*\.tf$' \
             || echo "$CHANGED_FILES" | grep -qE '^lib/zola-site/(templates/|static/|theme\.toml$)' \
             || echo "$CHANGED_FILES" | grep -qE '^lib/terragrunt/root-hcl/(root\.hcl|secrets-schema\.json)$' \
@@ -56,8 +60,8 @@ jobs:
       # First match wins.
       precedence: |
         ^(terraform/|root\.hcl$|spoke\.hcl$|\.sops\.yaml$)=terraform
-        ^lib/docs/adr/=adr
-        ^lib/docs/runbooks/=docs
-        ^lib/=lib
+        ^tools/docs/adr/=adr
+        ^tools/docs/runbooks/=docs
+        ^tools/=tools
         ^\.github/=ci
     secrets: inherit

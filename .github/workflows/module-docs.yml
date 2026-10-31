@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'lib/terraform/**/*.tf'
+      - 'tools/terraform/**/*.tf'
   workflow_dispatch: {}
 
 permissions:
@@ -27,11 +27,11 @@ jobs:
       - name: Generate module docs
         uses: terraform-docs/gh-actions@v1.4.1
         with:
-          # Every directory under lib/terraform/ holding a .tf, found at run
+          # Every directory under tools/terraform/ holding a .tf, found at run
           # time, so a new module can't silently miss regeneration the way a
           # hard-coded working-dir list did. Never terraform/: that is this
           # repo's own leaves (LIB-0047).
-          find-dir: lib/terraform
+          find-dir: tools/terraform
           output-file: README.md
           output-method: inject
           output-format: markdown table
