@@ -310,3 +310,32 @@ one.
 7. **Changelogs are one line.** Every entry in each unit's `CHANGELOG.md` is a
    version heading and one line. garden's release posts still show each
    release's full body.
+
+## Amendments
+
+### 2026-10-31: as built
+
+Where this entry and the text above disagree, this entry is what runs.
+
+1. **Steps 2a and 2b were one PR.** The hoist split its move from its rewire
+   because the move matched every predicate. This move matches only the new
+   `workflows` one, and its merge runs its own `template-release.yml`. So
+   noisypigeon/runway#150 moved and rewired in one PR, and cut
+   `workflows/v9.4.0`, the first tag made this way. §8's table says so.
+2. **The marketplace takes §4's fallback, not a URL.** A plugin release's tag
+   names a commit that copies `lib/claude-plugins/marketplace.json` to
+   `/.claude-plugin/marketplace.json`, exactly as §2 does for the workflows.
+   A consumer keeps pinning the `github` marketplace at the plugin's tag,
+   which is the mechanism pigeon-cli already uses and needs no new Claude Code
+   feature. So pigeon-cli has nothing to move.
+   - **garden serves a page per plugin version** at
+     `noisypigeon.garden/claude-plugins/<plugin>/vX.Y.Z/`, with the
+     `.claude/settings.json` that pins it. It doesn't serve a
+     `marketplace.json`.
+   - **Only loadable tags get a page.** A tag is listed only if its commit's
+     marketplace names the plugin at a source its tree holds, so a recreated
+     pre-hoist tag is left out.
+3. **`workflows/v9.4.0` is not LIB-0048's.** LIB-0048's table expected its
+   label pinning and deprecation check to cut `v9.3.1` and `v9.4.0`. This
+   record's PRs cut those numbers first, so LIB-0048's steps take whatever
+   number comes next. Versions are a sequence, not names.

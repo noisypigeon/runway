@@ -1,0 +1,6 @@
+{
+  "name": "library",
+  "description": "Skills for working on the library, runway's lib/: release-pr is the discipline for getting a lib/ change released.",
+  "author": { "name": "noisypigeon" },
+  "repository": "https://github.com/noisypigeon/runway"
+}
