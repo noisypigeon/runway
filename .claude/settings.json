@@ -1,7 +1,7 @@
 {
   "extraKnownMarketplaces": {
     "library": {
-      "source": { "source": "github", "repo": "noisypigeon/runway", "ref": "claude-plugins/library/v1.0.0" }
+      "source": { "source": "github", "repo": "noisypigeon/runway", "ref": "claude-plugins/library/v1.0.1" }
     }
   },
   "enabledPlugins": { "library@library": true }
