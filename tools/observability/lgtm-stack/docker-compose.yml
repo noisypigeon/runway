@@ -1,6 +1,6 @@
 # pigeon-cli's local observability stack: Prometheus scrapes a bare-metal
 # `pigeon` run's /metrics, Promtail ships its JSONL log to Loki, and Grafana
-# renders grafana-dashboards/pigeon-cli over both. Hoisted from pigeon-cli by
+# renders observability/dashboards/pigeon-cli over both. Hoisted from pigeon-cli by
 # its CLI-0161 (the stack itself is its CLI-0128); versioned as
 # observability/pigeon-cli/vX.Y.Z. Run it from a checkout of that tag -- the
 # dashboard mount is relative to this file.
@@ -45,9 +45,9 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      # The dashboard is the library's versioned grafana-dashboards/pigeon-cli,
+      # The dashboard is the library's versioned observability/dashboards/pigeon-cli,
       # read from the same checkout rather than kept as a second copy here.
-      - ../../grafana-dashboards/pigeon-cli:/var/lib/grafana-dashboards/pigeon-cli:ro
+      - ../dashboards/pigeon-cli:/var/lib/grafana-dashboards/pigeon-cli:ro
     depends_on:
       - prometheus
       - loki

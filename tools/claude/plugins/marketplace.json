@@ -5,12 +5,12 @@
   "plugins": [
     {
       "name": "library",
-      "source": "./lib/claude-plugins/library",
+      "source": "./tools/claude/plugins/library",
       "description": "Skills for working on the library, runway's lib/: release-pr is the discipline for getting a lib/ change released."
     },
     {
       "name": "pigeon-cli",
-      "source": "./lib/claude-plugins/pigeon-cli",
+      "source": "./tools/claude/plugins/pigeon-cli",
       "description": "Skills for working on pigeon-cli: analyze-job-run diagnoses a pigeon job run from its JSONL log and metrics."
     }
   ]
