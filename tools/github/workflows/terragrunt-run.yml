@@ -98,10 +98,10 @@ on:
         required: false
         default: ""
       scripts_dir:
-        description: "Path (relative to the caller's repo root) to the library's lib/scripts, as left by prepare_cmd's fetcher."
+        description: "Path (relative to the caller's repo root) to the library's tools/github/scripts, as left by prepare_cmd's fetcher."
         type: string
         required: false
-        default: ".lib-src/lib/scripts"
+        default: ".pigeon/src/tools/github/scripts"
     secrets:
       SOPS_AGE_KEY:
         required: true
@@ -306,12 +306,13 @@ jobs:
           if [ -d workloads ] || [ -d zones ] || git cat-file -e "$base:workloads" 2>/dev/null || git cat-file -e "$base:zones" 2>/dev/null; then
             workloads=true
           fi
-          # lib/ holds the library's modules and root.hcl template (LIB-0047 §7).
+          # tools/ holds the library's modules and root.hcl template (LIB-0047 §7,
+          # LIB-0050).
           # Nothing under it is a unit, so it is never planned.
           if [ "$workloads" = true ]; then
-            FILTER_ARGS=(--filter '[main...HEAD] | !./workloads/** | !./zones/** | !./lib/**')
+            FILTER_ARGS=(--filter '[main...HEAD] | !./workloads/** | !./zones/** | !./tools/**')
           else
-            FILTER_ARGS=(--filter '[main...HEAD] | !./lib/**')
+            FILTER_ARGS=(--filter '[main...HEAD] | !./tools/**')
           fi
           git_units=$(terragrunt --no-color find "${FILTER_ARGS[@]}" --filter-allow-destroy --json | jq -r '.[].path')
           dirs=""

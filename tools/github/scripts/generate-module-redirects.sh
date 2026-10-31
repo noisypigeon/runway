@@ -18,8 +18,8 @@
 # two roots that are deliberately separate:
 #
 #   LIB_ROOT     -- the library clone's lib/ this script was fetched into.
-#                   Derived from ${BASH_SOURCE[0]} one level up (this script
-#                   lives in lib/scripts/), never from git rev-parse: the invoking
+#                   Derived from ${BASH_SOURCE[0]} two levels up (this script
+#                   lives in tools/github/scripts/), never from git rev-parse: the invoking
 #                   site is a different repo, so asking git for *its* toplevel
 #                   finds the wrong tree. Same property DEV-0154 gave
 #                   resolve-theme.sh, and the same path arithmetic to keep
@@ -70,7 +70,7 @@
 # tags and changelogs. Safe to run repeatedly; fully idempotent.
 set -euo pipefail
 
-LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TAG_REPO="${TAG_REPO:-noisypigeon/runway}"
 CONTENT_ROOT=""
 STATIC_ROOT=""
@@ -99,9 +99,23 @@ if [ ! -d "$LIB_ROOT/terraform" ]; then
   exit 1
 fi
 
-# lib/ is a directory of its repo (LIB-0047), so a path read from a tag's
-# tree carries its prefix: "lib/" in runway, "" in an older checkout.
+# tools/ is a directory of its repo (LIB-0047, LIB-0050), so a path read from
+# this checkout's tree carries its prefix: "tools/" in runway.
 LIB_PREFIX="$(git -C "$LIB_ROOT" rev-parse --show-prefix 2>/dev/null || true)"
+
+# A tag's own prefix, which is not always this checkout's: a tag cut before
+# LIB-0050 has the library under lib/, and one cut after under tools/. So an
+# old module tag's source keeps naming //lib/terraform/... (LIB-0050 §3).
+tag_prefix() {
+  local p
+  for p in tools/ lib/ ""; do
+    if git -C "$LIB_ROOT" cat-file -e "$1:${p}terraform" 2>/dev/null; then
+      echo "$p"
+      return
+    fi
+  done
+  echo "$LIB_PREFIX"
+}
 
 CONTENT_DIR="$CONTENT_ROOT/terraform"
 THEME_CONTENT_DIR="$CONTENT_ROOT/theme-versions"
@@ -136,7 +150,7 @@ while IFS= read -r tag; do
   # The public URL is a fixed interface (LIB-0009 §1), written out here rather
   # than built from ${prefix}, so a change of tag prefix can never move it.
   url_path="terraform/${provider}/${module}/v${version}"
-  git_source="git::https://github.com/${repo}.git//${LIB_PREFIX}${prefix}/${provider}/${module}?ref=${full_tag}"
+  git_source="git::https://github.com/${repo}.git//$(tag_prefix "$full_tag")${prefix}/${provider}/${module}?ref=${full_tag}"
   github_url="https://github.com/${repo}/releases/tag/${full_tag}"
 
   cat > "$CONTENT_DIR/${slug}.md" <<EOF
@@ -284,10 +298,12 @@ if [ -n "$STATIC_ROOT" ]; then
       out="$STATIC_ROOT/terraform/${wmodule}/v${v}"
       mkdir -p "$out"
       tree="$(mktemp -d)"
-      # From $LIB_ROOT, archive's pathspec and output are both relative to it,
-      # so this needs no $LIB_PREFIX (unlike a TAG:path read).
-      git -C "$LIB_ROOT" archive "terraform/${wmodule}/v${v}" "terraform/${wmodule}" | tar -x -C "$tree"
-      "$LIB_ROOT/scripts/module-inputs-schema.sh" "$tree/terraform/${wmodule}" \
+      # Archived at the tag's own prefix, lib/ or tools/ (tag_prefix).
+      mkdir -p "$tree/terraform/${wmodule}"
+      # From the top level: run from tools/, git archive keeps only tools/.
+      git -C "$(git -C "$LIB_ROOT" rev-parse --show-toplevel)" archive "terraform/${wmodule}/v${v}:$(tag_prefix "terraform/${wmodule}/v${v}")terraform/${wmodule}" \
+        | tar -x -C "$tree/terraform/${wmodule}"
+      "$LIB_ROOT/github/scripts/module-inputs-schema.sh" "$tree/terraform/${wmodule}" \
         --id "${SCHEMA_BASE_URL}/terraform/${wmodule}/v${v}/inputs.schema.json" >"$out/inputs.schema.json"
       rm -rf "$tree"
       schema_count=$((schema_count + 1))
@@ -817,7 +833,7 @@ if [ -n "$STATIC_ROOT" ]; then
   # its own params schema beside its filter plus `exempt`. A new policy adds
   # one to v1 in place.
   mkdir -p "$STATIC_ROOT/schemas/policies"
-  for pschema in "$LIB_ROOT"/scripts/policies/*.schema.json; do
+  for pschema in "$LIB_ROOT"/github/policies/*.schema.json; do
     [ -f "$pschema" ] || continue
     jq --arg id "$(basename "$pschema" .schema.json)" '{($id): .}' "$pschema"
   done | jq -s --arg base "$SCHEMA_BASE_URL" 'add // {} | {
@@ -857,22 +873,28 @@ theme_count=0
 while IFS= read -r tag; do
   [ -z "$tag" ] && continue
 
-  if [[ ! "$tag" =~ ^(zola-site)/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+  # zola-site/vX.Y.Z until LIB-0050, static-site/zola/vX.Y.Z after. Each keeps
+  # the page it had: templates/zola-site/vX.Y.Z, and static-site/zola/vX.Y.Z.
+  if [[ "$tag" =~ ^(zola-site)/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+    theme="${BASH_REMATCH[1]}"
+    version="${BASH_REMATCH[2]}"
+    url_path="templates/${theme}/v${version}"
+  elif [[ "$tag" =~ ^(static-site/zola)/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+    theme="${BASH_REMATCH[1]}"
+    version="${BASH_REMATCH[2]}"
+    url_path="${theme}/v${version}"
+  else
     echo "::warning::Skipping theme tag with unexpected shape: $tag" >&2
     continue
   fi
 
-  theme="${BASH_REMATCH[1]}"
-  version="${BASH_REMATCH[2]}"
-
-  slug="${theme}-v${version}"
-  url_path="templates/${theme}/v${version}"
+  slug="${theme//\//-}-v${version}"
   github_url="https://github.com/${TAG_REPO}/releases/tag/${tag}"
 
   cat > "$THEME_CONTENT_DIR/${slug}.md" <<EOF
 +++
-title = "templates/${theme} v${version}"
-description = "templates/${theme} theme, version ${version}."
+title = "${url_path%/v*} v${version}"
+description = "${url_path%/v*} theme, version ${version}."
 path = "${url_path}"
 template = "theme-redirect.html"
 in_search_index = false
@@ -885,7 +907,7 @@ github_url = "${github_url}"
 EOF
 
   theme_count=$((theme_count + 1))
-done < <(templates_tags 'zola-site/v*' | sort)
+done < <(templates_tags 'zola-site/v*' 'static-site/zola/v*' | sort)
 
 echo "Generated ${theme_count} theme-version redirect page(s) under ${THEME_CONTENT_DIR#"$CONTENT_ROOT"/}."
 
@@ -916,10 +938,15 @@ find "$WORKFLOWS_CONTENT_DIR" -maxdepth 1 -name '*.md' ! -name '_index.md' -dele
 workflows_count=0
 while IFS= read -r tag; do
   [ -z "$tag" ] && continue
-  if [[ ! "$tag" =~ ^workflows/v(([0-9]+)\.([0-9]+)\.([0-9]+))$ ]]; then
+  # workflows/vX.Y.Z until LIB-0050, github/workflows/vX.Y.Z after; each page
+  # sits at its tag's path, and the version numbers continue across them.
+  if [[ ! "$tag" =~ ^((github/)?workflows)/v(([0-9]+)\.([0-9]+)\.([0-9]+))$ ]]; then
     echo "::warning::Skipping workflows tag with unexpected shape: $tag" >&2
     continue
   fi
+  track="${BASH_REMATCH[1]}"
+  BASH_REMATCH=("${BASH_REMATCH[0]}" "${BASH_REMATCH[3]}" "${BASH_REMATCH[4]}" "${BASH_REMATCH[5]}" "${BASH_REMATCH[6]}")
+  if [ "$track" = workflows ]; then pin_file=".lib-version"; else pin_file=".pigeon/version"; fi
   version="${BASH_REMATCH[1]}"
   weight=$(( BASH_REMATCH[2] * 1000000 + BASH_REMATCH[3] * 1000 + BASH_REMATCH[4] ))
   if [ "$(printf '%s\n%s\n' "$FIRST_RUNWAY_WORKFLOWS" "$version" | sort -V | head -n1)" != "$FIRST_RUNWAY_WORKFLOWS" ]; then
@@ -930,9 +957,9 @@ while IFS= read -r tag; do
   {
     cat <<FRONT
 +++
-title = "workflows v${version}"
-description = "The reusable GitHub workflows at workflows/v${version}."
-path = "workflows/v${version}"
+title = "${track} v${version}"
+description = "The reusable GitHub workflows at ${track}/v${version}."
+path = "${track}/v${version}"
 template = "workflows-version.html"
 weight = ${weight}
 
@@ -942,7 +969,7 @@ github_url = "https://github.com/${TAG_REPO}/releases/tag/${tag}"
 +++
 
 Call a workflow at this version with its \`uses:\` line. Every workflow here is
-at the same version as the scripts that a \`.lib-version\` of \`${tag}\`
+at the same version as the scripts that a \`${pin_file}\` of \`${tag}\`
 fetches.
 FRONT
     # --full-tree: LIB_ROOT is lib/, and a tag's .github/ is at the repo root.
@@ -988,7 +1015,7 @@ FRONT
   } >"$page"
 
   workflows_count=$((workflows_count + 1))
-done < <(templates_tags 'workflows/v*' | sort -V)
+done < <(templates_tags 'workflows/v*' 'github/workflows/v*' | sort -V)
 
 echo "Generated ${workflows_count} workflows version page(s) under ${WORKFLOWS_CONTENT_DIR#"$CONTENT_ROOT"/}."
 
@@ -1006,13 +1033,16 @@ find "$PLUGINS_CONTENT_DIR" -maxdepth 1 -name '*.md' ! -name '_index.md' -delete
 plugins_count=0
 while IFS= read -r tag; do
   [ -z "$tag" ] && continue
-  if [[ ! "$tag" =~ ^claude-plugins/([a-z0-9-]+)/v(([0-9]+)\.([0-9]+)\.([0-9]+))$ ]]; then
+  # claude-plugins/<plugin>/ until LIB-0050, claude/plugins/<plugin>/ after;
+  # each page sits at its tag's path.
+  if [[ ! "$tag" =~ ^(claude-plugins|claude/plugins)/([a-z0-9-]+)/v(([0-9]+)\.([0-9]+)\.([0-9]+))$ ]]; then
     echo "::warning::Skipping plugin tag with unexpected shape: $tag" >&2
     continue
   fi
-  plugin="${BASH_REMATCH[1]}"
-  version="${BASH_REMATCH[2]}"
-  weight=$(( BASH_REMATCH[3] * 1000000 + BASH_REMATCH[4] * 1000 + BASH_REMATCH[5] ))
+  track="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+  plugin="${BASH_REMATCH[2]}"
+  version="${BASH_REMATCH[3]}"
+  weight=$(( BASH_REMATCH[4] * 1000000 + BASH_REMATCH[5] * 1000 + BASH_REMATCH[6] ))
 
   source="$(git -C "$LIB_ROOT" show "${tag}:.claude-plugin/marketplace.json" 2>/dev/null \
     | jq -r --arg p "$plugin" '.plugins[]? | select(.name == $p) | .source | strings' 2>/dev/null || true)"
@@ -1024,9 +1054,9 @@ while IFS= read -r tag; do
 
   cat >"$PLUGINS_CONTENT_DIR/${plugin}-v${version}.md" <<FRONT
 +++
-title = "claude-plugins/${plugin} v${version}"
-description = "The ${plugin} Claude Code plugin at claude-plugins/${plugin}/v${version}."
-path = "claude-plugins/${plugin}/v${version}"
+title = "${track} v${version}"
+description = "The ${plugin} Claude Code plugin at ${track}/v${version}."
+path = "${track}/v${version}"
 template = "plugin-version.html"
 weight = ${weight}
 
@@ -1059,7 +1089,7 @@ If Claude Code reports the plugin is enabled but not installed, run
 FRONT
 
   plugins_count=$((plugins_count + 1))
-done < <(templates_tags 'claude-plugins/*/v*' | sort -V)
+done < <(templates_tags 'claude-plugins/*/v*' 'claude/plugins/*/v*' | sort -V)
 
 echo "Generated ${plugins_count} plugin version page(s) under ${PLUGINS_CONTENT_DIR#"$CONTENT_ROOT"/}."
 
@@ -1091,7 +1121,7 @@ offset_for_date() {
 
 # Read each module's CHANGELOG.md from the library's default branch, not from the
 # working tree. LIB_ROOT is checked out at whatever ref a spoke pins in
-# .lib-version, which by construction predates any release cut after that pin --
+# .pigeon/version (.lib-version before LIB-0050), which by construction predates any release cut after that pin --
 # so the working-tree copy is missing exactly the newest entry, the one a fresh
 # release most needs published. That asymmetry is subtle and bit once: a module
 # release published its redirect page (tag-derived, and tags are fetched in full)
@@ -1148,12 +1178,15 @@ while IFS= read -r mdir; do
   # has a Release to hold its long form. So also keep the newest revision of
   # this CHANGELOG.md still in long form, with "### " titles, as LONG.md: an
   # entry with no Release takes its body from there.
+  # It may be from before LIB-0050, under lib/.
   while IFS= read -r rev; do
-    if git -C "$LIB_ROOT" show "${rev}:${LIB_PREFIX}${mdir}/CHANGELOG.md" 2>/dev/null | grep -q '^### '; then
-      git -C "$LIB_ROOT" show "${rev}:${LIB_PREFIX}${mdir}/CHANGELOG.md" >"${changelog_src}/${rel}/LONG.md"
-      break
-    fi
-  done < <(git -C "$LIB_ROOT" log --format=%H -n 50 "$CHANGELOG_REF" -- ":/${LIB_PREFIX}${mdir}/CHANGELOG.md")
+    for lp in "$LIB_PREFIX" lib/; do
+      if git -C "$LIB_ROOT" show "${rev}:${lp}${mdir}/CHANGELOG.md" 2>/dev/null | grep -q '^### '; then
+        git -C "$LIB_ROOT" show "${rev}:${lp}${mdir}/CHANGELOG.md" >"${changelog_src}/${rel}/LONG.md"
+        break 2
+      fi
+    done
+  done < <(git -C "$LIB_ROOT" log --format=%H -n 50 "$CHANGELOG_REF" -- ":/${LIB_PREFIX}${mdir}/CHANGELOG.md" ":/lib/${mdir}/CHANGELOG.md")
 done < <(templates_tags 'terraform/*/*/v*' \
   | sed -E 's#/v[0-9]+\.[0-9]+\.[0-9]+$##' | sort -u)
 

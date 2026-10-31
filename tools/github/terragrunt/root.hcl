@@ -1,6 +1,6 @@
 # the library's spoke root.hcl template (LIB-0001 §6, LIB-0003).
 #
-# GENERATED in a spoke -- do not edit there. lib/scripts/resolve-root-hcl.sh
+# GENERATED in a spoke -- do not edit there. tools/github/scripts/resolve-root-hcl.sh
 # copies this file to the spoke's repo root at the version the spoke's
 # spoke.hcl pins (root_hcl_version); the spoke commits the copy, and its CI runs
 # the same script with --check to fail on any drift. To change it, change it in

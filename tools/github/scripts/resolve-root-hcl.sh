@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Run from a consuming spoke's repo root (the directory holding spoke.hcl).
 # Reads root_hcl_version from that spoke.hcl and materializes ./root.hcl from
-# terragrunt/root-hcl/root.hcl -- either the working-tree copy ("main") or the
-# copy at tag terragrunt/root-hcl/v<version>. See
-# terragrunt/root-hcl/README.md and LIB-0003. From v3.0.0 it does the same for
+# github/terragrunt/root.hcl -- either the working-tree copy ("main") or the
+# copy at tag github/terragrunt/v<version>, or at terragrunt/root-hcl/v<version>
+# for a version cut before LIB-0050 renamed the track. See
+# github/terragrunt/README.md and LIB-0003. From v3.0.0 it does the same for
 # ./secrets-schema.json, which that root.hcl reads from beside itself
 # (LIB-0010); a version without one gets none, and a stale copy is removed.
 #
@@ -24,10 +25,9 @@
 #
 # The library root is resolved from this script's own location rather than by
 # asking git, for the reason DEV-0154 gave resolve-theme.sh: the copy that runs
-# is the one in the spoke's fetched .lib-src/, and `git rev-parse` from the
-# spoke would find the spoke. Lives under lib/scripts/ so the workflows/
-# track versions it -- resolve-theme.sh, under zola-site/, is covered by no
-# release predicate at all.
+# is the one in the spoke's fetched .pigeon/src/, and `git rev-parse` from the
+# spoke would find the spoke. Lives under tools/github/scripts/ so the
+# github/workflows/ track versions it.
 set -euo pipefail
 
 CHECK=false
@@ -37,11 +37,8 @@ case "${1:-}" in
   *) echo "usage: $0 [--check]" >&2; exit 2 ;;
 esac
 
-LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TEMPLATE_DIR="terragrunt/root-hcl"
-# lib/ is a directory of its repo (LIB-0047), so a path read from a tag's
-# tree carries its prefix: "lib/" in runway, "" in an older checkout.
-LIB_PREFIX="$(git -C "$LIB_ROOT" rev-parse --show-prefix 2>/dev/null || true)"
+LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+TEMPLATE_DIR="github/terragrunt"
 # The template's files, each materialized at the spoke root under its own name.
 FILES="root.hcl secrets-schema.json"
 SPOKE_DIR="$(pwd)"
@@ -75,14 +72,30 @@ if [ "$VERSION" = "main" ]; then
   done
   SOURCE="main (working tree)"
 else
-  TAG="terragrunt/root-hcl/v${VERSION#v}"
-  if ! git -C "$LIB_ROOT" rev-parse --verify --quiet "$TAG" >/dev/null; then
-    echo "::error::Unknown tag $TAG" >&2
+  # The new track first, then the one before LIB-0050. Each tag holds its
+  # template at its own path: tools/github/terragrunt/ after the rename,
+  # lib/terragrunt/root-hcl/ after LIB-0047, terragrunt/root-hcl/ before.
+  TAG=""
+  for t in "github/terragrunt/v${VERSION#v}" "terragrunt/root-hcl/v${VERSION#v}"; do
+    if git -C "$LIB_ROOT" rev-parse --verify --quiet "$t" >/dev/null; then
+      TAG="$t"
+      break
+    fi
+  done
+  if [ -z "$TAG" ]; then
+    echo "::error::Unknown version $VERSION: no github/terragrunt/v${VERSION#v} or terragrunt/root-hcl/v${VERSION#v} tag" >&2
     exit 1
   fi
+  TAG_DIR=""
+  for d in tools/github/terragrunt lib/terragrunt/root-hcl terragrunt/root-hcl; do
+    if git -C "$LIB_ROOT" cat-file -e "${TAG}:${d}/root.hcl" 2>/dev/null; then
+      TAG_DIR="$d"
+      break
+    fi
+  done
   for f in $FILES; do
-    if git -C "$LIB_ROOT" cat-file -e "${TAG}:${LIB_PREFIX}${TEMPLATE_DIR}/$f" 2>/dev/null; then
-      git -C "$LIB_ROOT" show "${TAG}:${LIB_PREFIX}${TEMPLATE_DIR}/$f" > "$TMP_DIR/$f"
+    if [ -n "$TAG_DIR" ] && git -C "$LIB_ROOT" cat-file -e "${TAG}:${TAG_DIR}/$f" 2>/dev/null; then
+      git -C "$LIB_ROOT" show "${TAG}:${TAG_DIR}/$f" > "$TMP_DIR/$f"
     fi
   done
   SOURCE="$TAG"

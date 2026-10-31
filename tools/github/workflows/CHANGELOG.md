@@ -315,3 +315,5 @@ One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 ## [1.0.0] - 2026-10-13
 
 - Seed the reusable CI's version track
+
+<!-- continues-from: workflows/v9.4.3 -->

@@ -10,7 +10,7 @@
 #
 # Run from the crate's repo root, by rust-crate-release.yml or a spoke's
 # `mise run release`. Finds its sibling crate-cut-release.sh relative to its
-# own location, so it works wherever fetch-lib.sh put the library.
+# own location, so it works wherever .pigeon/tools.sh put the library.
 set -euo pipefail
 
 usage() {

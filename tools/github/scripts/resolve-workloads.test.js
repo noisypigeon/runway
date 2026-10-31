@@ -1,5 +1,5 @@
 // Tests for resolve-workloads.sh's Backblaze grants (LIB-0045 §§6-7). Run with:
-//   node --test lib/scripts/
+//   node --test tools/github/scripts/
 // Each case writes a minimal spoke to a temporary directory and runs the
 // script there without a flag, so it writes stubs and needs no network, only
 // yq and jq on PATH.

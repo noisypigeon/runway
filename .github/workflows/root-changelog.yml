@@ -18,7 +18,7 @@ jobs:
   # unit (LIB-0047). Its detection predicates are duplicated here on purpose so
   # that no PR ever gets two lines, or none: change one copy and you change its
   # twin (DEV-0160, LIB-0002; library#301). Paths are runway's, so each unit's
-  # predicate carries lib/.
+  # predicate carries tools/.
   releases:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
@@ -35,17 +35,15 @@ jobs:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
-          # LIB-0050 step 2: the pure move releases nothing, so it writes its
-          # own line. Step 3 restores the predicates under tools/.
-          echo "releases=false" >> "$GITHUB_OUTPUT"
-          exit 0
-          if echo "$CHANGED_FILES" | grep -qE '^lib/terraform/[^/]+/[^/]+/.*\.tf$' \
-            || echo "$CHANGED_FILES" | grep -qE '^lib/zola-site/(templates/|static/|theme\.toml$)' \
-            || echo "$CHANGED_FILES" | grep -qE '^lib/terragrunt/root-hcl/(root\.hcl|secrets-schema\.json)$' \
-            || echo "$CHANGED_FILES" | grep -qE '^lib/grafana-dashboards/[^/]+/[^/]+\.json$' \
-            || echo "$CHANGED_FILES" | grep -E '^lib/(observability|claude-plugins)/[^/]+/.+' \
-                 | grep -qvE '^lib/(observability|claude-plugins)/[^/]+/(README|CHANGELOG)\.md$' \
-            || echo "$CHANGED_FILES" | grep -qE '^lib/github-workflows/[^/]+\.yml$|^lib/scripts/'; then
+          if echo "$CHANGED_FILES" | grep -qE '^tools/terraform/[^/]+/[^/]+/.*\.tf$' \
+            || echo "$CHANGED_FILES" | grep -qE '^tools/static-site/zola/(templates/|static/|theme\.toml$)' \
+            || echo "$CHANGED_FILES" | grep -qE '^tools/github/terragrunt/(root\.hcl|secrets-schema\.json)$' \
+            || echo "$CHANGED_FILES" | grep -qE '^tools/observability/dashboards/[^/]+/[^/]+\.json$' \
+            || echo "$CHANGED_FILES" | grep -E '^tools/observability/[^/]+/.+' | grep -vE '^tools/observability/dashboards/' \
+                 | grep -qvE '^tools/observability/[^/]+/(README|CHANGELOG)\.md$' \
+            || echo "$CHANGED_FILES" | grep -E '^tools/claude/plugins/[^/]+/.+' \
+                 | grep -qvE '^tools/claude/plugins/[^/]+/(README|CHANGELOG)\.md$' \
+            || echo "$CHANGED_FILES" | grep -qE '^tools/github/(workflows/[^/]+\.yml$|scripts/|policies/)'; then
             echo "This PR releases a library unit; template-release.yml writes its root entry."
             echo "releases=true" >> "$GITHUB_OUTPUT"
           else

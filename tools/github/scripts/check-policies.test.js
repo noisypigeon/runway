@@ -1,5 +1,5 @@
 // Tests for check-policies.sh and its policies (LIB-0045). Run with:
-//   node --test lib/scripts/
+//   node --test tools/github/scripts/
 // Each case writes a minimal spoke to a temporary directory and runs the
 // script there, so it needs yq and jq on PATH, as the script does. A policy's
 // own cases run its jq filter on a hand-made inventory.
