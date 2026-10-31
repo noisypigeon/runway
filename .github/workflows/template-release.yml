@@ -1,9 +1,11 @@
 name: template-release
 
 # Releases the library, which is runway's lib/ (LIB-0047). Every unit lives
-# under lib/ except the reusable workflows, which GitHub only runs from
-# .github/workflows/. A unit's tag is its path under lib/: lib/terraform/<p>/<m>
-# is tagged terraform/<p>/<m>/vX.Y.Z, as it was before the hoist.
+# under lib/, the reusable workflows included, at lib/github-workflows/
+# (LIB-0049). A unit's tag is its path under lib/: lib/terraform/<p>/<m> is
+# tagged terraform/<p>/<m>/vX.Y.Z, as it was before the hoist. The workflows
+# are the exception: GitHub only runs them from .github/workflows/, so their
+# tag names a commit off main that copies them there.
 on:
   pull_request:
     types: [closed]
@@ -130,7 +132,7 @@ jobs:
           echo "changed=${SETS% }" >> "$GITHUB_OUTPUT"
 
       # The spokes call the reusable workflows and fetch root-changelog.sh, so
-      # all of .github/ travels under one version -- LIB-0001 invariant 2 says a
+      # lib/github-workflows/ and lib/scripts/ travel under one version -- LIB-0001 invariant 2 says a
       # spoke pins a version rather than tracking a branch, and DEV-0155 deferred
       # exactly this track on the grounds that live @main was cheaper. It is no
       # longer cheaper now that three spokes consume it.
@@ -143,17 +145,9 @@ jobs:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
-          # A workflow is reusable if either side of the diff is called with
-          # workflow_call, so adding or deleting one counts too.
-          reusable_changed() {
-            for f in $(echo "$CHANGED_FILES" | grep -E '^\.github/workflows/[^/]+\.yml$'); do
-              for rev in "$MERGE_SHA" "${MERGE_SHA}~1"; do
-                git show "${rev}:${f}" 2>/dev/null | grep -qE '^  workflow_call:' && return 0
-              done
-            done
-            return 1
-          }
-          if reusable_changed || echo "$CHANGED_FILES" | grep -qE '^lib/scripts/'; then
+          # A path, not a look inside the file: every reusable workflow lives
+          # in lib/github-workflows/, and none of runway's own does (LIB-0049 §1).
+          if echo "$CHANGED_FILES" | grep -qE '^lib/github-workflows/[^/]+\.yml$|^lib/scripts/'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -499,9 +493,8 @@ jobs:
             esac
           fi
 
-          # Lives beside the workflows it versions. GitHub only reads *.yml from
-          # this directory, so a CHANGELOG.md here is inert to Actions.
-          CHANGELOG=".github/workflows/CHANGELOG.md"
+          # Lives beside the workflows it versions (LIB-0049 §1).
+          CHANGELOG="lib/github-workflows/CHANGELOG.md"
           if [ ! -f "$CHANGELOG" ]; then
             cat > "$CHANGELOG" <<'HEADER'
           # Changelog
@@ -579,7 +572,35 @@ jobs:
           printf '%s\n\nPR: %s\n' "$PR_BODY" "$PR_URL" > "$NOTES"
 
           for tag in $RELEASE_TAGS; do
-            git tag "$tag"
+            case "$tag" in
+              workflows/*)
+                # GitHub runs a reusable workflow only from .github/workflows/
+                # at the ref it is called at. So the tag names a child of the
+                # changelog commit that copies lib/github-workflows/*.yml
+                # there, and only the tag is pushed: main never holds the
+                # copies (LIB-0049 §2). Built in a scratch index, so the
+                # working tree and main are untouched. Pushing it needs
+                # BOT_GITHUB_TOKEN to carry the workflows permission.
+                export GIT_INDEX_FILE
+                GIT_INDEX_FILE="$(mktemp -u)"
+                git read-tree HEAD
+                for f in lib/github-workflows/*.yml; do
+                  dest=".github/workflows/$(basename "$f")"
+                  if git cat-file -e "HEAD:${dest}" 2>/dev/null; then
+                    echo "::error::${f} collides with runway's own ${dest}; rename one"
+                    exit 1
+                  fi
+                  git update-index --add --cacheinfo "100644,$(git hash-object -w "$f"),${dest}"
+                done
+                commit=$(git commit-tree "$(git write-tree)" -p HEAD -m "chore(release): ${tag}")
+                rm -f "$GIT_INDEX_FILE"
+                unset GIT_INDEX_FILE
+                git tag "$tag" "$commit"
+                ;;
+              *)
+                git tag "$tag"
+                ;;
+            esac
             git push origin "$tag"
             gh release create "$tag" --title "$tag" --notes-file "$NOTES"
           done

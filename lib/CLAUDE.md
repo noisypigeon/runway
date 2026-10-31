@@ -68,20 +68,20 @@ this family that is reusable and versioned, and nothing that is deployed:
   pins the whole marketplace to one plugin's tag in its `.claude/settings.json`
   and enables `<plugin>@library`. `pigeon-cli` is the one plugin (its
   CLI-0161).
-- `.github/workflows/` — the reusable CI the spokes call, tagged
-  `workflows/vX.Y.Z`. Reusable workflows must live in `.github/workflows/`, so
-  they sit beside this repo's own release automation rather than under a
-  templates convention (DEV-0155).
+- `github-workflows/` — the reusable CI the spokes call, tagged
+  `workflows/vX.Y.Z`. GitHub runs a reusable workflow only from
+  `.github/workflows/`, so each tag names a commit off `main` that copies
+  them there, and runway's own `.github/workflows/` holds none (LIB-0049).
 - `scripts/root-changelog.sh` — the one implementation of DEV-0160's
   root-changelog contract, used by this repo and fetched by the spokes.
-- `.github/workflows/rust-crate-release.yml` and `scripts/crate-*.sh`,
+- `github-workflows/rust-crate-release.yml` and `scripts/crate-*.sh`,
   `adr-issue.sh` — the Rust crate release pipeline and ADR out-of-scope issue
   filer, hoisted from `pigeon-cli` by its CLI-0161. Run in the *caller's* repo
   after its `fetch-lib.sh`; the caller writes its own `vX.Y.Z` tags and
   publishes to crates.io (LIB-0001's 2026-10-19 amendment). Every
   crate-specific value (`--crate`, `--bin`, `--codesign-id`, the target
   matrix) is an input.
-- `.github/workflows/site-dispatch.yml` — a spoke whose workload holds a Zola
+- `github-workflows/site-dispatch.yml` — a spoke whose workload holds a Zola
   site calls it to dispatch the site's deploy in its Pages shim repo, a repo
   holding only a README and that deploy workflow (LIB-0031). The shim calls
   `zola-site-pages.yml` with `repository` and `ref` to build the spoke's
@@ -89,7 +89,7 @@ this family that is reusable and versioned, and nothing that is deployed:
   LIB-0035 a shim does that through `site-pages.yml`, naming only its spoke
   and workload, and `site-generate.yml` commits a site's generated files in
   the spoke before it deploys.
-- `.github/workflows/container-image-release.yml` — builds a caller's
+- `github-workflows/container-image-release.yml` — builds a caller's
   Dockerfile natively per platform, runs the caller's smoke test inside each
   image before anything is pushed, then publishes one multi-arch,
   provenance-attested tag set (`X.Y.Z`, `X.Y`, `latest`) to GHCR (LIB-0019).
@@ -215,8 +215,8 @@ needing a ref in the repo whose tree it resolves to.
 Detection is by path, and the predicates are narrow on purpose: a module
 release needs a changed `.tf` under `terraform/<provider>/<module>/`, and a
 theme release needs a change under `zola-site/templates/`, `zola-site/static/`
-or `zola-site/theme.toml`, a CI release a change to a reusable (`workflow_call`) workflow in
-`.github/workflows/` or to `scripts/`, and a template release a change to
+or `zola-site/theme.toml`, a CI release a change to a reusable workflow in
+`github-workflows/` or to `scripts/`, and a template release a change to
 `terragrunt/root-hcl/root.hcl` or `terragrunt/root-hcl/secrets-schema.json`, and a dashboard release a changed
 `grafana-dashboards/<set>/*.json`. A README- or CHANGELOG-only change releases
 nothing. runway's `root-changelog.yml` duplicates every predicate, in its `releases` job, to stand down for a
