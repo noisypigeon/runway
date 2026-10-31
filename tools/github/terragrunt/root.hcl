@@ -871,7 +871,7 @@ locals {
   workload_cf_buckets  = length(keys(local.workload_cf_bucket_map)) > 0
   workload_cf_deployer = local.is_zone_unit || length(local.workload_cf_owned) > 0 || local.workload_cf_buckets
   workload_cf_policies = concat(
-    [for z in [local.workload_cf_owned] : { permission_groups = concat(["Zone Read", "DNS Write"], local.is_zone_unit ? ["Dynamic URL Redirects Write"] : [], local.is_zone_unit && length(local.zone_sites) > 0 ? ["Transform Rules Write"] : []), zones = z } if length(z) > 0],
+    [for z in [local.workload_cf_owned] : { permission_groups = concat(["Zone Read", "DNS Write"], local.is_zone_unit ? ["Dynamic URL Redirects Write"] : [], local.is_zone_unit && length(local.zone_sites) > 0 ? ["Zone Transform Rules Write"] : []), zones = z } if length(z) > 0],
     [for b in [local.workload_cf_buckets] : { permission_groups = ["Workers R2 Storage Write"], account = true } if b],
   )
   # Scaleway's compute kinds (LIB-0043). An instance expands into its
