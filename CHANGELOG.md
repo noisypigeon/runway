@@ -22,6 +22,11 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-10-31
+
+- [github/workflows] fix(github/terragrunt): name a site's bucket with dashes, and mint its token after it ([#172](https://github.com/noisypigeon/runway/pull/172))
+- [github/terragrunt] fix(github/terragrunt): name a site's bucket with dashes, and mint its token after it ([#172](https://github.com/noisypigeon/runway/pull/172))
+
 ## 2026-10-30
 
 - [github/terragrunt] fix(lib-0051): the zone token's transform group is Zone Transform Rules Write ([#170](https://github.com/noisypigeon/runway/pull/170))

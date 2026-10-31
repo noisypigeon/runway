@@ -4,6 +4,10 @@ All notable changes to the reusable CI are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [10.1.2] - 2026-10-31
+
+- fix(github/terragrunt): name a site's bucket with dashes, and mint its token after it ([#172](https://github.com/noisypigeon/runway/pull/172))
+
 ## [10.1.1] - 2026-10-30
 
 - fix(lib-0051): publish cloudflare/r2-custom-domain's inputs schema ([#167](https://github.com/noisypigeon/runway/pull/167))
