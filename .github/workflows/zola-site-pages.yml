@@ -1,0 +1,165 @@
+# Reusable: builds one Zola site and deploys it to GitHub Pages. Sibling to
+# zola-site-deploy.yml (the Scaleway-bucket equivalent, ADR-0155) -- same
+# input vocabulary so the two stay interchangeable at the call site. No
+# secrets: Pages deployment authenticates via OIDC (id-token: write), not a
+# key pair, which is why this workflow is simpler than the bucket one rather
+# than merely different.
+#
+# No caller vendors the theme any more: since LIB-0002 the theme lives in
+# the library, now runway's lib/ (LIB-0047), and every site fetches it. So a caller passes
+# fetch_script (a script in its own checkout that materializes the library at
+# the version that site pins) and theme_script (where that leaves
+# resolve-theme.sh). Both are paths in the caller's checkout, not hardcoded
+# here -- the previous version hardcoded .templates-src/, which is the bug
+# zola-site-deploy.yml died of.
+#
+# `actions/deploy-pages` always deploys to the *calling* repo's own Pages
+# site (ADR-0156 confirmed this against the live API), so a caller of this
+# workflow has to live in the repo whose Pages site it means to deploy --
+# there is no cross-repo equivalent of zola-site-deploy.yml's bucket target.
+#
+# A Pages shim repo (LIB-0031) builds a site that lives in another repo -- a
+# spoke workload's Zola tree -- by passing `repository` and `ref`. The other
+# paths (src_dir, fetch_script, theme_script) are then paths in that checkout,
+# and the deploy still lands on the shim's own Pages site.
+#
+# Two jobs, not one: actions/deploy-pages requires its own job bound to the
+# github-pages environment, separate from the job that builds the artifact.
+name: Zola site pages
+
+on:
+  workflow_call:
+    inputs:
+      src_dir:
+        description: "Path (in the checkout) to the site's src/."
+        type: string
+        required: true
+      repository:
+        description: "owner/name of the repo to build the site from. Empty (the default) means the caller's own; a Pages shim repo names the spoke whose workload holds the site (LIB-0031 §4)."
+        type: string
+        required: false
+        default: ""
+      ref:
+        description: "Ref of `repository` to build. Empty (the default) means the event's ref for the caller's own repo, or the default branch's head for another repo."
+        type: string
+        required: false
+        default: ""
+      build_cmd:
+        description: "Command to run (in src_dir) to build the site."
+        type: string
+        required: false
+        default: "zola build"
+      extra_step:
+        description: "Optional site-specific command to run before building."
+        type: string
+        required: false
+        default: ""
+      zola_version:
+        type: string
+        required: false
+        default: "0.23.6"
+      terraform_docs:
+        description: "Install terraform-docs before extra_step -- generate-module-redirects.sh --static-root needs it for LIB-0023's schemas."
+        type: boolean
+        required: false
+        default: false
+      fetch_script:
+        description: "Optional script (relative to the caller's repo root) to run before resolving the theme -- materializes the library version this site pins."
+        type: string
+        required: false
+        default: ""
+      theme_script:
+        description: "Path (relative to the caller's repo root) to lib/zola-site/resolve-theme.sh, as left by fetch_script."
+        type: string
+        required: false
+        default: ".lib-src/lib/zola-site/resolve-theme.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository || github.repository }}
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch library
+        if: inputs.fetch_script != ''
+        env:
+          FETCH_SCRIPT: ${{ inputs.fetch_script }}
+        run: '"./$FETCH_SCRIPT"'
+
+      - name: Resolve zola-site theme
+        working-directory: ${{ inputs.src_dir }}
+        env:
+          THEME_SCRIPT: ${{ inputs.theme_script }}
+        run: '"$(git rev-parse --show-toplevel)/$THEME_SCRIPT"'
+
+      - name: Install terraform-docs
+        if: inputs.terraform_docs
+        env:
+          TERRAFORM_DOCS_VERSION: "0.24.0"
+        run: |
+          curl -sSL "https://github.com/terraform-docs/terraform-docs/releases/download/v${TERRAFORM_DOCS_VERSION}/terraform-docs-v${TERRAFORM_DOCS_VERSION}-linux-amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin terraform-docs
+
+      - name: Run site-specific pre-build step
+        if: inputs.extra_step != ''
+        run: ${{ inputs.extra_step }}
+
+      - name: Install Zola
+        env:
+          ZOLA_VERSION: ${{ inputs.zola_version }}
+        run: |
+          curl -sSL "https://github.com/getzola/zola/releases/download/v${ZOLA_VERSION}/zola-v${ZOLA_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz -C /usr/local/bin zola
+
+      - name: Build with Zola
+        working-directory: ${{ inputs.src_dir }}
+        run: ${{ inputs.build_cmd }}
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.src_dir }}/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # timeout is pinned to 600000 ms, which is both the action's default and
+      # its hard maximum -- it clamps anything larger and warns:
+      #
+      #   Warning: timeout value is greater than the allowed maximum
+      #            - timeout set to the maximum of 600000 milliseconds.
+      #
+      # Stated explicitly because that ceiling is load-bearing and invisible.
+      # When this expires while GitHub still reports updating_pages, the action
+      # self-cancels a deployment the Pages service still holds, and every later
+      # deployment then fails with "due to in progress deployment" until a
+      # server-side reaper clears it -- roughly 45 minutes, in the one incident
+      # we have. No client-reachable API can shorten that: the cancel endpoint
+      # returns 204 and is reflected in the read path without releasing the
+      # creation lock. So the obvious mitigation, waiting longer, is not
+      # available at any price, and this line exists to say so at the point
+      # someone would otherwise try it.
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: 600000
