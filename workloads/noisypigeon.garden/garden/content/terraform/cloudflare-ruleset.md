@@ -9,7 +9,7 @@ kind = "module"
 provider = "cloudflare"
 module = "ruleset"
 latest_version = "0.2.0"
-github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/cloudflare/ruleset"
+github_url = "https://github.com/noisypigeon/runway/tree/main/tools/terraform/cloudflare/ruleset"
 usage_example = """
 module "ruleset" {
   source = "https://noisypigeon.garden/terraform/cloudflare/ruleset/v0.1.0"

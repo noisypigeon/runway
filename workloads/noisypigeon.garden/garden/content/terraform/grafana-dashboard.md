@@ -9,7 +9,7 @@ kind = "module"
 provider = "grafana"
 module = "dashboard"
 latest_version = "0.1.0"
-github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/grafana/dashboard"
+github_url = "https://github.com/noisypigeon/runway/tree/main/tools/terraform/grafana/dashboard"
 usage_example = """
 module "grafana_dashboard" {
   source = "https://noisypigeon.garden/terraform/grafana/dashboard/v0.1.0"
