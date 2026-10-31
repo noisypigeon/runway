@@ -49,5 +49,5 @@ jobs:
       ref: main
       src_dir: workloads/${{ inputs.workload }}
       build_cmd: "SITE_COMMIT_SHA=$(git rev-parse --short HEAD) zola build"
-      fetch_script: fetch-lib.sh
-      theme_script: .lib-src/lib/zola-site/resolve-theme.sh
+      fetch_script: .pigeon/tools.sh
+      theme_script: .pigeon/src/tools/static-site/zola/resolve-theme.sh

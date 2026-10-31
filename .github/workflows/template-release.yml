@@ -1,15 +1,20 @@
 name: template-release
 
-# Releases the library, which is runway's lib/ (LIB-0047). Every unit lives
-# under lib/, the reusable workflows included, at lib/github-workflows/
-# (LIB-0049). A unit's tag is its path under lib/: lib/terraform/<p>/<m> is
-# tagged terraform/<p>/<m>/vX.Y.Z, as it was before the hoist. The workflows
-# are the exception: GitHub only runs them from .github/workflows/, so their
-# tag names a commit off main that copies them there.
-# LIB-0050 step 2: off for the pure move of lib/ to tools/, in which every
-# path is new and would match every predicate. Step 3 turns it back on.
+# Releases the library, which is runway's tools/ (LIB-0047, LIB-0050). A
+# unit's tag is its path under tools/: tools/static-site/zola is tagged
+# static-site/zola/vX.Y.Z, and tools/terraform/<p>/<m> terraform/<p>/<m>/vX.Y.Z.
+# A unit renamed by LIB-0050 continues its old track's numbers through the
+# continues-from line in its CHANGELOG.md (latest-version.sh). The workflows
+# and the marketplace are the exceptions: GitHub and Claude Code read them only
+# at the repo root, so their tags name a commit off main that copies them there
+# (LIB-0049 §§2, 4).
 on:
-  workflow_dispatch: {}
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths:
+      - "tools/**"
+      - ".github/workflows/**"
 
 permissions:
   contents: write
@@ -61,7 +66,7 @@ jobs:
         id: modules
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-        working-directory: lib
+        working-directory: tools
         run: |
           CHANGED_FILES=$(git diff --relative --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
 
@@ -80,10 +85,10 @@ jobs:
         id: zola_site
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-        working-directory: lib
+        working-directory: tools
         run: |
           CHANGED_FILES=$(git diff --relative --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
-          if echo "$CHANGED_FILES" | grep -qE '^zola-site/(templates/|static/|theme\.toml$)'; then
+          if echo "$CHANGED_FILES" | grep -qE '^static-site/zola/(templates/|static/|theme\.toml$)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -96,23 +101,24 @@ jobs:
         id: root_hcl
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-        working-directory: lib
+        working-directory: tools
         run: |
           CHANGED_FILES=$(git diff --relative --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
-          if echo "$CHANGED_FILES" | grep -qE '^terragrunt/root-hcl/(root\.hcl|secrets-schema\.json)$'; then
+          if echo "$CHANGED_FILES" | grep -qE '^github/terragrunt/(root\.hcl|secrets-schema\.json)$'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Per-set release tracks, one per <root>/<set>/ directory, each tagged
-      # <root>/<set>/vX.Y.Z:
-      #   - grafana-dashboards/<set>/*.json (LIB-0004's willowgraysen.com
+      # Per-set release tracks, one per set directory, each tagged
+      # <its path>/vX.Y.Z:
+      #   - observability/dashboards/<set>/*.json (LIB-0004's willowgraysen.com
       #     adoption), consumed by URL at its tag. Only the JSON is a release.
-      #   - observability/<set>/ (pigeon-cli's CLI-0161), a local Docker
-      #     Compose stack, consumed by checking out its tag.
-      #   - claude-plugins/<set>/ (pigeon-cli's CLI-0161), a Claude Code
-      #     plugin listed in lib/claude-plugins/marketplace.json, consumed by
+      #   - observability/<stack>/ (pigeon-cli's CLI-0161), a local Docker
+      #     Compose stack, consumed by checking out its tag. Depth tells a
+      #     stack from a dashboard set (LIB-0050 §2).
+      #   - claude/plugins/<set>/ (pigeon-cli's CLI-0161), a Claude Code
+      #     plugin listed in tools/claude/plugins/marketplace.json, consumed by
       #     pinning the marketplace to its tag, whose commit copies that file
       #     to /.claude-plugin/ (LIB-0049 §4).
       # A set's README.md/CHANGELOG.md are never a release on their own.
@@ -120,17 +126,20 @@ jobs:
         id: dashboards
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-        working-directory: lib
+        working-directory: tools
         run: |
           CHANGED_FILES=$(git diff --relative --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
-          SETS=$(echo "$CHANGED_FILES" \
-            | grep -E '^grafana-dashboards/[^/]+/[^/]+\.json$|^(observability|claude-plugins)/[^/]+/.+' \
-            | grep -vE '^(observability|claude-plugins)/[^/]+/(README|CHANGELOG)\.md$' \
-            | cut -d/ -f1-2 | sort -u | tr '\n' ' ')
+          SETS=$({
+            echo "$CHANGED_FILES" | grep -E '^observability/dashboards/[^/]+/[^/]+\.json$' | cut -d/ -f1-3
+            echo "$CHANGED_FILES" | grep -E '^observability/[^/]+/.+' | grep -vE '^observability/dashboards/' \
+              | grep -vE '^observability/[^/]+/(README|CHANGELOG)\.md$' | cut -d/ -f1-2
+            echo "$CHANGED_FILES" | grep -E '^claude/plugins/[^/]+/.+' \
+              | grep -vE '^claude/plugins/[^/]+/(README|CHANGELOG)\.md$' | cut -d/ -f1-3
+          } | sort -u | tr '\n' ' ')
           echo "changed=${SETS% }" >> "$GITHUB_OUTPUT"
 
       # The spokes call the reusable workflows and fetch root-changelog.sh, so
-      # lib/github-workflows/ and lib/scripts/ travel under one version -- LIB-0001 invariant 2 says a
+      # tools/github/workflows/, scripts/ and policies/ travel under one version -- LIB-0001 invariant 2 says a
       # spoke pins a version rather than tracking a branch, and DEV-0155 deferred
       # exactly this track on the grounds that live @main was cheaper. It is no
       # longer cheaper now that three spokes consume it.
@@ -144,8 +153,8 @@ jobs:
         run: |
           CHANGED_FILES=$(git diff --name-only "${MERGE_SHA}~1" "$MERGE_SHA")
           # A path, not a look inside the file: every reusable workflow lives
-          # in lib/github-workflows/, and none of runway's own does (LIB-0049 §1).
-          if echo "$CHANGED_FILES" | grep -qE '^lib/github-workflows/[^/]+\.yml$|^lib/scripts/'; then
+          # in tools/github/workflows/, and none of runway's own does (LIB-0049 §1).
+          if echo "$CHANGED_FILES" | grep -qE '^tools/github/(workflows/[^/]+\.yml$|scripts/|policies/)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -166,31 +175,14 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           CHANGED_MODULES: ${{ steps.modules.outputs.changed }}
-        working-directory: lib
+        working-directory: tools
         run: |
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
           TAGS=""
 
           for dir in $CHANGED_MODULES; do
-            LATEST=$(git tag -l "${dir}/v*" | sed "s#${dir}/v##" | sort -V | tail -n1)
-
-            # A renamed module has no tags under its new path yet. Its
-            # CHANGELOG.md names the old track's last tag in a
-            # "<!-- continues-from: <tag> -->" line, and the new track
-            # continues from that version rather than restarting at 0.1.0
-            # (LIB-0020 §4). The tag must exist, so a typo fails loudly here
-            # instead of cutting a wrong version.
-            if [ -z "$LATEST" ] && [ -f "${dir}/CHANGELOG.md" ]; then
-              FROM=$(sed -nE 's/^<!-- continues-from: (terraform\/[a-z0-9-]+\/[a-z0-9-]+\/v[0-9]+\.[0-9]+\.[0-9]+) -->$/\1/p' \
-                "${dir}/CHANGELOG.md" | head -n1)
-              if [ -n "$FROM" ]; then
-                if ! git rev-parse -q --verify "refs/tags/${FROM}" >/dev/null; then
-                  echo "::error::${dir}/CHANGELOG.md continues from ${FROM}, which is not a tag"
-                  exit 1
-                fi
-                LATEST="${FROM##*/v}"
-              fi
-            fi
+            # A renamed module continues its old track (latest-version.sh).
+            LATEST=$(github/scripts/latest-version.sh "$dir")
 
             if [ -z "$LATEST" ]; then
               NEXT="0.1.0"
@@ -237,7 +229,7 @@ jobs:
             # Also add a one-liner to the repo-wide root CHANGELOG.md (DEV-0160).
             # Passing --date reuses the $TODAY above, so the rollup line and this
             # module's own entry can never straddle a midnight boundary.
-            scripts/root-changelog.sh \
+            github/scripts/root-changelog.sh \
               --tag "${dir#terraform/}" \
               --title "$PR_TITLE" \
               --number "$PR_NUMBER" \
@@ -257,12 +249,12 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        working-directory: lib
+        working-directory: tools
         run: |
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
-          DIR="zola-site"
+          DIR="static-site/zola"
 
-          LATEST=$(git tag -l "${DIR}/v*" | sed "s#${DIR}/v##" | sort -V | tail -n1)
+          LATEST=$(github/scripts/latest-version.sh "$DIR")
 
           if [ -z "$LATEST" ]; then
             NEXT="1.0.0"
@@ -305,8 +297,8 @@ jobs:
           git add "$CHANGELOG"
 
           # One-liner into the root CHANGELOG.md, same contract as above (DEV-0160).
-          scripts/root-changelog.sh \
-            --tag "zola-site" \
+          github/scripts/root-changelog.sh \
+            --tag "static-site/zola" \
             --title "$PR_TITLE" \
             --number "$PR_NUMBER" \
             --url "$PR_URL" \
@@ -324,12 +316,12 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        working-directory: lib
+        working-directory: tools
         run: |
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
-          DIR="terragrunt/root-hcl"
+          DIR="github/terragrunt"
 
-          LATEST=$(git tag -l "${DIR}/v*" | sed "s#${DIR}/v##" | sort -V | tail -n1)
+          LATEST=$(github/scripts/latest-version.sh "$DIR")
 
           if [ -z "$LATEST" ]; then
             NEXT="1.0.0"
@@ -371,8 +363,8 @@ jobs:
           mv "${CHANGELOG}.new" "$CHANGELOG"
           git add "$CHANGELOG"
 
-          scripts/root-changelog.sh \
-            --tag "terragrunt/root-hcl" \
+          github/scripts/root-changelog.sh \
+            --tag "github/terragrunt" \
             --title "$PR_TITLE" \
             --number "$PR_NUMBER" \
             --url "$PR_URL" \
@@ -391,13 +383,13 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           CHANGED_SETS: ${{ steps.dashboards.outputs.changed }}
-        working-directory: lib
+        working-directory: tools
         run: |
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
           TAGS=""
 
           for dir in $CHANGED_SETS; do
-            LATEST=$(git tag -l "${dir}/v*" | sed "s#${dir}/v##" | sort -V | tail -n1)
+            LATEST=$(github/scripts/latest-version.sh "$dir")
 
             if [ -z "$LATEST" ]; then
               NEXT="1.0.0"
@@ -440,7 +432,7 @@ jobs:
             git add "$CHANGELOG"
             TAGS="$TAGS ${dir}/v${NEXT}"
 
-            scripts/root-changelog.sh \
+            github/scripts/root-changelog.sh \
               --tag "$dir" \
               --title "$PR_TITLE" \
               --number "$PR_NUMBER" \
@@ -463,7 +455,7 @@ jobs:
         run: |
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
 
-          LATEST=$(git tag -l "workflows/v*" | sed "s#workflows/v##" | sort -V | tail -n1)
+          LATEST=$(cd tools && github/scripts/latest-version.sh github/workflows)
 
           if [ -z "$LATEST" ]; then
             NEXT="1.0.0"
@@ -479,7 +471,7 @@ jobs:
           fi
 
           # Lives beside the workflows it versions (LIB-0049 §1).
-          CHANGELOG="lib/github-workflows/CHANGELOG.md"
+          CHANGELOG="tools/github/workflows/CHANGELOG.md"
           if [ ! -f "$CHANGELOG" ]; then
             cat > "$CHANGELOG" <<'HEADER'
           # Changelog
@@ -506,15 +498,15 @@ jobs:
           mv "${CHANGELOG}.new" "$CHANGELOG"
           git add "$CHANGELOG"
 
-          lib/scripts/root-changelog.sh \
-            --tag "workflows" \
+          tools/github/scripts/root-changelog.sh \
+            --tag "github/workflows" \
             --title "$PR_TITLE" \
             --number "$PR_NUMBER" \
             --url "$PR_URL" \
             --date "$TODAY"
           git add CHANGELOG.md
 
-          echo "tag=workflows/v${NEXT}" >> "$GITHUB_OUTPUT"
+          echo "tag=github/workflows/v${NEXT}" >> "$GITHUB_OUTPUT"
 
       - name: Commit changelog updates
         if: steps.modules.outputs.changed != '' || steps.zola_site.outputs.changed == 'true' || steps.workflows.outputs.changed == 'true' || steps.root_hcl.outputs.changed == 'true' || steps.dashboards.outputs.changed != ''
@@ -578,23 +570,23 @@ jobs:
 
           for tag in $RELEASE_TAGS; do
             case "$tag" in
-              workflows/*)
+              github/workflows/*)
                 # GitHub runs a reusable workflow only from .github/workflows/
                 # at the ref it is called at, so the tag's commit copies them
                 # there. Pushing it needs BOT_GITHUB_TOKEN to carry the
                 # workflows permission.
                 pairs=()
-                for f in lib/github-workflows/*.yml; do
+                for f in tools/github/workflows/*.yml; do
                   pairs+=("$f" ".github/workflows/$(basename "$f")")
                 done
                 # An assignment, so a collision's exit fails the step.
                 commit=$(release_commit "$tag" "${pairs[@]}")
                 git tag "$tag" "$commit"
                 ;;
-              claude-plugins/*)
+              claude/plugins/*)
                 # Claude Code reads a github marketplace from the repo root,
                 # so the tag's commit copies it there.
-                commit=$(release_commit "$tag" lib/claude-plugins/marketplace.json .claude-plugin/marketplace.json)
+                commit=$(release_commit "$tag" tools/claude/plugins/marketplace.json .claude-plugin/marketplace.json)
                 git tag "$tag" "$commit"
                 ;;
               *)

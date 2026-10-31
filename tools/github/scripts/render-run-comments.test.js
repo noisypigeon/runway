@@ -1,5 +1,5 @@
 // Tests for render-run-comments.js (LIB-0026). Run with:
-//   node --test lib/scripts/
+//   node --test tools/github/scripts/
 // Fixtures in testdata/ are runway plan and apply output, captured from PR
 // comments with access-key IDs and UUIDs replaced. They were captured under
 // the old 55,000-character truncation, so some leaves lost their result lines.

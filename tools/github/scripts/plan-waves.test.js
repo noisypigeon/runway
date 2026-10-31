@@ -1,5 +1,5 @@
 // Tests for plan-waves.js (LIB-0042 §1). Run with:
-//   node --test lib/scripts/
+//   node --test tools/github/scripts/
 'use strict';
 
 const test = require('node:test');

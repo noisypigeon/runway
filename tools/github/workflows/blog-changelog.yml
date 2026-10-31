@@ -72,12 +72,12 @@ on:
         description: "Script (relative to the caller's repo root) that materializes library at the version the caller pins."
         type: string
         required: false
-        default: "fetch-lib.sh"
+        default: ".pigeon/tools.sh"
       changelog_script:
         description: "Path (relative to the caller's repo root) to root-changelog.sh, as left by fetch_script."
         type: string
         required: false
-        default: ".lib-src/lib/scripts/root-changelog.sh"
+        default: ".pigeon/src/tools/github/scripts/root-changelog.sh"
       root_changelog_tag:
         description: "Bracket tag used in the caller's root CHANGELOG.md rollup line, e.g. 'blog'. Empty (the default) skips the root rollup entirely -- what a single-site repo wants."
         type: string

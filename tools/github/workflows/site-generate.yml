@@ -29,7 +29,7 @@ on:
         description: "Script (relative to the caller's repo root) that materializes library at the version the caller pins, with every tag."
         type: string
         required: false
-        default: "fetch-lib.sh"
+        default: ".pigeon/tools.sh"
       git_user_name:
         type: string
         required: false

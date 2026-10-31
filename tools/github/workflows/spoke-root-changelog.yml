@@ -36,12 +36,12 @@ on:
         description: "Script (relative to the caller's repo root) that materializes library at the version the caller pins."
         type: string
         required: false
-        default: "fetch-lib.sh"
+        default: ".pigeon/tools.sh"
       changelog_script:
         description: "Path (relative to the caller's repo root) to root-changelog.sh, as left by fetch_script."
         type: string
         required: false
-        default: ".lib-src/lib/scripts/root-changelog.sh"
+        default: ".pigeon/src/tools/github/scripts/root-changelog.sh"
       git_user_name:
         type: string
         required: false
@@ -128,7 +128,7 @@ jobs:
           # changelog, a deploy's bookkeeping) can legitimately race for main.
           # Each attempt writes the line again on the newest main rather than
           # rebasing the last one, so losing a race can't conflict. The library
-          # fetched into .lib-src/ is gitignored, so the reset leaves it alone.
+          # fetched into .pigeon/src/ is gitignored, so the reset leaves it alone.
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git reset -q --hard origin/main

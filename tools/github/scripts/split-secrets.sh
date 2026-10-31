@@ -26,8 +26,8 @@ case "${1:-}" in
   *) echo "usage: $0" >&2; exit 2 ;;
 esac
 
-LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SCHEMA="$LIB_ROOT/terragrunt/root-hcl/secrets-schema.json"
+LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCHEMA="$LIB_ROOT/github/terragrunt/secrets-schema.json"
 SOURCE="terraform/secrets.enc"
 OUT_DIR="terraform/secrets"
 
@@ -110,4 +110,4 @@ done
 
 echo
 echo "Checking the result (check-secrets.sh, against $SCHEMA):"
-SECRETS_SCHEMA="$SCHEMA" "$LIB_ROOT/scripts/check-secrets.sh" --allow-v3-file
+SECRETS_SCHEMA="$SCHEMA" "$LIB_ROOT/github/scripts/check-secrets.sh" --allow-v3-file
