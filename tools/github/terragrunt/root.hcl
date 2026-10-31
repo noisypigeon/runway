@@ -746,22 +746,24 @@ locals {
     },
   )
   # deployments.cloudflare (LIB-0051 §2): the bucket site, named for the
-  # host, under any explicit entry of that key; a custom domain per name it
-  # serves, apex for @; and site-deploy, the token that writes its objects.
+  # host with its dots as dashes (R2 allows no dots), under any explicit entry
+  # of that key; a custom domain per name it serves, apex for @; and
+  # site-deploy, the token that writes its objects, once the bucket exists.
   # resolve-workloads.sh's expand_workload is its twin.
   workload_r2_on    = local.is_nested_workload && !local.is_private_workload && local.workload_host != "" && contains(try(keys(local.workload_raw.deployments), []), "cloudflare")
   workload_r2_fqdn  = local.workload_host == "@" ? local.workload_parent : "${local.workload_host}.${local.workload_parent}"
+  workload_r2_bucket_name = replace(local.workload_r2_fqdn, ".", "-")
   workload_r2_hosts = try([for h in local.workload_raw.deployments.cloudflare.hosts : tostring(h)], local.workload_host == "@" ? ["@", "www"] : [local.workload_host])
-  workload_r2_bucket = { for k, v in { site = { exact_name = local.workload_r2_fqdn } } : k => v if local.workload_r2_on }
+  workload_r2_bucket = { for k, v in { site = { exact_name = local.workload_r2_bucket_name } } : k => v if local.workload_r2_on }
   workload_r2_domains = {
     for h in local.workload_r2_hosts : (h == "@" ? "apex" : replace(h, ".", "-")) => {
       domain      = h == "@" ? local.workload_parent : "${h}.${local.workload_parent}"
-      bucket_name = local.workload_r2_fqdn
+      bucket_name = local.workload_r2_bucket_name
     } if local.workload_r2_on
   }
   workload_r2_tokens = {
     for k, v in {
-      "site-deploy" = { policies = [{ permission_groups = ["Workers R2 Storage Bucket Item Write"], r2_buckets = [local.workload_r2_fqdn] }] }
+      "site-deploy" = { policies = [{ permission_groups = ["Workers R2 Storage Bucket Item Write"], r2_buckets = [local.workload_r2_bucket_name] }] }
     } : k => v if local.workload_r2_on
   }
   workload_cf_bucket_map = merge(local.workload_r2_bucket, {
