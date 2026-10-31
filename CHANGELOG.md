@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-31
 
+- [github/terragrunt] fix(github/terragrunt): mark a Cloudflare bucket's output sensitive ([#174](https://github.com/noisypigeon/runway/pull/174))
 - [github/workflows] fix(github/terragrunt): name a site's bucket with dashes, and mint its token after it ([#172](https://github.com/noisypigeon/runway/pull/172))
 - [github/terragrunt] fix(github/terragrunt): name a site's bucket with dashes, and mint its token after it ([#172](https://github.com/noisypigeon/runway/pull/172))
 

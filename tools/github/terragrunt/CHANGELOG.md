@@ -4,6 +4,10 @@ All notable changes to this template are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [10.1.3] - 2026-10-31
+
+- fix(github/terragrunt): mark a Cloudflare bucket's output sensitive ([#174](https://github.com/noisypigeon/runway/pull/174))
+
 ## [10.1.2] - 2026-10-31
 
 - fix(github/terragrunt): name a site's bucket with dashes, and mint its token after it ([#172](https://github.com/noisypigeon/runway/pull/172))
