@@ -22,7 +22,8 @@ It also holds the two public sites, as the `blog` workload (LIB-0032) and the
 - **Each site's two Pages records** were imported, not created, and its
   `deployments.githubPages` implies them, so change one only on purpose.
 - **Most of garden is generated.** Its module redirect pages under
-  `content/terraform/`, `content/theme-versions/` and `content/releases/`, and
+  `content/terraform/`, `content/theme-versions/` and `content/releases/`, its
+  version pages under `content/workflows/` and `content/claude-plugins/`, and
   its schemas under `static/terraform/` and `static/schemas/`, come from
   `garden-generate.yml`, which the library dispatches on every release. They
   are committed, so a short URL is a file with a history. Never hand-edit them:
@@ -53,13 +54,9 @@ The Scaleway project everything under `terraform/scaleway/` lives in is the
 are the workload's `scaleway.bucket` entries; its cluster, Cockpit and IAM,
 and the spoke's state bucket, stay hand-written in the project for now.
 
-The library is hoisted into this repo (LIB-0047). Modules, CI logic and
-scripts live under `lib/`, decision records under `lib/docs/adr/`, and runbooks
-under `lib/docs/runbooks/` (LIB-0049). `lib/CLAUDE.md` is the library's own guide: read it before you
-change anything under `lib/`. The spoke still consumes the library only by
-pinned tag, so a change under `lib/` reaches this repo's plans only when a PR
-bumps the pin. `fetch-lib.sh` clones this repo itself into `.lib-src/` at
-`.lib-version`, and the callers name `noisypigeon/runway/...@workflows/vX.Y.Z`.
+The library lives in this repo, under `lib/` (LIB-0047, LIB-0049): modules,
+reusable workflows, scripts, plugins, decision records and runbooks. Read
+[The library](#the-library-lib) before you change anything under it.
 
 ## Sensitive: read this first
 
@@ -81,10 +78,120 @@ data.
 - Every change is a PR with a Conventional Commit title. There is no human
   reviewer.
 - `CHANGELOG.md` is generated, one line per merged PR. Don't hand-edit it.
-- This repo cuts no releases and has no `release:*` labels.
+- A PR outside `lib/` takes no `release:*` label, and releases nothing. A PR
+  that changes a `lib/` unit takes exactly one (see
+  [Releasing a `lib/` change](#releasing-a-lib-change)).
 - Take a library change by bumping `.lib-version` and the `@workflows/vX.Y.Z`
-  refs, or `root_hcl_version` in `spoke.hcl`. Never track a branch. For local
-  iteration, point `LIB_SRC` at a library checkout.
+  refs, `root_hcl_version` in `spoke.hcl`, or the plugin pin in
+  `.claude/settings.json`. Never track a branch. For local iteration, point
+  `LIB_SRC` at a checkout of this repo.
+
+## The library: `lib/`
+
+`lib/` is the library, the hub of LIB-0001's hub and spokes, hoisted into this
+repo by LIB-0047 and finished by LIB-0049. It holds everything in the family
+that is reusable and versioned, and nothing that is deployed. Each unit is its
+own tag track, and its tag is its path under `lib/`:
+
+| Unit | Path | Tag | Consumed by |
+| --- | --- | --- | --- |
+| A Terraform module | `lib/terraform/<provider>/<module>/` | `terraform/<provider>/<module>/vX.Y.Z` | `noisypigeon.garden/terraform/<provider>/<module>/vX.Y.Z`, a stable interface of its own (LIB-0009) |
+| The theme | `lib/zola-site/` | `zola-site/vX.Y.Z` | a site's `[extra].theme_version`, through `resolve-theme.sh` |
+| The `root.hcl` template | `lib/terragrunt/root-hcl/` | `terragrunt/root-hcl/vX.Y.Z` | `spoke.hcl`'s `root_hcl_version` (LIB-0003) |
+| The reusable CI and its scripts | `lib/github-workflows/`, `lib/scripts/` | `workflows/vX.Y.Z` | `uses:` and `.lib-version`; `noisypigeon.garden/workflows/vX.Y.Z/` names each `uses:` line |
+| A dashboard set | `lib/grafana-dashboards/<set>/` | `grafana-dashboards/<set>/vX.Y.Z` | its raw URL at the tag |
+| An observability set | `lib/observability/<set>/` | `observability/<set>/vX.Y.Z` | a checkout of the tag |
+| A Claude Code plugin | `lib/claude-plugins/<plugin>/` | `claude-plugins/<plugin>/vX.Y.Z` | the `library` marketplace pinned at the tag; `noisypigeon.garden/claude-plugins/<plugin>/vX.Y.Z/` gives the settings |
+
+- **GitHub reads two units only from the repo root.** A reusable workflow runs
+  only from `.github/workflows/`, and a `github` marketplace is read from
+  `.claude-plugin/marketplace.json`. So a `workflows/` or `claude-plugins/`
+  tag names a release commit off `main` that copies `lib/github-workflows/*.yml`
+  or `lib/claude-plugins/marketplace.json` there (LIB-0049 §§2, 4). `main`'s
+  `.github/workflows/` holds only runway's own workflows, and `scripts-test`
+  fails if a reusable one lands there.
+- **runway consumes `lib/` only by pinned tag** (LIB-0001 invariant 2).
+  `fetch-lib.sh` clones this repo into `.lib-src/` at `.lib-version`, and the
+  callers name `noisypigeon/runway/.github/workflows/<w>.yml@workflows/vX.Y.Z`.
+  The `release-pr` skill comes from the `library` plugin, pinned in
+  `.claude/settings.json`. A change under `lib/` reaches runway only when a
+  later PR bumps the pin. Never consume `lib/` at `HEAD`.
+- **Scripts resolve from their own location.** `resolve-theme.sh`,
+  `generate-module-redirects.sh` and the others find their tree from
+  `${BASH_SOURCE[0]}`, never from `git rev-parse`, because they run inside a
+  clone fetched into another checkout. `lib/README.md` and
+  `lib/terraform/README.md` hold the per-unit detail.
+- **The Pages shims' `pages.yml` can't live here.** `actions/deploy-pages`
+  deploys only the calling repo's site (DEV-0156). Each shim's `pages.yml` is
+  one `uses:` of `site-pages.yml` (LIB-0035 §3).
+- **The archived `noisypigeon/library` keeps every tag it had,** so an old pin
+  still resolves.
+
+### Releasing a `lib/` change
+
+The `release-pr` skill is the discipline. A PR that changes a unit carries
+exactly one `release:*` label, and `template-release.yml` does the rest on
+merge:
+
+1. it bumps each changed unit's version;
+2. it writes the unit's `CHANGELOG.md` and the root line;
+3. it cuts the tag and the GitHub Release, whose notes are the PR body;
+4. it dispatches `garden-generate.yml`, and for a theme release the blog
+   shim's `pages.yml`.
+
+runway writes the lib tracks' tags, and no tag of its own, for a leaf, a
+workload or a site (LIB-0047 §4).
+
+A unit releases only when its predicate matches:
+
+- a module: a changed `.tf` under it;
+- the theme: `lib/zola-site/templates/`, `static/` or `theme.toml`;
+- the template: `root.hcl` or `secrets-schema.json`;
+- the CI: a `lib/github-workflows/*.yml` or anything under `lib/scripts/`;
+- a dashboard set: a changed `*.json`;
+- an observability set or a plugin: anything but its README or CHANGELOG.
+
+Anything else under `lib/` takes no label and tags nothing. `root-changelog.yml`'s
+`releases` job copies every predicate to stand down for a releasing PR. Change
+one copy and you change its twin (`noisypigeon/library#301`).
+
+A failed garden generation shows up as a released version whose short URL
+404s.
+
+### Decision records
+
+Records live at `lib/docs/adr/LIB-NNNN-<slug>.md`. This is also where the
+spokes' decisions live: blog and garden are runway workloads, and their shims
+hold no records (LIB-0017).
+
+- **Older IDs stay valid and are never rewritten.**
+  - `DEV-` records are archived verbatim in `lib/docs/adr/archive/`.
+  - `COM-` and `RUN-` records survive as amendments whose headings carry the
+    ID.
+  - A bare `ADR-NNNN` in older prose is a `DEV-` alias, and `NPC-` is a `COM-`
+    alias.
+  - No new number is issued in any of those domains.
+- **pigeon-cli is the exception.** It keeps its own `CLI-` records in its own
+  `adr/` (LIB-0017 §5).
+- **Filing one, by hand:**
+  - The number is max+1 within `lib/docs/adr/`.
+  - The file name and the H1 agree.
+  - The author is always `Willow Graysen ([@noisypigeon](https://github.com/noisypigeon)).`
+  - The sections are `## Context` / `## Decision` / `## Consequences` /
+    `## Out of scope`, then optionally `## Verification`. There is no
+    frontmatter and no index.
+  - A change after filing goes under `## Amendments`, as a dated entry.
+- **Out of scope.** A genuinely deferred item there gets an issue in runway,
+  labelled `out-of-scope` (DEV-0031). A permanent design boundary doesn't.
+
+### Runbooks
+
+Operational procedures live at `lib/docs/runbooks/<slug>.md`, step by step,
+each citing the record it serves:
+
+- `restore-terraform-state-from-b2.md` (LIB-0007 §4);
+- `release-a-stuck-state-lock.md` (LIB-0022 §4);
+- `import-a-leaf-into-a-workload.md` (LIB-0032 §3).
 
 ## Terraform
 
