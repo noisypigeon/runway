@@ -4,6 +4,10 @@ All notable changes to the reusable CI are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [10.1.1] - 2026-10-30
+
+- fix(lib-0051): publish cloudflare/r2-custom-domain's inputs schema ([#167](https://github.com/noisypigeon/runway/pull/167))
+
 ## [10.1.0] - 2026-10-30
 
 - feat(lib-0051): deployments.cloudflare, its zone rulesets, and site-r2.yml ([#166](https://github.com/noisypigeon/runway/pull/166))

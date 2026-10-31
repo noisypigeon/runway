@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [github/workflows] fix(lib-0051): publish cloudflare/r2-custom-domain's inputs schema ([#167](https://github.com/noisypigeon/runway/pull/167))
 - [github/workflows] feat(lib-0051): deployments.cloudflare, its zone rulesets, and site-r2.yml ([#166](https://github.com/noisypigeon/runway/pull/166))
 - [github/terragrunt] feat(lib-0051): deployments.cloudflare, its zone rulesets, and site-r2.yml ([#166](https://github.com/noisypigeon/runway/pull/166))
 - [cloudflare/r2-custom-domain] feat(lib-0051): cloudflare/r2-custom-domain, and bucket-scoped api-token policies ([#165](https://github.com/noisypigeon/runway/pull/165))
