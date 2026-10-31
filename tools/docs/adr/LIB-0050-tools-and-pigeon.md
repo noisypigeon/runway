@@ -256,3 +256,40 @@ decide the order:
    - pigeon-cli's first release after step 6 runs green.
 6. **Garden serves both shapes:** a new tag's page at its new path, and an old
    tag's page where it was.
+
+## Amendments
+
+### 2026-10-31: as built
+
+Where this entry and the text above disagree, this entry is what runs.
+
+1. **runway moved without the shims, which keep a frozen fetch (§7).**
+   - **Why.** This session can't reach either shim, so step 5 couldn't move
+     them with runway.
+   - **What stays.** runway keeps `fetch-lib.sh` and `.lib-version`, and the
+     `/.lib-src/` ignore, for the shims and nothing else. `.lib-version` is
+     frozen at `workflows/v9.4.3`, the last tag with `lib/`.
+   - **Why that's enough.** Each shim's `site-pages.yml`, at
+     `workflows/v9.3.0`, runs runway's `fetch-lib.sh` and reads
+     `.lib-src/lib/zola-site/resolve-theme.sh`. Both keep working.
+   - **What runway uses.** runway itself fetches through `.pigeon/tools.sh`
+     at `.pigeon/version`.
+   - **When it goes.** All three are deleted in the PR after both shims move
+     to a `github/workflows/` version and adopt `.pigeon/`.
+   - **Until then, no site's `theme_version` may name a `static-site/zola/`
+     version.** The old resolver the shims run looks only for `zola-site/`
+     tags. Both sites pin versions from before the rename.
+2. **The new tracks started where §2 said:**
+   - `github/workflows/v10.0.0` and `github/terragrunt/v10.0.0`, from
+     noisypigeon/runway#161;
+   - `static-site/zola/v1.3.2`, `observability/lgtm-stack/v1.0.1` and
+     `claude/plugins/{library,pigeon-cli}/v1.0.2`, from
+     noisypigeon/runway#162.
+
+   `observability/dashboards/pigeon-cli/` has its `continues-from` line, and
+   cuts its first new tag with its next JSON change.
+3. **runway's `root_hcl_version` stays at `9.1.2` for now.**
+   `resolve-root-hcl.sh` resolves it on the old track, so nothing needs the
+   bump. Taking `github/terragrunt/v10.0.0` regenerates `root.hcl` and plans
+   every leaf, and the pin bump stays a docs-only change without it. Its
+   template differs only in comments.
