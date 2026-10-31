@@ -1142,7 +1142,18 @@ while IFS= read -r mdir; do
       > "${changelog_src}/${rel}/CHANGELOG.md" 2>/dev/null; then
     echo "::warning::No CHANGELOG.md at ${CHANGELOG_REF}:${mdir}; skipping its release posts" >&2
     rm -rf "${changelog_src:?}/${rel:?}"
+    continue
   fi
+  # LIB-0049 §7's backfill cut every entry to one line, and not every old tag
+  # has a Release to hold its long form. So also keep the newest revision of
+  # this CHANGELOG.md still in long form, with "### " titles, as LONG.md: an
+  # entry with no Release takes its body from there.
+  while IFS= read -r rev; do
+    if git -C "$LIB_ROOT" show "${rev}:${LIB_PREFIX}${mdir}/CHANGELOG.md" 2>/dev/null | grep -q '^### '; then
+      git -C "$LIB_ROOT" show "${rev}:${LIB_PREFIX}${mdir}/CHANGELOG.md" >"${changelog_src}/${rel}/LONG.md"
+      break
+    fi
+  done < <(git -C "$LIB_ROOT" log --format=%H -n 50 "$CHANGELOG_REF" -- ":/${LIB_PREFIX}${mdir}/CHANGELOG.md")
 done < <(templates_tags 'terraform/*/*/v*' \
   | sed -E 's#/v[0-9]+\.[0-9]+\.[0-9]+$##' | sort -u)
 
@@ -1163,7 +1174,7 @@ while IFS= read -r changelog; do
 
   written=$(awk -v provider="$provider" -v module="$module" \
                 -v outdir="$RELEASES_CONTENT_DIR" -v offsets="$offset_map" \
-                -v notesdir="$notes_dir" '
+                -v notesdir="$notes_dir" -v longfile="$(dirname "$changelog")/LONG.md" '
     function offset_for(d,   n, i, parts, kv) {
       n = split(offsets, parts, ";")
       for (i = 1; i <= n; i++) {
@@ -1172,7 +1183,28 @@ while IFS= read -r changelog; do
       print "::error::No offset for date " d > "/dev/stderr"
       exit 1
     }
-    function flush(   path, i, notes, line, nnotes, note) {
+    # The long form of each entry, by version, from LONG.md when there is one:
+    # every line after the entry heading and its "### " title.
+    BEGIN {
+      while ((getline line < longfile) > 0) {
+        if (line ~ /^## \[[0-9]+\.[0-9]+\.[0-9]+\] - [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) {
+          # Keyed by version and occurrence: a track restarted at its old
+          # number (grafana/dashboard) holds one version twice.
+          lv = line; sub(/^## \[/, "", lv); sub(/\].*$/, "", lv)
+          lv = lv SUBSEP (++lseen[lv])
+          ltitled = 0; lskip = 0
+          continue
+        }
+        if (lv == "") continue
+        if (!ltitled) { if (line ~ /^### /) { ltitled = 1; lskip = 1 }; continue }
+        if (lskip && line == "") { lskip = 0; continue }
+        lskip = 0
+        if (lv in long) long[lv] = long[lv] "\n" line
+        else if (line != "") long[lv] = line
+      }
+      close(longfile)
+    }
+    function flush(   path, i, notes, line, nnotes, note, nlong, lines) {
       if (version == "") return
       # The Release, when there is one, holds the long form.
       notes = notesdir "/terraform__" provider "__" module "__v" version
@@ -1183,6 +1215,11 @@ while IFS= read -r changelog; do
       if (nnotes > 0) {
         nbody = 0
         for (i = 1; i <= nnotes; i++) body[++nbody] = note[i]
+      } else if ((version SUBSEP occ) in long) {
+        # No Release: the long form from before the backfill.
+        nbody = 0
+        nlong = split(long[version SUBSEP occ], lines, "\n")
+        for (i = 1; i <= nlong; i++) body[++nbody] = lines[i]
       }
       while (nbody > 0 && body[nbody] == "") nbody--
       path = outdir "/" provider "-" module "-v" version ".md"
@@ -1199,6 +1236,7 @@ while IFS= read -r changelog; do
     /^## \[[0-9]+\.[0-9]+\.[0-9]+\] - [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ {
       flush()
       version = $0; sub(/^## \[/, "", version); sub(/\].*$/, "", version)
+      occ = ++seen[version]
       date = $0; sub(/^.* - /, "", date)
       escaped_title = ""; nbody = 0; seen_title = 0
       next
