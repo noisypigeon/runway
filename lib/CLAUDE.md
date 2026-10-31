@@ -145,7 +145,7 @@ spoke and workload (LIB-0035 §3).
 
 ## Where the decisions live
 
-ADRs live at runway's `adr/LIB-NNNN-<slug>.md`, numbered from `0001` within that
+ADRs live at `docs/adr/LIB-NNNN-<slug>.md`, numbered from `0001` within that
 directory. `LIB-0001` defines the architecture; `LIB-0002` created the library
 repo, and `LIB-0047` hoisted it here.
 
@@ -158,7 +158,7 @@ record whose standard it applies, or a new `LIB-` record. Their old records
 are all here:
 
 - `DEV-` (garden's, mostly the family's pre-hub history) verbatim in
-  `adr/archive/`. That domain is frozen and closed; see its `README.md`.
+  `docs/adr/archive/`. That domain is frozen and closed; see its `README.md`.
 - `COM-` (blog's) and `RUN-` (runway's), plus DEV-0162 to DEV-0165, as
   amendments whose headings carry the ID. LIB-0017 §2 says which record each
   one went into.
@@ -169,7 +169,7 @@ cited here reads as `CLI-NNNN`.
 
 Filing one, by hand:
 
-- **Number**: max+1 within `adr/`.
+- **Number**: max+1 within `docs/adr/`.
 - **Filename and H1 agree**: `LIB-0002-<slug>.md` holds `# LIB-0002: <title>`.
 - **Author is always** `Willow Graysen ([@noisypigeon](https://github.com/noisypigeon)).`
 - **Sections**: `## Context` / `## Decision` / `## Consequences` /
@@ -185,7 +185,7 @@ Filing one, by hand:
 
 ## Runbooks
 
-Operational procedures live at runway's `runbooks/<slug>.md`: step-by-step, for
+Operational procedures live at `docs/runbooks/<slug>.md`: step-by-step, for
 any spoke, citing the ADR they serve. Today there are three:
 
 - `restore-terraform-state-from-b2.md` (LIB-0007 §4) puts one leaf's state

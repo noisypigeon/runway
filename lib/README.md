@@ -76,10 +76,10 @@ Per-module and theme `CHANGELOG.md` files carry the full, versioned entries.
 
 ## Decision records
 
-The family's ADRs live in runway's [`adr/`](../adr), as `LIB-NNNN-<slug>.md`.
+The family's ADRs live in [`docs/adr/`](docs/adr), as `LIB-NNNN-<slug>.md`.
 The spokes (runway, and the shims) have none of their own, because they
 depend on the library for their design standards
 ([LIB-0017](../adr/LIB-0017-spokes-do-not-get-their-own-adrs.md)). The older
-`DEV-` records are archived verbatim in [`adr/archive/`](../adr/archive),
+`DEV-` records are archived verbatim in [`docs/adr/archive/`](docs/adr/archive),
 and the `COM-` and `RUN-` records (`NPC-` is an alias for `COM-`) are amendments
 on the `LIB-` records they applied. `pigeon-cli` keeps its own ADRs, as `CLI-` records in its `adr/`.

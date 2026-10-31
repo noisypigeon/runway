@@ -339,3 +339,10 @@ Where this entry and the text above disagree, this entry is what runs.
    label pinning and deprecation check to cut `v9.3.1` and `v9.4.0`. This
    record's PRs cut those numbers first, so LIB-0048's steps take whatever
    number comes next. Versions are a sequence, not names.
+4. **`adr-issue.sh` needed no change (§5).** It takes every record path as
+   `--adr-line FILE:LINE`, and has no default. The only path it names is an
+   example from pigeon-cli's `adr/`, which doesn't move. So step 6 touches no
+   script and releases nothing.
+5. **The Pages shims stayed on `workflows/v9.3.0` in step 5.** `site-pages.yml`
+   reads the same paths at `v9.3.0` and at `v9.4.2`, so LIB-0047's split can't
+   recur. Each shim moves on its own schedule.

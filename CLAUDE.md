@@ -54,8 +54,8 @@ are the workload's `scaleway.bucket` entries; its cluster, Cockpit and IAM,
 and the spoke's state bucket, stay hand-written in the project for now.
 
 The library is hoisted into this repo (LIB-0047). Modules, CI logic and
-scripts live under `lib/`, decision records under `adr/`, and runbooks under
-`runbooks/`. `lib/CLAUDE.md` is the library's own guide: read it before you
+scripts live under `lib/`, decision records under `lib/docs/adr/`, and runbooks
+under `lib/docs/runbooks/` (LIB-0049). `lib/CLAUDE.md` is the library's own guide: read it before you
 change anything under `lib/`. The spoke still consumes the library only by
 pinned tag, so a change under `lib/` reaches this repo's plans only when a PR
 bumps the pin. `fetch-lib.sh` clones this repo itself into `.lib-src/` at
