@@ -3,7 +3,8 @@
 A Claude Code plugin with the skills for working on
 [`pigeon-cli`](https://github.com/noisypigeon/pigeon-cli), hoisted from that
 repo by its CLI-0161. Versioned as `claude-plugins/pigeon-cli/vX.Y.Z` and
-listed in this repo's [`/.claude-plugin/marketplace.json`](../../.claude-plugin/marketplace.json).
+listed in [`../marketplace.json`](../marketplace.json), which each plugin tag copies to
+`/.claude-plugin/marketplace.json` (LIB-0049 §4).
 
 | Skill | What it does |
 | --- | --- |

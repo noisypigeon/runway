@@ -64,10 +64,11 @@ this family that is reusable and versioned, and nothing that is deployed:
   checkout rather than keeping a copy.
 - `claude-plugins/<set>/` — Claude Code plugins, tagged
   `claude-plugins/<set>/vX.Y.Z` per plugin and listed in
-  `/.claude-plugin/marketplace.json` (marketplace name `library`). A consumer
+  `claude-plugins/marketplace.json` (marketplace name `library`), which each
+  plugin tag's commit copies to `/.claude-plugin/` (LIB-0049 §4). A consumer
   pins the whole marketplace to one plugin's tag in its `.claude/settings.json`
-  and enables `<plugin>@library`. `pigeon-cli` is the one plugin (its
-  CLI-0161).
+  and enables `<plugin>@library`. `pigeon-cli` (its CLI-0161) and `library`,
+  which holds `release-pr`, are the plugins.
 - `github-workflows/` — the reusable CI the spokes call, tagged
   `workflows/vX.Y.Z`. GitHub runs a reusable workflow only from
   `.github/workflows/`, so each tag names a commit off `main` that copies

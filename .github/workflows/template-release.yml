@@ -115,8 +115,9 @@ jobs:
       #   - observability/<set>/ (pigeon-cli's CLI-0161), a local Docker
       #     Compose stack, consumed by checking out its tag.
       #   - claude-plugins/<set>/ (pigeon-cli's CLI-0161), a Claude Code
-      #     plugin listed in /.claude-plugin/marketplace.json, consumed by
-      #     pinning the marketplace to its tag.
+      #     plugin listed in lib/claude-plugins/marketplace.json, consumed by
+      #     pinning the marketplace to its tag, whose commit copies that file
+      #     to /.claude-plugin/ (LIB-0049 §4).
       # A set's README.md/CHANGELOG.md are never a release on their own.
       - name: Determine changed per-set release tracks
         id: dashboards
@@ -571,30 +572,47 @@ jobs:
           NOTES=$(mktemp)
           printf '%s\n\nPR: %s\n' "$PR_BODY" "$PR_URL" > "$NOTES"
 
+          # Prints a child of HEAD that also holds each "<src> <dest>" pair
+          # given, src copied to dest. Built in a scratch index, so the working
+          # tree and main are untouched, and only the tag that names it is
+          # pushed (LIB-0049 §§2, 4). A dest main already holds is a collision.
+          release_commit() {
+            local tag="$1"; shift
+            export GIT_INDEX_FILE
+            GIT_INDEX_FILE="$(mktemp -u)"
+            git read-tree HEAD
+            while [ $# -gt 0 ]; do
+              if git cat-file -e "HEAD:$2" 2>/dev/null; then
+                echo "::error::$1 collides with runway's own $2; rename one" >&2
+                exit 1
+              fi
+              git update-index --add --cacheinfo "100644,$(git hash-object -w "$1"),$2"
+              shift 2
+            done
+            git commit-tree "$(git write-tree)" -p HEAD -m "chore(release): ${tag}"
+            rm -f "$GIT_INDEX_FILE"
+            unset GIT_INDEX_FILE
+          }
+
           for tag in $RELEASE_TAGS; do
             case "$tag" in
               workflows/*)
                 # GitHub runs a reusable workflow only from .github/workflows/
-                # at the ref it is called at. So the tag names a child of the
-                # changelog commit that copies lib/github-workflows/*.yml
-                # there, and only the tag is pushed: main never holds the
-                # copies (LIB-0049 §2). Built in a scratch index, so the
-                # working tree and main are untouched. Pushing it needs
-                # BOT_GITHUB_TOKEN to carry the workflows permission.
-                export GIT_INDEX_FILE
-                GIT_INDEX_FILE="$(mktemp -u)"
-                git read-tree HEAD
+                # at the ref it is called at, so the tag's commit copies them
+                # there. Pushing it needs BOT_GITHUB_TOKEN to carry the
+                # workflows permission.
+                pairs=()
                 for f in lib/github-workflows/*.yml; do
-                  dest=".github/workflows/$(basename "$f")"
-                  if git cat-file -e "HEAD:${dest}" 2>/dev/null; then
-                    echo "::error::${f} collides with runway's own ${dest}; rename one"
-                    exit 1
-                  fi
-                  git update-index --add --cacheinfo "100644,$(git hash-object -w "$f"),${dest}"
+                  pairs+=("$f" ".github/workflows/$(basename "$f")")
                 done
-                commit=$(git commit-tree "$(git write-tree)" -p HEAD -m "chore(release): ${tag}")
-                rm -f "$GIT_INDEX_FILE"
-                unset GIT_INDEX_FILE
+                # An assignment, so a collision's exit fails the step.
+                commit=$(release_commit "$tag" "${pairs[@]}")
+                git tag "$tag" "$commit"
+                ;;
+              claude-plugins/*)
+                # Claude Code reads a github marketplace from the repo root,
+                # so the tag's commit copies it there.
+                commit=$(release_commit "$tag" lib/claude-plugins/marketplace.json .claude-plugin/marketplace.json)
                 git tag "$tag" "$commit"
                 ;;
               *)

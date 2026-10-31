@@ -59,11 +59,13 @@
 #
 # Also generates one page per workflows/vX.Y.Z tag under content/workflows/,
 # naming each reusable workflow's `uses:` line, inputs, secrets and outputs at
-# that tag (LIB-0049 §3). Needs yq and jq.
+# that tag (LIB-0049 §3), and one page per claude-plugins/<plugin>/vX.Y.Z tag
+# under content/claude-plugins/, with the settings that pin it (§4). Needs yq
+# and jq.
 #
 # Regenerate-all semantics: every run wipes and rewrites every generated page
-# under content/terraform/, content/theme-versions/, content/workflows/ and
-# content/releases/
+# under content/terraform/, content/theme-versions/, content/workflows/,
+# content/claude-plugins/ and content/releases/
 # (except each directory's hand-authored _index.md) from the current set of
 # tags and changelogs. Safe to run repeatedly; fully idempotent.
 set -euo pipefail
@@ -989,6 +991,77 @@ FRONT
 done < <(templates_tags 'workflows/v*' | sort -V)
 
 echo "Generated ${workflows_count} workflows version page(s) under ${WORKFLOWS_CONTENT_DIR#"$CONTENT_ROOT"/}."
+
+# One page per claude-plugins/<plugin>/vX.Y.Z tag, at that path (LIB-0049 §4):
+# the .claude/settings.json that pins the marketplace to the tag and enables
+# the plugin. Only a tag that a consumer can load from runway is listed: its
+# commit has /.claude-plugin/marketplace.json naming the plugin, at a source
+# its tree holds. A recreated pre-hoist tag points at a path that moved under
+# lib/, so it isn't (LIB-0047's 2026-10-28 amendment, item 2).
+PLUGINS_CONTENT_DIR="$CONTENT_ROOT/claude-plugins"
+
+mkdir -p "$PLUGINS_CONTENT_DIR"
+find "$PLUGINS_CONTENT_DIR" -maxdepth 1 -name '*.md' ! -name '_index.md' -delete
+
+plugins_count=0
+while IFS= read -r tag; do
+  [ -z "$tag" ] && continue
+  if [[ ! "$tag" =~ ^claude-plugins/([a-z0-9-]+)/v(([0-9]+)\.([0-9]+)\.([0-9]+))$ ]]; then
+    echo "::warning::Skipping plugin tag with unexpected shape: $tag" >&2
+    continue
+  fi
+  plugin="${BASH_REMATCH[1]}"
+  version="${BASH_REMATCH[2]}"
+  weight=$(( BASH_REMATCH[3] * 1000000 + BASH_REMATCH[4] * 1000 + BASH_REMATCH[5] ))
+
+  source="$(git -C "$LIB_ROOT" show "${tag}:.claude-plugin/marketplace.json" 2>/dev/null \
+    | jq -r --arg p "$plugin" '.plugins[]? | select(.name == $p) | .source | strings' 2>/dev/null || true)"
+  source="${source#./}"
+  if [ -z "$source" ] || ! git -C "$LIB_ROOT" cat-file -e "${tag}:${source}/.claude-plugin/plugin.json" 2>/dev/null; then
+    continue
+  fi
+  description="$(git -C "$LIB_ROOT" show "${tag}:${source}/.claude-plugin/plugin.json" | jq -r '.description // ""' | md_text)"
+
+  cat >"$PLUGINS_CONTENT_DIR/${plugin}-v${version}.md" <<FRONT
++++
+title = "claude-plugins/${plugin} v${version}"
+description = "The ${plugin} Claude Code plugin at claude-plugins/${plugin}/v${version}."
+path = "claude-plugins/${plugin}/v${version}"
+template = "plugin-version.html"
+weight = ${weight}
+
+[extra]
+plugin = "${plugin}"
+version = "${version}"
+github_url = "https://github.com/${TAG_REPO}/releases/tag/${tag}"
++++
+
+${description}
+
+Pin the \`library\` marketplace to this version and enable the plugin in the
+consuming repo's committed \`.claude/settings.json\`:
+
+\`\`\`json
+{
+  "extraKnownMarketplaces": {
+    "library": {
+      "source": { "source": "github", "repo": "${TAG_REPO}", "ref": "${tag}" }
+    }
+  },
+  "enabledPlugins": { "${plugin}@library": true }
+}
+\`\`\`
+
+If Claude Code reports the plugin is enabled but not installed, run
+\`claude plugin install ${plugin}@library --scope project\` once.
+
+[Source at this tag](https://github.com/${TAG_REPO}/tree/${tag}/${source})
+FRONT
+
+  plugins_count=$((plugins_count + 1))
+done < <(templates_tags 'claude-plugins/*/v*' | sort -V)
+
+echo "Generated ${plugins_count} plugin version page(s) under ${PLUGINS_CONTENT_DIR#"$CONTENT_ROOT"/}."
 
 # One post per module release, from the modules' own CHANGELOG.md files
 # (ADR-0141's content, ADR-0154's mechanism). Each "## [X.Y.Z] - YYYY-MM-DD"
