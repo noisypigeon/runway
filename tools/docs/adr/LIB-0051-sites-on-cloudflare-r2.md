@@ -182,7 +182,7 @@ Where this entry and the text above disagree, this entry is what runs.
        `/` from `/index.html`;
      - `sites-www`, for a site that serves `www`, an
        `http_request_dynamic_redirect` from `www` to the apex.
-   - **Its token.** The zone's token gains `Transform Rules Write`.
+   - **Its token.** The zone's token gains `Zone Transform Rules Write` (the account-scoped `Transform Rules Write` is no use on a zone).
    - **The conflict guard.** A zone can't have both `sites-www` and an
      `apexRedirect`, which would need the same entrypoint.
    - **Where it's read from.** `root.hcl` and `resolve-workloads.sh` each read
