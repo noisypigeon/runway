@@ -17,7 +17,7 @@ module "grafana_dashboard" {
   folder_title = "pigeon-cli"
   dashboards = {
     # A pinned version from the library's grafana-dashboards track...
-    overview = { url = "https://raw.githubusercontent.com/noisypigeon/library/refs/tags/grafana-dashboards/pigeon-cli/v1.0.0/grafana-dashboards/pigeon-cli/overview.json" }
+    overview = { url = "https://raw.githubusercontent.com/noisypigeon/runway/refs/tags/grafana-dashboards/pigeon-cli/v1.0.0/lib/grafana-dashboards/pigeon-cli/overview.json" }
     # ...or an inline JSON model.
     # local_one = { config_json = file("${path.module}/local.json") }
   }
