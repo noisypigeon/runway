@@ -10,10 +10,10 @@ TG_TF_PATH = "terraform"
 
 [tasks.terraform-prepare]
 run = [
-  "./fetch-lib.sh",
-  ".lib-src/lib/scripts/resolve-root-hcl.sh",
-  ".lib-src/lib/scripts/resolve-workloads.sh",
-  ".lib-src/lib/scripts/check-policies.sh",
+  "./.pigeon/tools.sh",
+  ".pigeon/src/tools/github/scripts/resolve-root-hcl.sh",
+  ".pigeon/src/tools/github/scripts/resolve-workloads.sh",
+  ".pigeon/src/tools/github/scripts/check-policies.sh",
 ]
 
 [tasks.plan]

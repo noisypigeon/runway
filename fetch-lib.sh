@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 # Clones noisypigeon/runway, whose lib/ is the library (LIB-0047), into /.lib-src/ at /.lib-version. Set LIB_SRC to use your own checkout.
+#
+# Kept only for the Pages shims (LIB-0050's 2026-10-31 amendment). Their
+# site-pages.yml, still at workflows/v9.3.0, runs this script from runway's
+# checkout and reads .lib-src/lib/. So .lib-version stays at workflows/v9.4.3,
+# the last tag with lib/. runway itself fetches through .pigeon/tools.sh. Delete
+# this file, .lib-version and the /.lib-src/ ignore once both shims are on a
+# github/workflows/ version.
 set -euo pipefail
 
 LIB_REPO_URL="${LIB_REPO_URL:-https://github.com/noisypigeon/runway.git}"

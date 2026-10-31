@@ -23,7 +23,7 @@ concurrency:
 jobs:
   changelog:
     if: github.event.pull_request.merged == true
-    uses: noisypigeon/runway/.github/workflows/blog-changelog.yml@workflows/v9.4.3
+    uses: noisypigeon/runway/.github/workflows/blog-changelog.yml@github/workflows/v10.0.0
     with:
       src_dir: workloads/noisypigeon.com/blog
       # root_changelog_tag stays unset, or a blog PR would get two root lines.
