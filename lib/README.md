@@ -23,7 +23,7 @@ sites runway holds as workloads. The full argument is
 | [`zola-site/`](zola-site) | a reusable Zola theme | `zola-site/vX.Y.Z` |
 | [`terragrunt/root-hcl/`](terragrunt/root-hcl) | the spokes' Terragrunt `root.hcl` template | `terragrunt/root-hcl/vX.Y.Z` |
 | `grafana-dashboards/<set>/` | versioned Grafana dashboard JSON, fetched by tag URL | `grafana-dashboards/<set>/vX.Y.Z` |
-| `.github/workflows/` and [`scripts/`](scripts) | the reusable CI the spokes call, and the scripts it runs | `workflows/vX.Y.Z` |
+| [`github-workflows/`](github-workflows) and [`scripts/`](scripts) | the reusable CI the spokes call, and the scripts it runs. Each tag names a commit that copies the workflows into `.github/workflows/`, where GitHub runs them (LIB-0049) | `workflows/vX.Y.Z` |
 
 Plus two scripts a site's build or generation runs:
 [`zola-site/resolve-theme.sh`](zola-site/resolve-theme.sh) (materializes the
@@ -67,7 +67,7 @@ Every change ships through a labelled PR — the PR body becomes the changelog
 entry and GitHub Release notes verbatim, and the `release:*` label drives the
 version bump. See
 [`.claude/skills/release-pr/SKILL.md`](../.claude/skills/release-pr/SKILL.md),
-which is the discipline; `.github/workflows/template-release.yml` is the
+which is the discipline; [`template-release.yml`](../.github/workflows/template-release.yml) is the
 automation that acts on it.
 
 Every merged PR also adds one line to runway's root [`CHANGELOG.md`](../CHANGELOG.md).

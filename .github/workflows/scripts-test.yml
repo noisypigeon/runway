@@ -2,13 +2,16 @@ name: scripts-test
 
 # Runs the Node tests beside the library's scripts, render-run-comments.test.js
 # among them (LIB-0026 §6), on any PR that touches lib/scripts/. This is
-# the library's own CI, not a reusable workflow: no spoke calls it.
+# the library's own CI, not a reusable workflow: no spoke calls it. It also
+# checks that every reusable workflow lives in lib/github-workflows/, and none
+# in .github/workflows/ (LIB-0049 §1).
 
 on:
   pull_request:
     paths:
       - "lib/scripts/**"
-      - ".github/workflows/scripts-test.yml"
+      - "lib/github-workflows/**"
+      - ".github/workflows/**"
 
 permissions:
   contents: read
@@ -25,3 +28,29 @@ jobs:
 
       - name: Run the scripts' tests
         run: node --test lib/scripts/*.test.js
+
+  layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reusable workflows live only in lib/github-workflows/
+        run: |
+          status=0
+          for f in .github/workflows/*.yml; do
+            if grep -qE '^  workflow_call:' "$f"; then
+              echo "::error file=${f}::a reusable workflow belongs in lib/github-workflows/ (LIB-0049 §1)"
+              status=1
+            fi
+          done
+          for f in lib/github-workflows/*.yml; do
+            if ! grep -qE '^  workflow_call:' "$f"; then
+              echo "::error file=${f}::lib/github-workflows/ holds only reusable workflows (LIB-0049 §1)"
+              status=1
+            fi
+            if [ -e ".github/workflows/$(basename "$f")" ]; then
+              echo "::error file=${f}::collides with .github/workflows/$(basename "$f"); the release copies it there"
+              status=1
+            fi
+          done
+          exit "$status"

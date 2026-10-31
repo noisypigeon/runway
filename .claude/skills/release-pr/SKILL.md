@@ -35,7 +35,7 @@ change, not a release. It follows `CLAUDE.md`'s Terraform flow instead.
      describing what changed and why it matters to them, not "fixed bug" or a
      raw commit list. `template-release.yml` copies it verbatim into that
      unit's own `CHANGELOG.md` (`lib/terraform/<provider>/<module>/CHANGELOG.md`,
-     `lib/zola-site/CHANGELOG.md`, `.github/workflows/CHANGELOG.md` for the
+     `lib/zola-site/CHANGELOG.md`, `lib/github-workflows/CHANGELOG.md` for the
      workflows track, and so on) and into the GitHub Release notes on merge,
      with no editing pass in between.
    ```
@@ -59,9 +59,9 @@ change, not a release. It follows `CLAUDE.md`'s Terraform flow instead.
    - a `lib/grafana-dashboards/<set>/*.json`;
    - anything under `lib/observability/<set>/` or `lib/claude-plugins/<set>/`
      other than its README or CHANGELOG;
-   - `lib/scripts/`, or a **reusable** workflow (one with `workflow_call`) in
-     `.github/workflows/`. runway's own callers live there too, and changing
-     one releases nothing.
+   - `lib/scripts/`, or a reusable workflow in `lib/github-workflows/`
+     (LIB-0049). `.github/workflows/` holds only runway's own workflows, and
+     changing one releases nothing.
 
    Anything else under `lib/`, such as a README- or CHANGELOG-only change,
    needs no label: nothing is tagged. It still gets one line in the root

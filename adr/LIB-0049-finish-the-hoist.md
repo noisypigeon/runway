@@ -103,7 +103,7 @@ resolves a workflow there like at any other ref.
 - **The push needs `workflows` scope.** GitHub refuses a push that changes
   `.github/workflows/` from `GITHUB_TOKEN`. The tag push uses
   `BOT_GITHUB_TOKEN`, which must carry the `workflows` permission on runway.
-  That is checked before step 2b of the cutover below.
+  That is checked before step 2 of the cutover below.
 - **Tag pushes still fire nothing.** No workflow in `lib/github-workflows/` has
   a `push` trigger, so the copies run only when they are called. LIB-0047's
   2026-10-28 amendment found the same for tags.
@@ -241,8 +241,7 @@ fetcher and a change to the paths its callers read never share a PR.
 | # | Where | Change | Label |
 | --- | --- | --- | --- |
 | 1 | runway | `docs(adr): LIB-0049 finish the hoist`: this record | none |
-| 2a | runway | `ci(lib-0049)`: move the reusables to `lib/github-workflows/` (§1). The move is pure: `template-release.yml` and `root-changelog.yml`'s `releases` job are set to `workflow_dispatch` for it, so it tags nothing | none |
-| 2b | runway | `ci(lib-0049)`: the tag-only release commit (§2), the path predicates and their twin, and the lint (§1). Both jobs go back on | `release:minor`, the first tag cut this way |
+| 2 | runway | `ci(lib-0049)`: move the reusables to `lib/github-workflows/`, the path predicates and their twin, and the layout check (§1), with the tag-only release commit (§2). Unlike LIB-0047's hoist, one PR is enough: its merge runs its own `template-release.yml`, and the only predicate the move matches is the new `workflows` one, so it cuts exactly the first tag made this way | `release:minor` |
 | 3 | runway | `feat(lib-0049)`: garden's `/workflows/` pages (§3), from `lib/scripts/` | `release:patch` |
 | 4 | runway | `feat(lib-0049)`: the `library` plugin with `release-pr`, the marketplace move and garden's marketplace pages (§4) | plugin `release:minor`; `workflows` `release:patch` for the generator |
 | 5 | runway, both shims | Pin bump: `.lib-version`, every `@workflows/` ref, and runway's new `.claude/settings.json`; in the same step, both shims' `pages.yml` (LIB-0047's 2026-10-30 amendment, item 4) | none |
