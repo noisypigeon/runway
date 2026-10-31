@@ -2,57 +2,16 @@
 
 All notable changes to this module are documented in this file.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
 ## [0.3.0] - 2026-10-26
 
-### Add rotation_days to iam-api-key
-
-`iam-api-key` can now rotate its key, exactly as `terraform-deployer-iam` does (LIB-0038 §2). Set `rotation_days` and a `time_rotating` replaces the key every that many days, creating the new key before destroying the old one, and each key expires a week after its scheduled rotation. An explicit `expires_at` still wins. Unset, the key keeps the 30-day expiry it has today.
-
-The resources carry the same addresses as `terraform-deployer-iam`'s key: `time_static.created`, `time_rotating.key[0]`, `terraform_data.rotation` and `scaleway_iam_api_key.api_key`. A deployer's key can then move from the bundle into its own `iam-api-key` leaf with its rotation timestamp, with nothing replaced and no early rotation.
-
-`terraform_data.rotation` always exists, since `replace_triggered_by` can't name a resource that may have no instances. An existing key that takes this version without `rotation_days` plans one `terraform_data` create and no change to the key itself.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-[#194](https://github.com/noisypigeon/library/pull/194)
+- Add rotation_days to iam-api-key ([#194](https://github.com/noisypigeon/library/pull/194))
 
 ## [0.2.0] - 2026-10-05
 
-### Add default_project_id input to iam-api-key
-
-## Summary
-`scaleway_iam_api_key` has its own `default_project_id` argument — the project Object Storage operations with this key are scoped to, independent of the owning IAM application's policy grants. Without it, a key defaults to the provider's own project regardless of what `project_ids` an attached `iam-policy` covers.
-
-Confirmed live: `workloads/pigeon.dev/terraform/iam`'s key defaulted to the org's default project rather than `pigeon-dev`, so `aws s3 sync` in `pigeon-dev-pages.yml` failed with a deterministic `AccessDenied` on `ListObjectsV2` — the same "Scaleway object storage needs an explicit project_id on nearly everything" lesson as the earlier `object-bucket` ACL/website-config fix (PR #196), just in a different module this time.
-
-Optional, defaults to `null` (today's behavior, unchanged) — no existing consumer needs updating.
-
-## Test plan
-- [x] `terraform validate`/`fmt` clean
-- [ ] `workloads/pigeon.dev/terraform/iam` bumped to the new version and re-applied (separate follow-up PR, per this repo's module-change-then-consumer-bump sequencing)
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-[#201](https://github.com/noisypigeon/noisypigeon/pull/201)
+- Add default_project_id input to iam-api-key ([#201](https://github.com/noisypigeon/noisypigeon/pull/201))
 
 ## [0.1.0] - 2026-10-04
 
-### Split iam-policy's application/API-key into iam-application and iam-api-key modules
-
-`iam-policy` bundled three independent concerns into one module: `scaleway_iam_application`, `scaleway_iam_policy`, and `scaleway_iam_api_key`. A repo-wide census found exactly two real consumers, and confirmed zero consumers use `bucket_names`/`bucket_actions`/`admin_project_id` -- that bucket-scoped policy feature (ADR-0066/ADR-0069) never had a second real caller.
-
-This PR splits the bundle into three modules:
-
-- **New `iam-application`**: wraps `scaleway_iam_application` only. Inputs `name` (required), `description` (optional). Outputs `id`, `name`.
-- **New `iam-api-key`**: wraps `scaleway_iam_api_key` only. Inputs `application_id` (required), `description` (optional), `expires_at` (optional -- defaults to 30 days after the key is first created, anchored via a `time_static` resource so the default doesn't drift on every `plan`). Outputs `access_key`/`secret_key` (both sensitive).
-- **`iam-policy`, slimmed to policy-only**: no longer creates an application or API key -- takes a new required `application_id` input instead. Drops `bucket_names`, `bucket_actions`, `admin_project_id`, and `expires_at` entirely (none were used by any real consumer), along with the `access_key`/`secret_key` outputs. Gains a new `id` output for the policy itself.
-
-This lets one `iam-application` be shared across several `iam-policy` calls instead of each policy call minting its own throwaway application -- the motivating use case is a shared `pigeon-cli` identity with multiple job policies attached to it.
-
-Breaking for every `iam-policy` consumer: existing callers need to add an `iam-application` module call and pass its `id` as `application_id`, add a separate `iam-api-key` call to get a credential, and drop any `bucket_names`/`bucket_actions`/`admin_project_id`/`expires_at` arguments (moving `expires_at` to the new `iam-api-key` call if still needed).
-
-See docs/adr/0119-decouple-scaleway-iam-application-api-key-rename-object-bucket.md for the full decision record (this PR covers the IAM-module half of that ADR).
-
-[#162](https://github.com/noisypigeon/noisypigeon/pull/162)
+- Split iam-policy's application/API-key into iam-application and iam-api-key modules ([#162](https://github.com/noisypigeon/noisypigeon/pull/162))

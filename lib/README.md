@@ -105,7 +105,8 @@ automation that acts on it.
 
 Every merged PR also adds one line to runway's root [`CHANGELOG.md`](../CHANGELOG.md).
 This directory's [`CHANGELOG.md`](CHANGELOG.md) is the library's, up to the hoist.
-Per-module and theme `CHANGELOG.md` files carry the full, versioned entries.
+Each unit's own `CHANGELOG.md` has one line per release, and its full notes are
+its GitHub Release (LIB-0049 §7).
 
 ## Decision records
 

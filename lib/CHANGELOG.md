@@ -1,5 +1,9 @@
 # Changelog
 
+> Frozen at the hoist (LIB-0047): every PR since writes its line in runway's
+> root `CHANGELOG.md`. Since LIB-0049, a unit's own `CHANGELOG.md` is one line
+> per release too, and its full notes are its GitHub Release.
+
 One line per PR across this whole repo, sectioned by date, newest first. Every
 merged PR gets exactly one line here; a PR that changes a releasable unit
 additionally gets its full PR body in that unit's own `CHANGELOG.md`. DEV-0160 is
