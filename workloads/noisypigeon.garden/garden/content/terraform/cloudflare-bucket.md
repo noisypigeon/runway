@@ -9,7 +9,7 @@ kind = "module"
 provider = "cloudflare"
 module = "bucket"
 latest_version = "1.0.0"
-github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/cloudflare/bucket"
+github_url = "https://github.com/noisypigeon/runway/tree/main/tools/terraform/cloudflare/bucket"
 usage_example = """
 module "bucket" {
   source = "https://noisypigeon.garden/terraform/cloudflare/bucket/v1.0.0"

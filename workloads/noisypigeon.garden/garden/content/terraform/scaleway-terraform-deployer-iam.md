@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "terraform-deployer-iam"
 latest_version = "0.2.0"
-github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/terraform-deployer-iam"
+github_url = "https://github.com/noisypigeon/runway/tree/main/tools/terraform/scaleway/terraform-deployer-iam"
 usage_example = """
 module "terraform_deployer_iam" {
   source = "https://noisypigeon.garden/terraform/scaleway/terraform-deployer-iam/v0.1.0"

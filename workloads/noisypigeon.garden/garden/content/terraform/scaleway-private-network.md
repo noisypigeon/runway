@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "private-network"
 latest_version = "0.1.0"
-github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/private-network"
+github_url = "https://github.com/noisypigeon/runway/tree/main/tools/terraform/scaleway/private-network"
 usage_example = """
 module "private_network" {
   source = "https://noisypigeon.garden/terraform/scaleway/private-network/v0.1.0"

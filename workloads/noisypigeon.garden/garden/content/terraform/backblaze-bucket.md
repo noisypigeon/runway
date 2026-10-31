@@ -9,7 +9,7 @@ kind = "module"
 provider = "backblaze"
 module = "bucket"
 latest_version = "0.2.0"
-github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/backblaze/bucket"
+github_url = "https://github.com/noisypigeon/runway/tree/main/tools/terraform/backblaze/bucket"
 usage_example = ""
 versions = [{ version = "0.1.0", path = "terraform/backblaze/bucket/v0.1.0" }, { version = "0.1.1", path = "terraform/backblaze/bucket/v0.1.1" }, { version = "0.2.0", path = "terraform/backblaze/bucket/v0.2.0" }]
 +++

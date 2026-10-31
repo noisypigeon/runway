@@ -9,7 +9,7 @@ kind = "module"
 provider = "scaleway"
 module = "iam-application"
 latest_version = "0.1.0"
-github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/scaleway/iam-application"
+github_url = "https://github.com/noisypigeon/runway/tree/main/tools/terraform/scaleway/iam-application"
 usage_example = """
 module "iam_application" {
   source = "https://noisypigeon.garden/terraform/scaleway/iam-application/v0.1.0"

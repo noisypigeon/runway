@@ -4,6 +4,10 @@ All notable changes to this module are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [0.2.0] - 2026-10-30
+
+- feat(lib-0051): cloudflare/r2-custom-domain, and bucket-scoped api-token policies ([#165](https://github.com/noisypigeon/runway/pull/165))
+
 ## [0.1.0] - 2026-10-23
 
 - Workloads sign in to Cloudflare with their own token; bootstrap keys only mint (LIB-0033) ([#159](https://github.com/noisypigeon/library/pull/159))

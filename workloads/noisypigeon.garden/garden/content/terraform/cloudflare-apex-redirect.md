@@ -9,7 +9,7 @@ kind = "module"
 provider = "cloudflare"
 module = "apex-redirect"
 latest_version = "0.1.0"
-github_url = "https://github.com/noisypigeon/runway/tree/main/lib/terraform/cloudflare/apex-redirect"
+github_url = "https://github.com/noisypigeon/runway/tree/main/tools/terraform/cloudflare/apex-redirect"
 usage_example = """
 module "apex_redirect" {
   source = "https://noisypigeon.garden/terraform/cloudflare/apex-redirect/v0.1.0"
