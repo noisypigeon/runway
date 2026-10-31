@@ -122,3 +122,48 @@ test("a bucket can't grant its own workload, nor a key name its own bucket quali
   assert.ok(r.errors.includes("::error::workloads/private/cold/workload.yaml: backblaze.bucket.snap.grants names private/cold, this bucket's own workload, which needs no grant (LIB-0045 §6)"), r.err);
   assert.ok(r.errors.includes("::error::workloads/private/cold/workload.yaml: backblaze.apiKey.reader.buckets: private/cold/snap is this workload's own bucket; name it snap (LIB-0029 §3)"), r.err);
 });
+
+// deployments.cloudflare (LIB-0051 §2): a site workload in its zone, and the
+// zone that gives it its host.
+const siteZone = (hosts = '"@": site') => ({
+  'zones/example.com/zone.yaml': ['zone:', '  name: example.com', '  prefix: ex', '  suffix: example', '  hosts:', `    ${hosts}`, ''].join('\n'),
+});
+const site = (deployments) => ({
+  'workloads/example.com/site/workload.yaml': ['workload:', '  name: site', '  deployments:', ...deployments.map((l) => `    ${l}`), ''].join('\n'),
+});
+const exists = (r, rel) => {
+  try { r.read(rel); return true; } catch { return false; }
+};
+
+test('deployments.cloudflare on an apex host implies the bucket, both custom domains, the token and the zone rulesets', () => {
+  const r = run({ ...siteZone(), ...site(['cloudflare: {}']) });
+  assert.equal(r.status, 0, r.err);
+  const w = 'workloads/example.com/site/cloudflare';
+  for (const rel of ['bucket/site', 'r2-custom-domain/apex', 'r2-custom-domain/www', 'api-token/site-deploy']) {
+    assert.ok(exists(r, `${w}/${rel}/terragrunt.hcl`), rel);
+  }
+  assert.match(r.read(`${w}/r2-custom-domain/apex/terragrunt.hcl`), /dependency "cfsite" \{\n  config_path = "\.\.\/\.\.\/\.\.\/cloudflare\/bucket\/site"\n\}/);
+  assert.ok(exists(r, 'zones/example.com/cloudflare/ruleset/sites-root/terragrunt.hcl'));
+  assert.ok(exists(r, 'zones/example.com/cloudflare/ruleset/sites-www/terragrunt.hcl'));
+});
+
+test('deployments.cloudflare.hosts serves only the names it lists, and implies no www redirect', () => {
+  const r = run({ ...siteZone(), ...site(['githubPages: {username: x}', 'cloudflare:', '  hosts: [r2-test]']) });
+  assert.equal(r.status, 0, r.err);
+  assert.ok(exists(r, 'workloads/example.com/site/cloudflare/r2-custom-domain/r2-test/terragrunt.hcl'));
+  assert.ok(!exists(r, 'workloads/example.com/site/cloudflare/r2-custom-domain/apex/terragrunt.hcl'));
+  assert.ok(exists(r, 'zones/example.com/cloudflare/ruleset/sites-root/terragrunt.hcl'));
+  assert.ok(!exists(r, 'zones/example.com/cloudflare/ruleset/sites-www/terragrunt.hcl'));
+});
+
+test('deployments.cloudflare refuses a name githubPages serves', () => {
+  const r = run({ ...siteZone(), ...site(['githubPages: {username: x}', 'cloudflare: {}']) });
+  assert.notEqual(r.status, 0);
+  assert.ok(r.errors.some((e) => /can't serve @, which deployments.githubPages serves/.test(e)), r.err);
+});
+
+test('deployments.cloudflare needs a host', () => {
+  const r = run({ ...siteZone('"@": other'), 'workloads/example.com/other/workload.yaml': 'workload:\n  name: other\n', ...site(['cloudflare: {}']) });
+  assert.notEqual(r.status, 0);
+  assert.ok(r.errors.some((e) => /deployments.cloudflare needs a host/.test(e)), r.err);
+});

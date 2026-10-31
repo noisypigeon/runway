@@ -343,6 +343,13 @@ jobs:
               names=$(for f in workloads/*/*/workload.yaml zones/*/zone.yaml; do if [ -f "$f" ]; then dirname "$f"; fi; done)
             else
               names=$(grep -E '^workloads/[^/]+/[^/]+/(workload|secrets\.workload)\.yaml$' <<<"$changed" | cut -d/ -f1-3 || true)
+              # And each such workload's zone, whose rulesets its
+              # deployments.cloudflare implies (LIB-0051 §2).
+              while IFS= read -r wd; do
+                [ -z "$wd" ] && continue
+                zd="zones/$(cut -d/ -f2 <<<"$wd")"
+                if [ -f "$zd/zone.yaml" ]; then names="$names"$'\n'"$zd"; fi
+              done <<<"$names"
               # A zone, and the workloads in it, whose hosts it gives (LIB-0037
               # §3).
               while IFS= read -r zf; do

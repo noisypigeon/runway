@@ -185,6 +185,8 @@ KINDS=(
   "cloudflare.bucket|cloudflare/bucket|map||workload|workload|w"
   "cloudflare.dnsRecord|cloudflare/dns-record|map||workload|workload|wz"
   "cloudflare.ruleset|cloudflare/ruleset|map||workload|workload|z"
+  "cloudflare._implied.customDomain|cloudflare/r2-custom-domain|map|cfsite|workload|workload|w"
+  "cloudflare._implied.siteToken|cloudflare/api-token|map||spoke|workload|w"
 )
 
 # A dependency's stub, relative to its workload directory, so a Backblaze
@@ -213,6 +215,9 @@ dep_dir() {
     # LIB-0043: a Scaleway bucket, block volume or API key by its key, and
     # the leaves an instance's name gives, CUR_NAME being the stub's instance.
     sbucket_*) echo "scaleway/bucket/$(echo "${1#sbucket_}" | tr _ -)" ;;
+    # The site bucket deployments.cloudflare implies, which a custom domain
+    # serves, so it plans once the bucket exists (LIB-0051 §2).
+    cfsite) echo "cloudflare/bucket/site" ;;
     volume_*) echo "scaleway/block-volume/$(echo "${1#volume_}" | tr _ -)" ;;
     apikey_*) echo "scaleway/iam-api-key/$(echo "${1#apikey_}" | tr _ -)" ;;
     sd_application) echo "scaleway/iam-application/$CUR_NAME" ;;
@@ -683,9 +688,12 @@ schema_properties() {
 # same key, field by field. An entry that isn't a mapping is passed through,
 # for the structural check to name. root.hcl's workload_values,
 # workload_cf_dns and workload_cf_rulesets are its twins.
-# expand_zone <unwrapped JSON> <zone>
+# The sites its hosts serve from R2 (LIB-0051 §2) imply ruleset sites-root,
+# which serves each site's / from /index.html, and, for a site that serves
+# www, sites-www, which redirects www to the apex.
+# expand_zone <unwrapped JSON> <zone> [<sites JSON>]
 expand_zone() {
-  jq -c --arg z "$2" "$UNIT_JQ"'
+  jq -c --arg z "$2" --argjson sites "${3:-[]}" "$UNIT_JQ"'
     def merge_under($d): (. // {}) as $e |
       if ($e | type) != "object" then $e
       else $e + ($d | with_entries(.value += (($e[.key] // {}) | if type == "object" then . else {} end))) end;
@@ -696,6 +704,14 @@ expand_zone() {
       service_dns($z) as $sdns |
       (if ($sdns | length) > 0 and (.cloudflare | type) == "object" then .cloudflare.dnsRecord = (.cloudflare.dnsRecord | merge_under($sdns)) else . end) |
       del(.services) |
+      (if ($sites | length) > 0 and (.cloudflare | type) == "object" then
+        ({"sites-root": {name: "\($z) sites root", kind: "zone", phase: "http_request_transform",
+           rules: [$sites[] | {expression: "(http.host eq \"\(.fqdn)\" and http.request.uri.path eq \"/\")", description: "serve \(.fqdn)/ from /index.html", action: "rewrite", action_parameters: {uri: {path: {value: "/index.html"}}}}]}}
+         + (if any($sites[]; .www) then {"sites-www": {name: "\($z) sites www", kind: "zone", phase: "http_request_dynamic_redirect",
+           rules: [$sites[] | select(.www) | {expression: "(http.host eq \"www.\(.fqdn)\")", description: "redirect www.\(.fqdn) to \(.fqdn)", action: "redirect",
+             action_parameters: {from_value: {status_code: 301, target_url: {expression: "concat(\"https://\(.fqdn)\", http.request.uri.path)"}, preserve_query_string: true}}}]}} else {} end)) as $srs |
+        .cloudflare.ruleset = (.cloudflare.ruleset | merge_under($srs))
+       else . end) |
       ((.cloudflare.apexRedirect? // {}) | if type == "object" then with_entries(select(.value | type == "object" and (.target_url | type) == "string" and (.target_url | test("^[a-zA-Z][a-zA-Z0-9+.-]*://.")))) else {} end) as $r |
       if ($r | length) == 0 or (.cloudflare | type) != "object" then . else
         ($r | with_entries(.value |= (.target_url | capture("^[a-zA-Z][a-zA-Z0-9+.-]*://(?<h>.*)$").h | sub("/$"; "")))) as $host |
@@ -731,6 +747,9 @@ expand_workload() {
       (($zf.prefix // (($zf.name // $z) | tostring | gsub("[^a-z0-9-]"; "-"))) | tostring) as $zp |
       (.deployments.githubPages? // {} | if type == "object" then . else {} end) as $gp |
       ((.deployments // {}) | objects | has("githubPages")) as $pages |
+      ((.deployments // {}) | objects | has("cloudflare")) as $r2 |
+      (if $host == "@" then $z else "\($host).\($z)" end) as $fqdn |
+      ((.deployments.cloudflare? // {} | objects | .hosts) // (if $host == "@" then ["@", "www"] else [$host] end)) as $r2hosts |
       ($gp.url // "\($user).github.io") as $url |
       (if $host == "@" then {
          "github-pages-root-cname": {name: "@", type: "CNAME", content: $url, ttl: 1, proxied: false, comment: "github pages root cname (apex, cloudflare-flattened)"},
@@ -745,6 +764,18 @@ expand_workload() {
           (.dnsRecord // {}) as $e |
           if ($e | type) != "object" then $e
           else $e + ($d | with_entries(.value += (($e[.key] // {}) | if type == "object" then . else {} end))) end))
+       else . end) |
+      # deployments.cloudflare (LIB-0051 §2): the bucket site, named for the
+      # host, under any explicit entry of that key; a custom domain per name
+      # it serves, apex for @; and site-deploy, the token that writes it.
+      (if $r2 and $host != "" and $z != "private" then
+        .cloudflare = (.cloudflare
+          | .bucket = ((.bucket // {}) as $e | if ($e | type) != "object" then $e
+              else $e + {site: ({exact_name: $fqdn} + (($e.site // {}) | if type == "object" then . else {} end))} end)
+          | ._implied = {
+              customDomain: ($r2hosts | map({key: (if . == "@" then "apex" else gsub("\\."; "-") end), value: {domain: (if . == "@" then $z else "\(.).\($z)" end), bucket_name: $fqdn}}) | from_entries),
+              siteToken: {"site-deploy": {policies: [{permission_groups: ["Workers R2 Storage Bucket Item Write"], r2_buckets: [$fqdn]}]}}
+            })
        else . end) |
       del(.name, .deployments)
     end' <<<"$1"
@@ -883,7 +914,26 @@ for rel in ${unit_files[@]+"${unit_files[@]}"}; do
       while IFS= read -r msg; do fail "$rel: $msg"; done < <(relabel <<<"$zone_problems")
       continue
     fi
-    json=$(expand_zone "$raw" "$workload")
+    # The names its host workloads serve from R2 (LIB-0051 §2), for the
+    # rulesets expand_zone implies: [{fqdn, www}], www when the site serves it.
+    sites='[]'
+    while IFS=$'\t' read -r h w; do
+      [ -z "$w" ] && continue
+      wf="$SPOKE_DIR/workloads/$workload/$w/workload.yaml"
+      [ -f "$wf" ] || continue
+      wj=$(yq -o=json '.' "$wf" 2>/dev/null | jq -c "$UNIT_JQ"' unwrap("workload")') || continue
+      sites=$(jq -c --arg h "$h" --arg z "$workload" --argjson w "$wj" '
+        . + [($w | objects | .deployments? // {} | objects | select(has("cloudflare")) |
+          ((.cloudflare | objects | .hosts) // (if $h == "@" then ["@", "www"] else [$h] end)) as $names |
+          $names[] | select(. != "www" or $h != "@") |
+          {fqdn: (if . == "@" then $z else "\(.).\($z)" end), www: (. == "@" and ($names | index("www")) != null)})]' <<<"$sites")
+    done < <(jq -r 'objects | .hosts? // {} | objects | to_entries[] | "\(.key)\t\(.value)"' <<<"$raw")
+    if [ "$sites" != '[]' ] && jq -e '[.[] | select(.www)] | length > 0' <<<"$sites" >/dev/null \
+      && jq -e '(.cloudflare.apexRedirect // {}) | objects | length > 0' <<<"$raw" >/dev/null; then
+      fail "$rel: a site serving www and cloudflare.apexRedirect would both need the zone's redirect entrypoint; keep one (LIB-0036 §3, LIB-0051 §2)"
+      continue
+    fi
+    json=$(expand_zone "$raw" "$workload" "$sites")
   elif [ "$nested" = true ]; then
     unit=workload
     if [[ ! "$workload" =~ $KEBAB ]]; then
@@ -915,7 +965,7 @@ for rel in ${unit_files[@]+"${unit_files[@]}"}; do
          elif .name == "zone" then "name can'"'"'t be zone, which a zone'"'"'s own resources carry (LIB-0036 §2, LIB-0037 §1)" else empty end),
         (.scaleway // {} | objects | select(has("project")) | "scaleway.project moves to deployments.scaleway.project (LIB-0037 §2)"),
         (.deployments // {} | if type != "object" then "deployments must be a mapping" else
-          keys_in("deployments"; ["scaleway", "githubPages"]),
+          keys_in("deployments"; ["scaleway", "githubPages", "cloudflare"]),
           (.scaleway // {} | if type != "object" then "deployments.scaleway must be a mapping" else
             keys_in("deployments.scaleway"; ["project"]),
             (.project // {} | if type != "object" then "deployments.scaleway.project must be a mapping of module inputs" else
@@ -929,6 +979,22 @@ for rel in ${unit_files[@]+"${unit_files[@]}"}; do
             end),
             (if $z == "private" then "deployments.githubPages needs a host, which a private workload never has (LIB-0037 §§1, 4)"
              elif $host == "" then "deployments.githubPages needs a host; give this workload one in zones/\($z)/zone.yaml (LIB-0037 §4)" else empty end)
+          else empty end),
+          # The site on R2 (LIB-0051 §2): served on the names its host gives, or on
+          # `hosts`, names in its zone, which must not be names Pages serves.
+          (if has("cloudflare") then
+            (.cloudflare // {} | if type != "object" then "deployments.cloudflare must be a mapping" else
+              keys_in("deployments.cloudflare"; ["hosts"]),
+              (if has("hosts") and ((.hosts | type) != "array" or (.hosts | length) == 0 or any(.hosts[]; type != "string" or (test("^(@|[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*)$") | not)))
+               then "deployments.cloudflare.hosts must list names in the zone, such as @, www or a subdomain" else empty end)
+            end),
+            (if $z == "private" then "deployments.cloudflare needs a host, which a private workload never has (LIB-0037 §1, LIB-0051 §2)"
+             elif $host == "" then "deployments.cloudflare needs a host; give this workload one in zones/\($z)/zone.yaml (LIB-0051 §2)"
+             elif has("githubPages") then
+               ((.cloudflare.hosts? // (if $host == "@" then ["@", "www"] else [$host] end)) as $cf |
+                (if $host == "@" then ["@", "www"] else [$host] end) as $gp |
+                ($cf | map(select(. as $n | $gp | index($n))) | .[]) | "deployments.cloudflare can'"'"'t serve \(.), which deployments.githubPages serves; set deployments.cloudflare.hosts, or drop githubPages (LIB-0051 §4)")
+             else empty end)
           else empty end)
         end),
         (if $z == "private" then
@@ -1051,7 +1117,7 @@ for rel in ${unit_files[@]+"${unit_files[@]}"}; do
       end),
       # Cloudflare kinds (LIB-0030 §§1-6).
       (. as $file | .cloudflare // {} | if type != "object" then "cloudflare must be a mapping" else
-        keys_in("cloudflare"; if $unit == "zone" then ["zone", "deployer", "dnsRecord", "ruleset", "apexRedirect"] else ["zone", "deployer", "bucket", "dnsRecord", "ruleset", "apexRedirect"] end),
+        keys_in("cloudflare"; if $unit == "zone" then ["zone", "deployer", "dnsRecord", "ruleset", "apexRedirect"] else ["zone", "deployer", "bucket", "dnsRecord", "ruleset", "apexRedirect", "_implied"] end),
         (.deployer | entry_ok("cloudflare.deployer")),
         (.deployer // {} | objects | select(has("account_id")) | "cloudflare.deployer cannot set account_id; the account is the spoke one (LIB-0033 §4)"),
         # A phase entrypoint belongs to the zone, so only a zone holds one (LIB-0036 §3).
