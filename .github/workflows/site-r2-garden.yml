@@ -1,0 +1,22 @@
+# LIB-0051 §4 step 1: deploys garden to its R2 bucket, served at a test host
+# beside Pages, and checks it there against LIB-0051 §1. Pages keeps serving
+# the apex until the flip, which folds this into sites.yml.
+name: site-r2-garden
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "workloads/noisypigeon.garden/garden/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    uses: noisypigeon/runway/.github/workflows/site-r2.yml@github/workflows/v10.1.1
+    with:
+      src_dir: workloads/noisypigeon.garden/garden
+      base_url: https://r2-test.noisypigeon.garden
+    secrets: inherit
