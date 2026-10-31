@@ -24,6 +24,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [observability/lgtm-stack] feat(lib-0050): theme, plugins, stack and dashboards on their new tracks ([#162](https://github.com/noisypigeon/runway/pull/162))
+- [claude/plugins/pigeon-cli] feat(lib-0050): theme, plugins, stack and dashboards on their new tracks ([#162](https://github.com/noisypigeon/runway/pull/162))
+- [claude/plugins/library] feat(lib-0050): theme, plugins, stack and dashboards on their new tracks ([#162](https://github.com/noisypigeon/runway/pull/162))
+- [static-site/zola] feat(lib-0050): theme, plugins, stack and dashboards on their new tracks ([#162](https://github.com/noisypigeon/runway/pull/162))
 - [github/workflows] feat(lib-0050)!: the CI unit under tools/github/, fetched into .pigeon/ ([#161](https://github.com/noisypigeon/runway/pull/161))
 - [github/terragrunt] feat(lib-0050)!: the CI unit under tools/github/, fetched into .pigeon/ ([#161](https://github.com/noisypigeon/runway/pull/161))
 - [adr] chore(lib-0050): move lib/ to tools/ ([#160](https://github.com/noisypigeon/runway/pull/160))
