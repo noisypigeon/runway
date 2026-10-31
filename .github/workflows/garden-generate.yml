@@ -1,12 +1,18 @@
 # garden's module redirect pages, theme-version pages, release posts and
 # schemas are generated from the library's tags and changelogs, and committed
 # under workloads/noisypigeon.garden/garden/ (LIB-0035 §2, LIB-0037).
-# template-release dispatches this on every library release; run it by hand to
-# regenerate. Its commit lands outside workload.yaml, so sites.yml then deploys
+# template-release dispatches this on every library release, and a change to
+# .pigeon/version runs it too; run it by hand to regenerate. Its commit lands outside workload.yaml, so sites.yml then deploys
 # it through noisypigeon/noisypigeon.garden.
 name: garden-generate
 
 on:
+  # Taking a new library version can change what the generator writes, so a
+  # change to the pin regenerates garden too (LIB-0051's amendment).
+  push:
+    branches: [main]
+    paths:
+      - ".pigeon/version"
   workflow_dispatch: {}
 
 permissions:
@@ -18,7 +24,7 @@ concurrency:
 
 jobs:
   generate:
-    uses: noisypigeon/runway/.github/workflows/site-generate.yml@github/workflows/v10.0.0
+    uses: noisypigeon/runway/.github/workflows/site-generate.yml@github/workflows/v10.1.1
     with:
       src_dir: workloads/noisypigeon.garden/garden
       generate_cmd: ".pigeon/src/tools/github/scripts/generate-module-redirects.sh --content-root workloads/noisypigeon.garden/garden/content --static-root workloads/noisypigeon.garden/garden/static"
