@@ -217,3 +217,13 @@ Where this entry and the text above disagree, this entry is what runs.
    `resolve-workloads.sh`'s, which accept `deployments.cloudflare`. An editor
    validating against `schemas/workload/v6.json` flags it until the schema
    catches up.
+7. **The bucket is named for its host with dashes, not dots (§2).**
+   - **Why.** R2 allows only lowercase letters, digits and hyphens in a
+     bucket name, so `exact_name` set to the host itself can't be created.
+     The bucket is named for its host with each `.` as a `-`. The custom
+     domain and the token name the same bucket.
+   - **Ordering.** The site-deploy token depends on `cloudflare/bucket/site`,
+     like the custom domain. Cloudflare refuses a token scoped to a bucket
+     that doesn't exist yet.
+   - **How it showed.** The first apply of garden's test host failed on the
+     token for both reasons.

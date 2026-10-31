@@ -186,7 +186,7 @@ KINDS=(
   "cloudflare.dnsRecord|cloudflare/dns-record|map||workload|workload|wz"
   "cloudflare.ruleset|cloudflare/ruleset|map||workload|workload|z"
   "cloudflare._implied.customDomain|cloudflare/r2-custom-domain|map|cfsite|workload|workload|w"
-  "cloudflare._implied.siteToken|cloudflare/api-token|map||spoke|workload|w"
+  "cloudflare._implied.siteToken|cloudflare/api-token|map|cfsite|spoke|workload|w"
 )
 
 # A dependency's stub, relative to its workload directory, so a Backblaze
@@ -216,7 +216,8 @@ dep_dir() {
     # the leaves an instance's name gives, CUR_NAME being the stub's instance.
     sbucket_*) echo "scaleway/bucket/$(echo "${1#sbucket_}" | tr _ -)" ;;
     # The site bucket deployments.cloudflare implies, which a custom domain
-    # serves, so it plans once the bucket exists (LIB-0051 §2).
+    # serves and the site-deploy token names, so each plans once the bucket
+    # exists: Cloudflare refuses a token scoped to a missing bucket (LIB-0051 §2).
     cfsite) echo "cloudflare/bucket/site" ;;
     volume_*) echo "scaleway/block-volume/$(echo "${1#volume_}" | tr _ -)" ;;
     apikey_*) echo "scaleway/iam-api-key/$(echo "${1#apikey_}" | tr _ -)" ;;
@@ -749,6 +750,7 @@ expand_workload() {
       ((.deployments // {}) | objects | has("githubPages")) as $pages |
       ((.deployments // {}) | objects | has("cloudflare")) as $r2 |
       (if $host == "@" then $z else "\($host).\($z)" end) as $fqdn |
+      ($fqdn | gsub("\\."; "-")) as $bn |
       ((.deployments.cloudflare? // {} | objects | .hosts) // (if $host == "@" then ["@", "www"] else [$host] end)) as $r2hosts |
       ($gp.url // "\($user).github.io") as $url |
       (if $host == "@" then {
@@ -766,15 +768,15 @@ expand_workload() {
           else $e + ($d | with_entries(.value += (($e[.key] // {}) | if type == "object" then . else {} end))) end))
        else . end) |
       # deployments.cloudflare (LIB-0051 §2): the bucket site, named for the
-      # host, under any explicit entry of that key; a custom domain per name
+      # host with its dots as dashes, under any explicit entry of that key; a custom domain per name
       # it serves, apex for @; and site-deploy, the token that writes it.
       (if $r2 and $host != "" and $z != "private" then
         .cloudflare = (.cloudflare
           | .bucket = ((.bucket // {}) as $e | if ($e | type) != "object" then $e
-              else $e + {site: ({exact_name: $fqdn} + (($e.site // {}) | if type == "object" then . else {} end))} end)
+              else $e + {site: ({exact_name: $bn} + (($e.site // {}) | if type == "object" then . else {} end))} end)
           | ._implied = {
-              customDomain: ($r2hosts | map({key: (if . == "@" then "apex" else gsub("\\."; "-") end), value: {domain: (if . == "@" then $z else "\(.).\($z)" end), bucket_name: $fqdn}}) | from_entries),
-              siteToken: {"site-deploy": {policies: [{permission_groups: ["Workers R2 Storage Bucket Item Write"], r2_buckets: [$fqdn]}]}}
+              customDomain: ($r2hosts | map({key: (if . == "@" then "apex" else gsub("\\."; "-") end), value: {domain: (if . == "@" then $z else "\(.).\($z)" end), bucket_name: $bn}}) | from_entries),
+              siteToken: {"site-deploy": {policies: [{permission_groups: ["Workers R2 Storage Bucket Item Write"], r2_buckets: [$bn]}]}}
             })
        else . end) |
       del(.name, .deployments)

@@ -143,6 +143,7 @@ test('deployments.cloudflare on an apex host implies the bucket, both custom dom
     assert.ok(exists(r, `${w}/${rel}/terragrunt.hcl`), rel);
   }
   assert.match(r.read(`${w}/r2-custom-domain/apex/terragrunt.hcl`), /dependency "cfsite" \{\n  config_path = "\.\.\/\.\.\/\.\.\/cloudflare\/bucket\/site"\n\}/);
+  assert.match(r.read(`${w}/api-token/site-deploy/terragrunt.hcl`), /dependency "cfsite" \{/);
   assert.ok(exists(r, 'zones/example.com/cloudflare/ruleset/sites-root/terragrunt.hcl'));
   assert.ok(exists(r, 'zones/example.com/cloudflare/ruleset/sites-www/terragrunt.hcl'));
 });
