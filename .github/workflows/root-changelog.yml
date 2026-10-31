@@ -56,8 +56,8 @@ jobs:
       # First match wins.
       precedence: |
         ^(terraform/|root\.hcl$|spoke\.hcl$|\.sops\.yaml$)=terraform
+        ^lib/docs/adr/=adr
+        ^lib/docs/runbooks/=docs
         ^lib/=lib
-        ^adr/=adr
-        ^runbooks/=docs
         ^\.github/=ci
     secrets: inherit
