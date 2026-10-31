@@ -279,6 +279,8 @@ echo "Generated ${overview_count} module overview page(s) under ${CONTENT_DIR#"$
 # cloudflare/bucket and cloudflare/ruleset get one too (LIB-0030 §7): without
 # account_id, which is the spoke's, and zone_id, since a workload names zones.
 # So does cloudflare/api-token, a workload's own token (LIB-0033 §4).
+# cloudflare/r2-custom-domain gets its inputs schema, which resolve-workloads.sh
+# --check reads for the custom domains deployments.cloudflare implies (LIB-0051).
 if [ -n "$STATIC_ROOT" ]; then
   if [ ! -d "$STATIC_ROOT" ]; then
     echo "::error::--static-root $STATIC_ROOT is not a directory" >&2
@@ -289,7 +291,7 @@ if [ -n "$STATIC_ROOT" ]; then
 
   kinds_json='{}'
   schema_count=0
-  for wmodule in scaleway/project scaleway/iam-application scaleway/iam-policy scaleway/terraform-deployer-iam scaleway/bucket scaleway/iam-api-key scaleway/block-volume scaleway/cockpit-observability scaleway/private-network scaleway/public-gateway scaleway/compute-instance scaleway/compute-instance-config scaleway/gateway-pat-rule backblaze/bucket backblaze/api-key cloudflare/bucket cloudflare/dns-record cloudflare/ruleset cloudflare/apex-redirect cloudflare/api-token; do
+  for wmodule in scaleway/project scaleway/iam-application scaleway/iam-policy scaleway/terraform-deployer-iam scaleway/bucket scaleway/iam-api-key scaleway/block-volume scaleway/cockpit-observability scaleway/private-network scaleway/public-gateway scaleway/compute-instance scaleway/compute-instance-config scaleway/gateway-pat-rule backblaze/bucket backblaze/api-key cloudflare/bucket cloudflare/dns-record cloudflare/ruleset cloudflare/apex-redirect cloudflare/api-token cloudflare/r2-custom-domain; do
     wversions="$(templates_tags "terraform/${wmodule}/v*" \
       | sed -nE 's#.*/v([0-9]+\.[0-9]+\.[0-9]+)$#\1#p' \
       | sort -t. -k1,1n -k2,2n -k3,3n -u)"
