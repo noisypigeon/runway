@@ -57,8 +57,13 @@
 # policies.yaml, from each policies/<id>.schema.json beside check-policies.sh.
 # Without it, nothing under static/ is touched.
 #
+# Also generates one page per workflows/vX.Y.Z tag under content/workflows/,
+# naming each reusable workflow's `uses:` line, inputs, secrets and outputs at
+# that tag (LIB-0049 §3). Needs yq and jq.
+#
 # Regenerate-all semantics: every run wipes and rewrites every generated page
-# under content/terraform/, content/theme-versions/ and content/releases/
+# under content/terraform/, content/theme-versions/, content/workflows/ and
+# content/releases/
 # (except each directory's hand-authored _index.md) from the current set of
 # tags and changelogs. Safe to run repeatedly; fully idempotent.
 set -euo pipefail
@@ -881,6 +886,109 @@ EOF
 done < <(templates_tags 'zola-site/v*' | sort)
 
 echo "Generated ${theme_count} theme-version redirect page(s) under ${THEME_CONTENT_DIR#"$CONTENT_ROOT"/}."
+
+# One page per workflows/vX.Y.Z tag, at workflows/vX.Y.Z (LIB-0049 §3). GitHub
+# can't fetch a reusable workflow by URL, so a page is where a caller finds the
+# version: each workflow's exact `uses:` line, its workflow_call inputs,
+# secrets and outputs, read from the file at the tag, and a link to it. Only
+# tags cut from runway are listed: an older one's bodies name the archived
+# library's paths, and no consumer repoints at one (LIB-0047 §3).
+WORKFLOWS_CONTENT_DIR="$CONTENT_ROOT/workflows"
+FIRST_RUNWAY_WORKFLOWS="9.3.0"
+
+# YAML to JSON with whichever yq is installed: mikefarah's (on GitHub's
+# runners) or the jq wrapper. The wrapper reads YAML 1.1, where a bare `on` key
+# is the boolean true, so the filters below accept either key.
+yaml_to_json() {
+  if yq --version 2>&1 | grep -q mikefarah; then yq -o=json '.' -; else yq '.' -; fi
+}
+
+# A markdown table cell: one line, no pipes, short, and nothing Zola reads as
+# a shortcode. md_text also escapes HTML, for a cell outside a code span.
+md_cell() { tr '\n' ' ' | sed -e 's/|/\\|/g' -e 's/{{/{ {/g' -e 's/{%/{ %/g' -e 's/[[:space:]]*$//' | cut -c1-200; }
+md_text() { md_cell | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+
+mkdir -p "$WORKFLOWS_CONTENT_DIR"
+find "$WORKFLOWS_CONTENT_DIR" -maxdepth 1 -name '*.md' ! -name '_index.md' -delete
+
+workflows_count=0
+while IFS= read -r tag; do
+  [ -z "$tag" ] && continue
+  if [[ ! "$tag" =~ ^workflows/v(([0-9]+)\.([0-9]+)\.([0-9]+))$ ]]; then
+    echo "::warning::Skipping workflows tag with unexpected shape: $tag" >&2
+    continue
+  fi
+  version="${BASH_REMATCH[1]}"
+  weight=$(( BASH_REMATCH[2] * 1000000 + BASH_REMATCH[3] * 1000 + BASH_REMATCH[4] ))
+  if [ "$(printf '%s\n%s\n' "$FIRST_RUNWAY_WORKFLOWS" "$version" | sort -V | head -n1)" != "$FIRST_RUNWAY_WORKFLOWS" ]; then
+    continue
+  fi
+
+  page="$WORKFLOWS_CONTENT_DIR/v${version}.md"
+  {
+    cat <<FRONT
++++
+title = "workflows v${version}"
+description = "The reusable GitHub workflows at workflows/v${version}."
+path = "workflows/v${version}"
+template = "workflows-version.html"
+weight = ${weight}
+
+[extra]
+version = "${version}"
+github_url = "https://github.com/${TAG_REPO}/releases/tag/${tag}"
++++
+
+Call a workflow at this version with its \`uses:\` line. Every workflow here is
+at the same version as the scripts that a \`.lib-version\` of \`${tag}\`
+fetches.
+FRONT
+    # --full-tree: LIB_ROOT is lib/, and a tag's .github/ is at the repo root.
+    while IFS= read -r wf; do
+      [ -z "$wf" ] && continue
+      json="$(git -C "$LIB_ROOT" show "${tag}:${wf}" | yaml_to_json)"
+      call="$(jq -c '(.on // .["true"]).workflow_call // empty' <<<"$json")"
+      [ -z "$call" ] && continue
+      name="$(basename "$wf")"
+      printf '\n## `%s`\n\n```yaml\nuses: %s/%s@%s\n```\n\n[Source at this tag](https://github.com/%s/blob/%s/%s)\n' \
+        "$name" "$TAG_REPO" "$wf" "$tag" "$TAG_REPO" "$tag" "$wf"
+      for kind in inputs secrets outputs; do
+        rows="$(jq -c --arg k "$kind" '(.[$k] // {}) | to_entries[]' <<<"$call")"
+        [ -z "$rows" ] && continue
+        printf '\n**%s**\n\n' "${kind^}"
+        case "$kind" in
+          inputs)  printf '| Name | Type | Required | Default | Description |\n| --- | --- | --- | --- | --- |\n' ;;
+          secrets) printf '| Name | Required | Description |\n| --- | --- | --- |\n' ;;
+          outputs) printf '| Name | Description |\n| --- | --- |\n' ;;
+        esac
+        while IFS= read -r row; do
+          key="$(jq -r '.key' <<<"$row")"
+          desc="$(jq -r '.value.description // ""' <<<"$row" | md_text)"
+          case "$kind" in
+            inputs)
+              type="$(jq -r '.value.type // ""' <<<"$row")"
+              req="$(jq -r 'if .value.required then "yes" else "no" end' <<<"$row")"
+              def="$(jq -r 'if (.value | has("default")) then (.value.default | tostring) else "" end' <<<"$row" | md_cell)"
+              [ -n "$def" ] && def="\`${def}\`"
+              printf '| `%s` | %s | %s | %s | %s |\n' "$key" "$type" "$req" "$def" "$desc"
+              ;;
+            secrets)
+              req="$(jq -r 'if .value.required then "yes" else "no" end' <<<"$row")"
+              printf '| `%s` | %s | %s |\n' "$key" "$req" "$desc"
+              ;;
+            outputs)
+              printf '| `%s` | %s |\n' "$key" "$desc"
+              ;;
+          esac
+        done <<<"$rows"
+      done
+    done < <(git -C "$LIB_ROOT" ls-tree --full-tree --name-only "$tag" .github/workflows/ | grep -E '\.yml$')
+  } >"$page"
+
+  workflows_count=$((workflows_count + 1))
+done < <(templates_tags 'workflows/v*' | sort -V)
+
+echo "Generated ${workflows_count} workflows version page(s) under ${WORKFLOWS_CONTENT_DIR#"$CONTENT_ROOT"/}."
 
 # One post per module release, from the modules' own CHANGELOG.md files
 # (ADR-0141's content, ADR-0154's mechanism). Each "## [X.Y.Z] - YYYY-MM-DD"
