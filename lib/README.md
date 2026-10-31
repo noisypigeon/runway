@@ -33,6 +33,39 @@ theme version a site pins) and
 changelogs, committed in runway's `workloads/garden/`). Both resolve their own location rather than asking git, so they
 work wherever a site fetched them to.
 
+## What the CI track holds
+
+Everything in [`github-workflows/`](github-workflows) and [`scripts/`](scripts)
+travels under one `workflows/vX.Y.Z`. A spoke pins one version, and gets the
+reusable workflows and every script at it (LIB-0001 invariant 2).
+
+- **`resolve-root-hcl.sh`** copies the `root.hcl` template and its secrets
+  schema to a spoke's root, at `spoke.hcl`'s `root_hcl_version`. The spoke
+  commits the copy, and CI runs the script with `--check` to fail on drift.
+- **`resolve-workloads.sh`** generates every workload's and zone's unit stubs.
+  A workload's come from its `workload.yaml`, and a zone's from its
+  `zone.yaml`.
+- **`check-secrets.sh` and `split-secrets.sh`.** `check-secrets.sh` checks a
+  spoke's secrets files by key name against the schema. `split-secrets.sh` is
+  the one-time v3→v4 migration.
+- **`check-policies.sh`** checks a spoke against the policies its
+  `policies.yaml` turns on, before every plan (LIB-0045).
+- **`root-changelog.sh`** is the one implementation of DEV-0160's root
+  changelog.
+- **`generate-module-redirects.sh`** generates garden's pages from this repo's
+  tags. That covers module redirects, theme versions, workflow and plugin
+  version pages, release posts and schemas.
+- **The crate release pipeline.** `rust-crate-release.yml`, `crate-*.sh` and
+  `adr-issue.sh` were hoisted from pigeon-cli by its CLI-0161. They run in the
+  caller's repo, and every crate-specific value is an input.
+- **The site workflows.**
+  - `site-dispatch.yml` dispatches a site's deploy in its Pages shim.
+  - `site-pages.yml` is what the shim calls.
+  - `site-generate.yml` commits a site's generated files before the deploy.
+- **`container-image-release.yml`** builds a caller's Dockerfile per platform
+  and smoke-tests each image. It then publishes one multi-arch,
+  provenance-attested tag set to GHCR (LIB-0019).
+
 ## Consuming a module
 
 Pin the short URL, not this repo:
@@ -79,7 +112,7 @@ Per-module and theme `CHANGELOG.md` files carry the full, versioned entries.
 The family's ADRs live in [`docs/adr/`](docs/adr), as `LIB-NNNN-<slug>.md`.
 The spokes (runway, and the shims) have none of their own, because they
 depend on the library for their design standards
-([LIB-0017](../adr/LIB-0017-spokes-do-not-get-their-own-adrs.md)). The older
+([LIB-0017](docs/adr/LIB-0017-spokes-do-not-get-their-own-adrs.md)). The older
 `DEV-` records are archived verbatim in [`docs/adr/archive/`](docs/adr/archive),
 and the `COM-` and `RUN-` records (`NPC-` is an alias for `COM-`) are amendments
 on the `LIB-` records they applied. `pigeon-cli` keeps its own ADRs, as `CLI-` records in its `adr/`.
