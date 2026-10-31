@@ -1065,10 +1065,12 @@ echo "Generated ${plugins_count} plugin version page(s) under ${PLUGINS_CONTENT_
 
 # One post per module release, from the modules' own CHANGELOG.md files
 # (ADR-0141's content, ADR-0154's mechanism). Each "## [X.Y.Z] - YYYY-MM-DD"
-# entry becomes a post: its "### " line is the description, everything after
-# is the body verbatim. Note the split is on the versioned heading
-# specifically, not any "## " -- at least one entry body contains its own
-# "## Test plan" heading.
+# entry becomes a post, dated by that heading. Its description is the entry's
+# "### " line, or, in LIB-0049's one-line format, the "- <title> ([#N](url))"
+# line's title. Its body is the tag's GitHub Release notes, which hold the PR
+# body, and the entry's own body only for a tag with no Release (LIB-0049 §7).
+# Note the split is on the versioned heading specifically, not any "## " -- at
+# least one entry body contains its own "## Test plan" heading.
 mkdir -p "$RELEASES_CONTENT_DIR"
 find "$RELEASES_CONTENT_DIR" -maxdepth 1 -name '*.md' ! -name '_index.md' -delete
 
@@ -1114,7 +1116,23 @@ if ! git -C "$LIB_ROOT" rev-parse --verify --quiet "$CHANGELOG_REF" >/dev/null; 
 fi
 
 changelog_src="$(mktemp -d)"
-trap 'rm -rf "${changelog_src:?}"' EXIT
+notes_dir="$(mktemp -d)"
+trap 'rm -rf "${changelog_src:?}" "${notes_dir:?}"' EXIT
+
+# Every Release's notes, one file per tag with its slashes as "__", in one
+# paginated call. Without gh or a token, every post falls back to its
+# CHANGELOG.md entry, which since LIB-0049 is one line: say so loudly.
+if command -v gh >/dev/null 2>&1 \
+    && gh api --paginate "repos/${TAG_REPO}/releases?per_page=100" \
+         --jq '.[] | [.tag_name, ((.body // "") | @base64)] | @tsv' >"${notes_dir}/index.tsv" 2>/dev/null; then
+  while IFS=$'\t' read -r rtag rbody; do
+    [ -z "$rtag" ] && continue
+    printf '%s' "$rbody" | base64 -d | tr -d '\r' >"${notes_dir}/${rtag//\//__}"
+  done <"${notes_dir}/index.tsv"
+  rm -f "${notes_dir}/index.tsv"
+else
+  echo "::warning::Could not read ${TAG_REPO}'s Releases; release posts use their CHANGELOG.md entries" >&2
+fi
 
 while IFS= read -r mdir; do
   [ -z "$mdir" ] && continue
@@ -1144,7 +1162,8 @@ while IFS= read -r changelog; do
   provider="$(basename "$(dirname "$(dirname "$changelog")")")"
 
   written=$(awk -v provider="$provider" -v module="$module" \
-                -v outdir="$RELEASES_CONTENT_DIR" -v offsets="$offset_map" '
+                -v outdir="$RELEASES_CONTENT_DIR" -v offsets="$offset_map" \
+                -v notesdir="$notes_dir" '
     function offset_for(d,   n, i, parts, kv) {
       n = split(offsets, parts, ";")
       for (i = 1; i <= n; i++) {
@@ -1153,8 +1172,18 @@ while IFS= read -r changelog; do
       print "::error::No offset for date " d > "/dev/stderr"
       exit 1
     }
-    function flush(   path, i) {
+    function flush(   path, i, notes, line, nnotes, note) {
       if (version == "") return
+      # The Release, when there is one, holds the long form.
+      notes = notesdir "/terraform__" provider "__" module "__v" version
+      nnotes = 0
+      while ((getline line < notes) > 0) note[++nnotes] = line
+      close(notes)
+      while (nnotes > 0 && note[nnotes] == "") nnotes--
+      if (nnotes > 0) {
+        nbody = 0
+        for (i = 1; i <= nnotes; i++) body[++nbody] = note[i]
+      }
       while (nbody > 0 && body[nbody] == "") nbody--
       path = outdir "/" provider "-" module "-v" version ".md"
       printf "+++\n" > path
@@ -1175,6 +1204,16 @@ while IFS= read -r changelog; do
       next
     }
     version == "" { next }
+    !seen_title && /^- / {
+      # The one-line format of LIB-0049 §7: "- <title> ([#N](url))".
+      escaped_title = substr($0, 3)
+      sub(/ \(\[#[0-9]+\]\([^)]*\)\)$/, "", escaped_title)
+      gsub(/\\/, "\\\\", escaped_title)
+      gsub(/"/, "\\\"", escaped_title)
+      seen_title = 1
+      skip_blank = 1
+      next
+    }
     !seen_title && /^### / {
       escaped_title = substr($0, 5)
       gsub(/\\/, "\\\\", escaped_title)

@@ -71,7 +71,11 @@ jobs:
           curl -sSL "https://github.com/terraform-docs/terraform-docs/releases/download/v${TERRAFORM_DOCS_VERSION}/terraform-docs-v${TERRAFORM_DOCS_VERSION}-linux-amd64.tar.gz" \
             | tar -xz -C /usr/local/bin terraform-docs
 
+      # A generator may read the spoke's Releases with gh: garden's release
+      # posts take their bodies from them (LIB-0049 §7).
       - name: Generate
+        env:
+          GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: ${{ inputs.generate_cmd }}
 
       - name: Commit and push what changed
