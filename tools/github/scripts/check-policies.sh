@@ -45,7 +45,7 @@ esac
 
 SPOKE_DIR="$(pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-POLICY_DIR="$SCRIPT_DIR/policies"
+POLICY_DIR="$SCRIPT_DIR/../policies"
 CONFIG="policies.yaml"
 
 if [ ! -f "$SPOKE_DIR/spoke.hcl" ]; then

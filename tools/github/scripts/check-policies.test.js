@@ -13,7 +13,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const SCRIPT = path.join(__dirname, 'check-policies.sh');
-const POLICIES = path.join(__dirname, 'policies');
+const POLICIES = path.join(__dirname, '..', 'policies');
 
 const workload = (suffix, buckets = {}) => ({
   [`workloads/private/${suffix}/workload.yaml`]: [
