@@ -24,6 +24,8 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [cloudflare/r2-custom-domain] feat(lib-0051): cloudflare/r2-custom-domain, and bucket-scoped api-token policies ([#165](https://github.com/noisypigeon/runway/pull/165))
+- [cloudflare/api-token] feat(lib-0051): cloudflare/r2-custom-domain, and bucket-scoped api-token policies ([#165](https://github.com/noisypigeon/runway/pull/165))
 - [adr] docs(adr): LIB-0051 sites on Cloudflare R2, LIB-0052 spoke config in .config/ ([#164](https://github.com/noisypigeon/runway/pull/164))
 - [adr] chore(lib-0050): runway fetches through .pigeon/ at github/workflows/v10.0.0 ([#163](https://github.com/noisypigeon/runway/pull/163))
 - [observability/lgtm-stack] feat(lib-0050): theme, plugins, stack and dashboards on their new tracks ([#162](https://github.com/noisypigeon/runway/pull/162))
