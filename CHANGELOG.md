@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [adr] docs(adr): LIB-0049 finish the hoist ([#149](https://github.com/noisypigeon/runway/pull/149))
 - [adr] docs(adr): LIB-0048 pin runner labels past macos-14 ([#147](https://github.com/noisypigeon/runway/pull/147))
 - [adr] docs(adr): LIB-0047 done amendment ([#148](https://github.com/noisypigeon/runway/pull/148))
 
