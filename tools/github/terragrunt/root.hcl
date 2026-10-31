@@ -1267,7 +1267,9 @@ locals {
         k => v if !can(local.workload_cf_entry.exact_name)
       }
       spoke_inputs = { account_id = local.cloudflare_account_id }
-      sensitive    = false
+      # Its endpoint output carries the account ID, a sensitive input, so the
+      # generated output must be marked sensitive too (LIB-0051 amendment 7).
+      sensitive    = true
       credentials  = "workload"
       state        = "workload"
       units        = ["workload"]
