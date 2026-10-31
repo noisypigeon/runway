@@ -24,6 +24,8 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-30
 
+- [github/workflows] feat(lib-0050)!: the CI unit under tools/github/, fetched into .pigeon/ ([#161](https://github.com/noisypigeon/runway/pull/161))
+- [github/terragrunt] feat(lib-0050)!: the CI unit under tools/github/, fetched into .pigeon/ ([#161](https://github.com/noisypigeon/runway/pull/161))
 - [adr] chore(lib-0050): move lib/ to tools/ ([#160](https://github.com/noisypigeon/runway/pull/160))
 - [adr] docs(adr): LIB-0050 lib/ becomes tools/ ([#159](https://github.com/noisypigeon/runway/pull/159))
 - [lib] docs(lib-0049): backfill every unit changelog to one line per release ([#158](https://github.com/noisypigeon/runway/pull/158))

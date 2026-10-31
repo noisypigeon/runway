@@ -4,6 +4,10 @@ All notable changes to the reusable CI are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [10.0.0] - 2026-10-30
+
+- feat(lib-0050)!: the CI unit under tools/github/, fetched into .pigeon/ ([#161](https://github.com/noisypigeon/runway/pull/161))
+
 ## [9.4.3] - 2026-10-30
 
 - feat(lib-0049): one-line unit changelogs, release posts from Releases ([#156](https://github.com/noisypigeon/runway/pull/156))
