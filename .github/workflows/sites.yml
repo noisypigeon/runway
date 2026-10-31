@@ -21,5 +21,5 @@ permissions:
 
 jobs:
   dispatch:
-    uses: noisypigeon/runway/.github/workflows/site-dispatch.yml@github/workflows/v10.1.1
+    uses: noisypigeon/runway/.github/workflows/site-dispatch.yml@github/workflows/v10.1.2
     secrets: inherit
