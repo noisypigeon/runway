@@ -4,6 +4,10 @@ All notable changes to the reusable CI are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [11.0.1] - 2026-10-31
+
+- fix(github/workflows): finish v11's .config/ support before runway moves ([#188](https://github.com/noisypigeon/runway/pull/188))
+
 ## [11.0.0] - 2026-10-31
 
 - feat(github/terragrunt)!: read a spoke's config from .config/ (LIB-0052) ([#186](https://github.com/noisypigeon/runway/pull/186))
