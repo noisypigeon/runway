@@ -42,10 +42,14 @@ case "${1:-}" in
 esac
 
 SPOKE_DIR="$(pwd)"
+# The spoke's config: .config/ when it holds spoke.hcl, else for one version
+# more the repo root (LIB-0052 §§1, 3).
+CONFIG_DIR="$SPOKE_DIR/.config"
+[ -f "$CONFIG_DIR/spoke.hcl" ] || CONFIG_DIR="$SPOKE_DIR"
 SECRETS_DIR="terraform/secrets"
-SCHEMA="${SECRETS_SCHEMA:-$SPOKE_DIR/secrets-schema.json}"
+SCHEMA="${SECRETS_SCHEMA:-$CONFIG_DIR/secrets-schema.json}"
 
-for f in "$SPOKE_DIR/spoke.hcl" "$SCHEMA"; do
+for f in "$CONFIG_DIR/spoke.hcl" "$SCHEMA"; do
   if [ ! -f "$f" ]; then
     echo "::error::No $f; run this from the spoke's repo root, after resolve-root-hcl.sh" >&2
     exit 1
@@ -62,9 +66,9 @@ fi
 # level, inside one of them, turns breakglass on for that provider, and a
 # `workloads_only = true` there turns its spoke credentials off. Comments are
 # stripped first.
-backend=$(sed -nE 's/^[[:space:]]*state_backend[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/p' "$SPOKE_DIR/spoke.hcl" | head -n1)
+backend=$(sed -nE 's/^[[:space:]]*state_backend[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/p' "$CONFIG_DIR/spoke.hcl" | head -n1)
 backend="${backend:-scaleway}"
-backup=$(sed -nE 's/^[[:space:]]*state_backup[[:space:]]*=[[:space:]]*([a-z]+).*/\1/p' "$SPOKE_DIR/spoke.hcl" | head -n1)
+backup=$(sed -nE 's/^[[:space:]]*state_backup[[:space:]]*=[[:space:]]*([a-z]+).*/\1/p' "$CONFIG_DIR/spoke.hcl" | head -n1)
 backup="${backup:-false}"
 
 providers=$(awk '
@@ -96,7 +100,7 @@ providers=$(awk '
     }
     value_end()
   }
-' "$SPOKE_DIR/spoke.hcl")
+' "$CONFIG_DIR/spoke.hcl")
 breakglass=$(sed -n 's/^breakglass //p' <<<"$providers")
 workloads_only=$(sed -n 's/^workloads_only //p' <<<"$providers")
 providers=$(sed -n 's/^provider //p' <<<"$providers")

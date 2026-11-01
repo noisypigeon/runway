@@ -101,7 +101,7 @@ on:
         description: "Path (relative to the caller's repo root) to the library's tools/github/scripts, as left by prepare_cmd's fetcher."
         type: string
         required: false
-        default: ".pigeon/src/tools/github/scripts"
+        default: ".config/pigeon/src/tools/github/scripts"
     secrets:
       SOPS_AGE_KEY:
         required: true
@@ -250,6 +250,18 @@ jobs:
           PREPARE_CMD: ${{ inputs.prepare_cmd }}
         run: bash -euo pipefail -c "$PREPARE_CMD"
 
+      # The library's scripts, where the spoke's fetch left them: scripts_dir,
+      # or for a spoke not yet in .config/ (LIB-0052 §3) the same path under
+      # .pigeon/, for one version.
+      - name: Locate the library's scripts
+        id: lib
+        env:
+          WANT: ${{ inputs.scripts_dir }}
+        run: |
+          d="$WANT"
+          [ -d "$d" ] || d="${d/.config\/pigeon\//.pigeon/}"
+          echo "scripts_dir=$d" >> "$GITHUB_OUTPUT"
+
       - name: Clear terragrunt cache
         run: find . -type d -name ".terragrunt-cache" -exec rm -rf {} +
 
@@ -290,7 +302,7 @@ jobs:
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
           TG_TF_PATH: terraform
-          SCRIPTS_DIR: ${{ inputs.scripts_dir }}
+          SCRIPTS_DIR: ${{ steps.lib.outputs.scripts_dir }}
         run: |
           set -euo pipefail
           # Every terraform/* tag, listed once, for root.hcl to pick each
@@ -376,9 +388,16 @@ jobs:
             git worktree add -q --detach "$RUNNER_TEMP/base" "$base"
             # The base plans its destroys with the same library clone, so its
             # module sources resolve from their git tags too (LIB-0051
-            # amendment 8): a worktree carries no gitignored .pigeon/src.
-            if [ -d .pigeon/src ] && [ ! -e "$RUNNER_TEMP/base/.pigeon/src" ]; then
-              mkdir -p "$RUNNER_TEMP/base/.pigeon" && ln -s "$GITHUB_WORKSPACE/.pigeon/src" "$RUNNER_TEMP/base/.pigeon/src"
+            # amendment 8): a worktree carries no gitignored library clone.
+            # The base may look for it where the head no longer keeps it
+            # (.pigeon/src before LIB-0052, .config/pigeon/src after), so both
+            # paths point at whichever clone the head has.
+            src=""
+            for p in .config/pigeon .pigeon; do [ -z "$src" ] && [ -d "$p/src" ] && src="$GITHUB_WORKSPACE/$p/src"; done
+            if [ -n "$src" ]; then
+              for p in .config/pigeon .pigeon; do
+                [ -e "$RUNNER_TEMP/base/$p/src" ] || { mkdir -p "$RUNNER_TEMP/base/$p" && ln -s "$src" "$RUNNER_TEMP/base/$p/src"; }
+              done
             fi
             if [ -d "$RUNNER_TEMP/base/workloads" ] || [ -d "$RUNNER_TEMP/base/zones" ]; then
               (cd "$RUNNER_TEMP/base" && "$resolver" >/dev/null && "$resolver" --list) | LC_ALL=C sort > "$RUNNER_TEMP/base-stubs.txt"
@@ -445,7 +464,7 @@ jobs:
         if: env.REPLAN == 'true' && steps.saved.outputs.found == 'true'
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-          SCRIPTS_DIR: ${{ inputs.scripts_dir }}
+          SCRIPTS_DIR: ${{ steps.lib.outputs.scripts_dir }}
         run: |
           set -euo pipefail
           unzip -q -o "$RUNNER_TEMP/plan.zip" -d "$RUNNER_TEMP/prev-zip"
@@ -486,7 +505,7 @@ jobs:
         if: inputs.command == 'apply' && steps.saved.outputs.found == 'true'
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-          SCRIPTS_DIR: ${{ inputs.scripts_dir }}
+          SCRIPTS_DIR: ${{ steps.lib.outputs.scripts_dir }}
         run: |
           set -euo pipefail
           unzip -q -o "$RUNNER_TEMP/plan.zip" -d "$RUNNER_TEMP/plan"
@@ -508,7 +527,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/tg-provider-cache
-          key: tg-providers-${{ runner.os }}-${{ hashFiles('root.hcl') }}
+          key: tg-providers-${{ runner.os }}-${{ hashFiles('root.hcl', '.config/root.hcl') }}
           restore-keys: |
             tg-providers-${{ runner.os }}-
 
@@ -521,7 +540,7 @@ jobs:
           TG_PROVIDER_CACHE: "1"
           TG_PROVIDER_CACHE_DIR: ${{ runner.temp }}/tg-provider-cache
           COMMAND: ${{ inputs.command }}
-          SCRIPTS_DIR: ${{ inputs.scripts_dir }}
+          SCRIPTS_DIR: ${{ steps.lib.outputs.scripts_dir }}
         run: |
           set -euo pipefail
           FILTER_ARGS=()
@@ -660,7 +679,7 @@ jobs:
       - name: Pack saved plan
         if: inputs.command == 'plan' && steps.run.outcome == 'success' && steps.run.outputs.exit_code == '0'
         env:
-          SCRIPTS_DIR: ${{ inputs.scripts_dir }}
+          SCRIPTS_DIR: ${{ steps.lib.outputs.scripts_dir }}
         run: |
           mkdir -p "$RUNNER_TEMP/upload"
           # What it deferred, for the replan after its apply, and its stage
@@ -708,7 +727,7 @@ jobs:
           STALE: ${{ steps.run.outputs.stale }}
           EXIT_CODE: ${{ steps.run.outputs.exit_code }}
           DEFERRED: ${{ steps.run.outputs.deferred }}
-          SCRIPTS_DIR: ${{ inputs.scripts_dir }}
+          SCRIPTS_DIR: ${{ steps.lib.outputs.scripts_dir }}
         with:
           script: |
             const fs = require('fs');

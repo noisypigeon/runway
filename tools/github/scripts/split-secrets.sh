@@ -31,7 +31,7 @@ SCHEMA="$LIB_ROOT/github/terragrunt/secrets-schema.json"
 SOURCE="terraform/secrets.enc"
 OUT_DIR="terraform/secrets"
 
-if [ ! -f spoke.hcl ]; then
+if [ ! -f spoke.hcl ] && [ ! -f .config/spoke.hcl ]; then
   echo "::error::No spoke.hcl here; run this from the spoke's repo root" >&2
   exit 1
 fi

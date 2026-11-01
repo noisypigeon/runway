@@ -49,12 +49,12 @@ on:
         description: "Script (relative to the caller's repo root) that materializes library at the version the caller pins."
         type: string
         required: false
-        default: ".pigeon/tools.sh"
+        default: ".config/pigeon/tools.sh"
       scripts_dir:
         description: "Path (relative to the caller's repo root) to the library's tools/github/scripts, as left by fetch_script."
         type: string
         required: false
-        default: ".pigeon/src/tools/github/scripts"
+        default: ".config/pigeon/src/tools/github/scripts"
     secrets:
       CARGO_REGISTRY_TOKEN:
         required: true
@@ -87,7 +87,7 @@ jobs:
       - name: Fetch library
         env:
           FETCH_SCRIPT: ${{ inputs.fetch_script }}
-        run: '"./$FETCH_SCRIPT"'
+        run: '[ -e "$FETCH_SCRIPT" ] || FETCH_SCRIPT="${FETCH_SCRIPT/.config\/pigeon\//.pigeon/}"; "./$FETCH_SCRIPT"'
 
       - name: Cut release and publish
         id: release
@@ -96,6 +96,7 @@ jobs:
           SCRIPTS_DIR: ${{ inputs.scripts_dir }}
           CRATE: ${{ inputs.crate }}
         run: |
+          [ -e "$SCRIPTS_DIR" ] || SCRIPTS_DIR="${SCRIPTS_DIR/.config\/pigeon\//.pigeon/}"
           output="$("./$SCRIPTS_DIR/crate-release.sh" --crate "$CRATE")"
           echo "$output"
           new_version="$(echo "$output" | tail -1 | sed 's/^NEW_VERSION=//')"
@@ -126,7 +127,7 @@ jobs:
       - name: Fetch library
         env:
           FETCH_SCRIPT: ${{ inputs.fetch_script }}
-        run: '"./$FETCH_SCRIPT"'
+        run: '[ -e "$FETCH_SCRIPT" ] || FETCH_SCRIPT="${FETCH_SCRIPT/.config\/pigeon\//.pigeon/}"; "./$FETCH_SCRIPT"'
 
       - name: Build
         env:
@@ -135,6 +136,7 @@ jobs:
           CODESIGN_ID: ${{ inputs.codesign_id }}
           TRIPLE: ${{ matrix.triple }}
         run: |
+          [ -e "$SCRIPTS_DIR" ] || SCRIPTS_DIR="${SCRIPTS_DIR/.config\/pigeon\//.pigeon/}"
           "./$SCRIPTS_DIR/crate-build-release.sh" \
             --bin "$BIN" --codesign-id "$CODESIGN_ID" --target "$TRIPLE"
 

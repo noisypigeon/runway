@@ -135,3 +135,42 @@ Afterwards the root holds only the files a tool insists on, plus the trees:
    `mise run secrets-edit` run from the repo root.
 4. **The committed copies match.** `resolve-root-hcl.sh --check` passes
    against `.config/`.
+
+## Amendments
+
+### 2026-11-01: §§2-4, as built for step 2
+
+Where this entry and the text above disagree, this entry is what runs.
+
+1. **Checked before building**, with terragrunt 1.1.6, mise 2026.10.6 and
+   sops 3.13.3:
+   - **terragrunt.** `find_in_parent_folders(".config/root.hcl")` finds the
+     file from any depth. `path_relative_to_include()` is then `../<leaf>`,
+     so trimming `../` gives the same key.
+   - **mise.** A task in `.config/mise.toml` runs at the repo root, from any
+     directory.
+   - **sops.** With `--config .config/sops.yaml`, sops matches `path_regex`
+     against a longer path than the repo-relative one, so `^terraform/...`
+     matches nothing. The moved file's rules are anchored `(^|/)` instead.
+     That still refuses every other path.
+2. **`root.hcl` tells the two layouts apart by its own directory.** It reads
+   `spoke.hcl` and `secrets-schema.json` beside itself. Its repo paths come
+   from the repo root: this file's parent when it sits in `.config/`, its
+   own directory otherwise. Every key is `trimprefix(path_relative_to_include(),
+   "../")`. The library clone is `.config/pigeon/src` when
+   `.config/pigeon/version` exists, `.pigeon/src` otherwise.
+3. **The scripts.** Each script finds its config in `.config/` when that
+   holds `spoke.hcl`, at the root otherwise:
+   - `resolve-root-hcl.sh` writes `root.hcl` and `secrets-schema.json`
+     there;
+   - `check-secrets.sh` and `check-policies.sh` read from there;
+   - `resolve-workloads.sh` stubs include `.config/root.hcl` or `root.hcl` to
+     match;
+   - `split-secrets.sh` and `state-backup.yml` accept either layout.
+4. **The workflows.** Every default that named `.pigeon/` names
+   `.config/pigeon/`. Each falls back to the `.pigeon/` path when the new one
+   doesn't exist, which is the one-version fallback:
+   - `terragrunt-run` resolves `scripts_dir` in a step of its own;
+   - the base worktree for destroys gets the clone at both paths;
+   - `terragrunt-detect`'s default pattern adds `.config/`'s files;
+   - the provider cache keys on `.config/root.hcl` too.

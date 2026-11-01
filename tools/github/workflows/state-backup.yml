@@ -62,7 +62,10 @@ jobs:
       - name: Check spoke.hcl sets state_backup
         id: gate
         run: |
-          backup=$(sed -nE 's/^[[:space:]]*state_backup[[:space:]]*=[[:space:]]*([a-z]+).*/\1/p' spoke.hcl | head -n1)
+          # .config/spoke.hcl, or the root's for one version more (LIB-0052 §3).
+          spoke=.config/spoke.hcl
+          [ -f "$spoke" ] || spoke=spoke.hcl
+          backup=$(sed -nE 's/^[[:space:]]*state_backup[[:space:]]*=[[:space:]]*([a-z]+).*/\1/p' "$spoke" | head -n1)
           if [ "$backup" = true ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else

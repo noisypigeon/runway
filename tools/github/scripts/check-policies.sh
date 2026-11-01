@@ -44,11 +44,15 @@ case "${1:-}" in
 esac
 
 SPOKE_DIR="$(pwd)"
+# The spoke's config: .config/ when it holds spoke.hcl, else for one version
+# more the repo root (LIB-0052 §§1, 3).
+CONFIG_DIR="$SPOKE_DIR/.config"
+[ -f "$CONFIG_DIR/spoke.hcl" ] || CONFIG_DIR="$SPOKE_DIR"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POLICY_DIR="$SCRIPT_DIR/../policies"
 CONFIG="policies.yaml"
 
-if [ ! -f "$SPOKE_DIR/spoke.hcl" ]; then
+if [ ! -f "$CONFIG_DIR/spoke.hcl" ]; then
   echo "::error::No spoke.hcl in $SPOKE_DIR; run this from the spoke's repo root" >&2
   exit 1
 fi
@@ -59,7 +63,7 @@ for tool in yq jq; do
   fi
 done
 
-if [ "$INVENTORY_ONLY" = false ] && [ ! -f "$SPOKE_DIR/$CONFIG" ]; then
+if [ "$INVENTORY_ONLY" = false ] && [ ! -f "$CONFIG_DIR/$CONFIG" ]; then
   echo "::notice::No $CONFIG; no policies to check (LIB-0045 §4)"
   exit 0
 fi
@@ -145,7 +149,7 @@ fi
 errors=0
 fail() { echo "::error file=$CONFIG::$*" >&2; errors=$((errors + 1)); }
 
-if ! config=$(yq -o=json '.' "$SPOKE_DIR/$CONFIG" 2>/dev/null); then
+if ! config=$(yq -o=json '.' "$CONFIG_DIR/$CONFIG" 2>/dev/null); then
   fail "not valid YAML"
   exit 1
 fi
