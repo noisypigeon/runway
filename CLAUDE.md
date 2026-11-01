@@ -199,6 +199,7 @@ each citing the record it serves:
 - `restore-terraform-state-from-b2.md` (LIB-0007 §4);
 - `release-a-stuck-state-lock.md` (LIB-0022 §4);
 - `import-a-leaf-into-a-workload.md` (LIB-0032 §3).
+- `rotate-all-secrets.md` (LIB-0054 §6).
 
 ## Terraform
 

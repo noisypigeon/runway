@@ -76,6 +76,9 @@ jobs:
             exit 1
           fi
           echo "::add-mask::$secret"
+          # A step's log header shows its env, so the definition's ID is
+          # masked too (LIB-0054 §4).
+          echo "::add-mask::${id#*/}"
           {
             echo "region=${id%%/*}"
             echo "id=${id#*/}"
@@ -99,8 +102,11 @@ jobs:
             --data "$body" "https://api.scaleway.com/serverless-jobs/v1alpha2/regions/$REGION/job-definitions/$DEFINITION/start")
           run=$(jq -r '.job_runs[0].id // empty' <<<"$resp")
           [ -n "$run" ] || { echo "::error::Scaleway started no run"; exit 1; }
+          # The run's ID stays out of the log (LIB-0054 §4); Scaleway's console
+          # lists the job's runs.
+          echo "::add-mask::$run"
           echo "run=$run" >> "$GITHUB_OUTPUT"
-          echo "Started run $run of ${{ inputs.unit_dir }}'s job ${{ inputs.job }}."
+          echo "Started a run of ${{ inputs.unit_dir }}'s job ${{ inputs.job }}."
 
       - name: Wait for the run
         if: inputs.wait
@@ -114,8 +120,8 @@ jobs:
             state=$(curl -fsS -H "X-Auth-Token: $SCW_SECRET_KEY" \
               "https://api.scaleway.com/serverless-jobs/v1alpha2/regions/$REGION/job-runs/$RUN" | jq -r '.state')
             case "$state" in
-              succeeded) echo "Run $RUN succeeded."; exit 0 ;;
-              failed | interrupted) echo "::error::Run $RUN ended $state; its logs are in Scaleway Cockpit"; exit 1 ;;
+              succeeded) echo "The run succeeded."; exit 0 ;;
+              failed | interrupted) echo "::error::The run ended $state; its logs are in Scaleway Cockpit"; exit 1 ;;
               *) sleep 15 ;;
             esac
           done

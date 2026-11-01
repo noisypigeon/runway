@@ -774,9 +774,18 @@ workload:
   are sensitive variables too.
 - **The deployer's policy grows with the kinds** the file declares:
   `BlockStorageFullAccess`, `InstancesFullAccess`,
-  `PrivateNetworksFullAccess`, `VPCGatewayFullAccess` and
-  `ObservabilityFullAccess`, beside `ObjectStorageFullAccess`. A workload
-  with none of them plans `No changes.` on the bump.
+  `PrivateNetworksFullAccess`, `VPCGatewayFullAccess`,
+  `ObservabilityFullAccess` and, for `scaleway.job`,
+  `ServerlessJobsFullAccess`, beside `ObjectStorageFullAccess`. A job whose
+  env holds a secret adds `SecretManagerFullAccess`. A workload with none of
+  them plans `No changes.` on the bump.
+- **`rotation_generation` in `spoke.hcl` rotates every key at once**
+  (LIB-0054 §6). Bumping it passes the number to every
+  `scaleway/iam-api-key`, `cloudflare/api-token` and `backblaze/api-key` leaf,
+  which replaces its key, create-before-destroy, with a fresh expiry. An
+  entry's own `rotation_generation` wins. `rotation_generations` maps a
+  unit's directory, such as `zones/pigeon.dev`, to a number of its own, for
+  a canary. Unset or `0`, nothing changes.
 - **Refused before planning,** with the same messages as
   `resolve-workloads.sh`: LIB-0043 §5's gateway rules E1 to E6, above all a
   gateway that's off while an instance doesn't set `network.publicIpv4: true`

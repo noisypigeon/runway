@@ -31,3 +31,15 @@ variable "rotation_days" {
     error_message = "rotation_days must be a positive number of days."
   }
 }
+
+variable "rotation_generation" {
+  type        = number
+  description = "Bump to replace the key now, create-before-destroy, with a fresh expiry (LIB-0054 §6). 0, the default, changes nothing."
+  default     = 0
+  nullable    = false
+
+  validation {
+    condition     = var.rotation_generation >= 0 && floor(var.rotation_generation) == var.rotation_generation
+    error_message = "rotation_generation must be a whole number, 0 or more."
+  }
+}

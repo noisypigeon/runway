@@ -828,6 +828,9 @@ jobs:
               });
               body = rendered.summary;
               details = rendered.details;
+              // A leaf whose detail kept an identifier after redaction is
+              // withheld from its comment (LIB-0054 §3); the archive has it.
+              for (const unit of rendered.withheld || []) core.warning(`${unit}: detail withheld, an identifier survived redaction (LIB-0054 §3)`);
               core.setOutput('settled', replan && rendered.settled ? 'true' : 'false');
             }
 

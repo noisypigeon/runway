@@ -1,3 +1,10 @@
+# A rotation generation above 0 replaces the key at once (LIB-0054 §6). It
+# re-creates the timestamps too, so the new key's expiry starts from now; at
+# 0 nothing changes, so existing keys plan No changes.
+locals {
+  generation_triggers = var.rotation_generation == 0 ? null : { generation = tostring(var.rotation_generation) }
+}
+
 # One account-owned Cloudflare API token (LIB-0033 §3). Policies name their
 # permission groups and resources, never opaque IDs: the groups are looked up
 # by name, and zones by apex as dns-record v1 does (LIB-0011).
@@ -53,7 +60,9 @@ locals {
   ]
 }
 
-resource "time_static" "created" {}
+resource "time_static" "created" {
+  triggers = local.generation_triggers
+}
 
 # With rotation_days, the token is replaced every rotation_days and expires a
 # week after each scheduled rotation, as scaleway/terraform-deployer-iam's key
@@ -61,12 +70,13 @@ resource "time_static" "created" {}
 resource "time_rotating" "token" {
   count         = var.rotation_days == null ? 0 : 1
   rotation_days = var.rotation_days
+  triggers      = local.generation_triggers
 }
 
 # replace_triggered_by can't name a resource that may have no instances, so the
 # rotation is carried by one that always exists.
 resource "terraform_data" "rotation" {
-  input = try(time_rotating.token[0].id, "none")
+  input = var.rotation_generation == 0 ? try(time_rotating.token[0].id, "none") : "${try(time_rotating.token[0].id, "none")}#${var.rotation_generation}"
 }
 
 resource "cloudflare_account_token" "this" {
