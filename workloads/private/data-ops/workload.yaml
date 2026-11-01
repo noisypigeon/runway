@@ -39,3 +39,23 @@ workload:
       pigeon-transform:
         name_prefix: pigeon
         name_suffix: transform
+    # pigeon-cli's Serverless Jobs (LIB-0053). The image is the public one
+    # LIB-0019 publishes. Both only print the version, to prove the path:
+    # `version` runs from the Actions tab (run-scaleway-job.yml), and
+    # `version-daily` runs on Scaleway's own schedule.
+    job:
+      version:
+        image: ghcr.io/noisypigeon/pigeon-cli:0.4.59
+        args: ["--version"]
+        cpu: 500
+        memory: 512
+        storage: 1024
+        timeout: 5m
+      version-daily:
+        image: ghcr.io/noisypigeon/pigeon-cli:0.4.59
+        args: ["--version"]
+        cpu: 500
+        memory: 512
+        storage: 1024
+        timeout: 5m
+        schedule: "17 6 * * *"
