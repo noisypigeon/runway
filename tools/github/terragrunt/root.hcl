@@ -153,7 +153,7 @@ locals {
   config_dir = get_parent_terragrunt_dir()
   repo_root  = basename(local.config_dir) == ".config" ? dirname(local.config_dir) : local.config_dir
   leaf_path  = trimprefix(path_relative_to_include(), "../")
-  pigeon_dir = fileexists("${local.repo_root}/.config/pigeon/version") ? "${local.repo_root}/.config/pigeon" : "${local.repo_root}/.pigeon"
+  pigeon_dir = fileexists("${local.repo_root}/.config/version") ? "${local.repo_root}/.config" : "${local.repo_root}/.pigeon"
 
   # The spoke's instance values. Missing spoke.hcl is a hard error, which is
   # what we want: guessing a state bucket is how a plan lands in the wrong one.

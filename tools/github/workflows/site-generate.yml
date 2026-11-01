@@ -29,7 +29,7 @@ on:
         description: "Script (relative to the caller's repo root) that materializes library at the version the caller pins, with every tag."
         type: string
         required: false
-        default: ".config/pigeon/tools.sh"
+        default: ".config/tools.sh"
       git_user_name:
         type: string
         required: false
@@ -60,7 +60,7 @@ jobs:
       - name: Fetch library
         env:
           FETCH_SCRIPT: ${{ inputs.fetch_script }}
-        run: '[ -e "$FETCH_SCRIPT" ] || FETCH_SCRIPT="${FETCH_SCRIPT/.config\/pigeon\//.pigeon/}"; "./$FETCH_SCRIPT"'
+        run: '[ -e "$FETCH_SCRIPT" ] || FETCH_SCRIPT="${FETCH_SCRIPT/.config\//.pigeon/}"; "./$FETCH_SCRIPT"'
 
       # generate-module-redirects.sh --static-root needs it for LIB-0023's
       # schemas; the same pin as zola-site-pages.yml's.
