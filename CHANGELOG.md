@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-31
 
+- [terraform] feat(lib-0051): garden on R2 at a test host, beside Pages ([#175](https://github.com/noisypigeon/runway/pull/175))
 - [github/terragrunt] fix(github/terragrunt): mark a Cloudflare bucket's output sensitive ([#174](https://github.com/noisypigeon/runway/pull/174))
 - [github/workflows] fix(github/terragrunt): name a site's bucket with dashes, and mint its token after it ([#172](https://github.com/noisypigeon/runway/pull/172))
 - [github/terragrunt] fix(github/terragrunt): name a site's bucket with dashes, and mint its token after it ([#172](https://github.com/noisypigeon/runway/pull/172))
