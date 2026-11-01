@@ -36,7 +36,8 @@ const consumer = (buckets, capabilities = '[listFiles, readFiles]') =>
 
 function run(files) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'resolve-workloads-'));
-  for (const [rel, content] of Object.entries({ 'spoke.hcl': 'locals {}\n', ...files })) {
+  const spoke = '.config/spoke.hcl' in files ? {} : { 'spoke.hcl': 'locals {}\n' };
+  for (const [rel, content] of Object.entries({ ...spoke, ...files })) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), content);
   }
@@ -167,4 +168,16 @@ test('deployments.cloudflare needs a host', () => {
   const r = run({ ...siteZone('"@": other'), 'workloads/example.com/other/workload.yaml': 'workload:\n  name: other\n', ...site(['cloudflare: {}']) });
   assert.notEqual(r.status, 0);
   assert.ok(r.errors.some((e) => /deployments.cloudflare needs a host/.test(e)), r.err);
+});
+
+test('a spoke that keeps its config in .config/ gets stubs that include .config/root.hcl (LIB-0052 §2)', () => {
+  const r = run({ '.config/spoke.hcl': 'locals {}\n', ...owner([]) });
+  assert.equal(r.status, 0, r.err);
+  assert.match(r.read('workloads/private/cold/backblaze/bucket/snap/terragrunt.hcl'), /find_in_parent_folders\("\.config\/root\.hcl"\)/);
+});
+
+test('a spoke that keeps its config at the root still gets stubs that include root.hcl', () => {
+  const r = run(owner([]));
+  assert.equal(r.status, 0, r.err);
+  assert.match(r.read('workloads/private/cold/backblaze/bucket/snap/terragrunt.hcl'), /find_in_parent_folders\("root\.hcl"\)/);
 });

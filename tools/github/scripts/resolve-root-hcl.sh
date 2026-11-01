@@ -42,9 +42,13 @@ TEMPLATE_DIR="github/terragrunt"
 # The template's files, each materialized at the spoke root under its own name.
 FILES="root.hcl secrets-schema.json"
 SPOKE_DIR="$(pwd)"
+# The spoke's config: .config/ when it holds spoke.hcl, else for one version
+# more the repo root (LIB-0052 §§1, 3).
+CONFIG_DIR="$SPOKE_DIR/.config"
+[ -f "$CONFIG_DIR/spoke.hcl" ] || CONFIG_DIR="$SPOKE_DIR"
 
-if [ ! -f "$SPOKE_DIR/spoke.hcl" ]; then
-  echo "::error::No spoke.hcl in $SPOKE_DIR; run this from the spoke's repo root" >&2
+if [ ! -f "$CONFIG_DIR/spoke.hcl" ]; then
+  echo "::error::No spoke.hcl in $SPOKE_DIR/.config or $SPOKE_DIR; run this from the spoke's repo root" >&2
   exit 1
 fi
 
@@ -53,7 +57,7 @@ if [ "$SPOKE_DIR" = "$LIB_ROOT" ]; then
   exit 1
 fi
 
-VERSION=$(sed -nE 's/^[[:space:]]*root_hcl_version[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/p' "$SPOKE_DIR/spoke.hcl" | head -n1)
+VERSION=$(sed -nE 's/^[[:space:]]*root_hcl_version[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/p' "$CONFIG_DIR/spoke.hcl" | head -n1)
 if [ -z "$VERSION" ]; then
   echo "::error::spoke.hcl sets no root_hcl_version" >&2
   exit 1
@@ -109,17 +113,17 @@ fi
 if [ "$CHECK" = true ]; then
   for f in $FILES; do
     if [ ! -f "$TMP_DIR/$f" ]; then
-      if [ -e "$SPOKE_DIR/$f" ]; then
+      if [ -e "$CONFIG_DIR/$f" ]; then
         echo "::error::$f is committed but $SOURCE has none; run resolve-root-hcl.sh and commit the result" >&2
         exit 1
       fi
       continue
     fi
-    if [ ! -f "$SPOKE_DIR/$f" ]; then
+    if [ ! -f "$CONFIG_DIR/$f" ]; then
       echo "::error::No committed $f; run resolve-root-hcl.sh and commit the result" >&2
       exit 1
     fi
-    if ! cmp -s "$TMP_DIR/$f" "$SPOKE_DIR/$f"; then
+    if ! cmp -s "$TMP_DIR/$f" "$CONFIG_DIR/$f"; then
       echo "::error::$f differs from $SOURCE; run resolve-root-hcl.sh and commit the result, never edit it by hand" >&2
       exit 1
     fi
@@ -130,11 +134,11 @@ fi
 
 for f in $FILES; do
   if [ -f "$TMP_DIR/$f" ]; then
-    cp "$TMP_DIR/$f" "$SPOKE_DIR/$f"
-    chmod 644 "$SPOKE_DIR/$f"
+    cp "$TMP_DIR/$f" "$CONFIG_DIR/$f"
+    chmod 644 "$CONFIG_DIR/$f"
     echo "Resolved $f -> $SOURCE"
-  elif [ -e "$SPOKE_DIR/$f" ]; then
-    rm -f "$SPOKE_DIR/$f"
+  elif [ -e "$CONFIG_DIR/$f" ]; then
+    rm -f "$CONFIG_DIR/$f"
     echo "Removed $f: $SOURCE has none"
   fi
 done
