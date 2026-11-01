@@ -189,6 +189,10 @@ KINDS=(
   "scaleway._implied.instanceConfig|scaleway/compute-instance-config|map|config_deps|workload|workload|w"
   "scaleway.instance|scaleway/compute-instance|map|project instance_deps|workload|workload|w"
   "scaleway._implied.patRule|scaleway/gateway-pat-rule|map|gateway instance|workload|workload|w"
+  "scaleway._implied.jobRunnerApplication|scaleway/iam-application|map||spoke|workload|w"
+  "scaleway._implied.jobRunnerPolicy|scaleway/iam-policy|map|project sd_application|spoke|workload|w"
+  "scaleway._implied.jobRunnerApiKey|scaleway/iam-api-key|map|project sd_application|spoke|workload|w"
+  "scaleway.job|scaleway/job-definition|map|project job_deps|workload|workload|w"
   "backblaze.deployer|backblaze/api-key|b2implicit||spoke|workload|w"
   "backblaze.bucket|backblaze/bucket|map||workload|workload|w"
   "backblaze.apiKey|backblaze/api-key|map|buckets|workload|workload|w"
@@ -258,7 +262,7 @@ wiring_lines() {
     # LIB-0043 §1.
     scaleway/iam-policy:application) echo "application_id|dependency.application.outputs.module.id" ;;
     scaleway/iam-policy:sd_application | scaleway/iam-api-key:sd_application) echo "application_id|dependency.sd_application.outputs.module.id" ;;
-    scaleway/block-volume:project | scaleway/cockpit-observability:project | scaleway/private-network:project | scaleway/public-gateway:project | scaleway/compute-instance:project) echo "project_id|dependency.project.outputs.module.id" ;;
+    scaleway/job-definition:project | scaleway/block-volume:project | scaleway/cockpit-observability:project | scaleway/private-network:project | scaleway/public-gateway:project | scaleway/compute-instance:project) echo "project_id|dependency.project.outputs.module.id" ;;
     scaleway/public-gateway:private_network | scaleway/compute-instance:private_network) echo "private_network_id|dependency.private_network.outputs.module.id" ;;
     scaleway/compute-instance:config) echo "cloud_init|dependency.config.outputs.module.cloud_init" ;;
     scaleway/compute-instance-config:cockpit) echo "cockpit|{ metrics_push_url = dependency.cockpit.outputs.module.metrics_push_url, logs_push_url = dependency.cockpit.outputs.module.logs_push_url, token_secret = dependency.cockpit.outputs.module.token_secret }" ;;
@@ -433,7 +437,7 @@ COMPUTE_JQ='
       if type != "object" then "scaleway.iam.\($m) must be a mapping of \(if $m == "policy" then "policy" else "key" end) names (LIB-0043 §1)" else
       to_entries[] | .key as $k | .value as $e |
         (if ($k | test($kebab)) then empty else "scaleway.iam.\($m).\($k): name must be kebab-case" end),
-        (if $k == "deployer" or ($k | startswith("self-delete-")) then "scaleway.iam.\($m).\($k): deployer and self-delete-* are the implied leaves'"'"' (LIB-0043 §1)" else empty end),
+        (if $k == "deployer" or $k == "job-runner" or ($k | startswith("self-delete-")) then "scaleway.iam.\($m).\($k): deployer, job-runner and self-delete-* are the implied leaves'"'"' (LIB-0043 §1, LIB-0053 §6)" else empty end),
         (if $e == null or ($e | type) == "object" then empty
          elif $m == "apiKey" then "scaleway.iam.apiKey is a mapping of key names since workflows/v9.0.0; move a single key'"'"'s inputs under a name of its own, e.g. scaleway.iam.apiKey.main (LIB-0043 §1)"
          else "scaleway.iam.policy.\($k) must be a mapping of module inputs" end),
@@ -443,6 +447,26 @@ COMPUTE_JQ='
     ($policies | to_entries[] | select(.value | objects | (.project_permission_sets // []) + (.organization_permission_sets // []) | index("InstancesFullAccess") != null)
       | "warning: scaleway.iam.policy.\(.key) grants InstancesFullAccess, which reaches every key on the workload'"'"'s application; a self-deleting instance should set selfDelete instead (LIB-0043 §3)"),
     # Volumes, Cockpit and the network (LIB-0043 §§1, 5).
+    # Jobs (LIB-0053 §§1-4).
+    ($s.job // {} | if type != "object" then "scaleway.job must be a mapping of job names (LIB-0053 §1)" else
+      to_entries[] | .key as $k | .value as $e |
+        (if ($k | test($kebab)) then empty else "scaleway.job.\($k): name must be kebab-case" end),
+        (if ($e | type) != "object" then "scaleway.job.\($k) must be a mapping with image (LIB-0053 §2)" else
+          (if ($e.image | type) != "string" then "scaleway.job.\($k) needs image (LIB-0053 §2)"
+           elif ($e.image | test("(:[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}|@sha256:[0-9a-f]{64})$") | not) or ($e.image | endswith(":latest")) then "scaleway.job.\($k).image must be pinned to a tag other than latest, or a digest (LIB-0053 §2)"
+           else empty end),
+          (if $e | has("project_id") then "scaleway.job.\($k).project_id can'"'"'t be set; it'"'"'s wired from the workload (LIB-0053 §1)" else empty end),
+          ($e.env // {} | if type != "object" then "scaleway.job.\($k).env must be a mapping" else
+            to_entries[] | .key as $v | .value |
+              if type == "string" or type == "number" or type == "boolean" or is_ref then empty
+              elif type == "object" and has("apiKey") then
+                .apiKey as $ak |
+                (if ($ak | type) == "string" and ($keys | has($ak)) then empty else "scaleway.job.\($k).env.\($v): apiKey \(.apiKey | tojson) isn'"'"'t a scaleway.iam.apiKey key (LIB-0053 §4)" end),
+                (if (.field // "secret_key") | IN("access_key", "secret_key") then empty else "scaleway.job.\($k).env.\($v): field must be access_key or secret_key (LIB-0053 §4)" end)
+              else "scaleway.job.\($k).env.\($v) must be a value, a secretRef or an apiKey reference (LIB-0053 §2)" end
+          end)
+        end)
+    end),
     ($s.blockVolume // {} | if type != "object" then "scaleway.blockVolume must be a mapping of volume names" else
       to_entries[] | .key as $k |
         (if ($k | test($kebab)) then empty else "scaleway.blockVolume.\($k): name must be kebab-case" end),
@@ -509,6 +533,10 @@ COMPUTE_JQ='
     (.scaleway.sharedKeyring // {} | objects) as $shared |
     (.scaleway.bucket // {} | objects) as $buckets |
     (.scaleway.instance // {} | objects | with_entries(.value |= (. // {}))) as $inst |
+    (.scaleway.job // {} | objects | with_entries(.value |= (. // {}))) as $jobs |
+    # Any scaleway.job implies job-runner, the key a dispatch starts runs with
+    # (LIB-0053 §6).
+    (if ($jobs | length) > 0 then {"job-runner": {}} else {} end) as $jr |
     def keyring_of($v): $shared + (($v.keyring // {}) | objects);
     def config_entry($v):
       keyring_of($v) as $kr |
@@ -530,9 +558,16 @@ COMPUTE_JQ='
           selfDeletePolicy: ($inst | to_entries | map(select(.value.selfDelete == true) | {key: "self-delete-\(.key)", value: {project_permission_sets: ["InstancesFullAccess"]}}) | from_entries),
           selfDeleteApiKey: ($inst | to_entries | map(select(.value.selfDelete == true) | {key: "self-delete-\(.key)", value: {}}) | from_entries),
           instanceConfig: ($inst | with_entries(.value |= config_entry(.))),
-          patRule: ($inst | to_entries | map(select(.value.network.sshViaGateway? != null) | {key, value: {public_port: .value.network.sshViaGateway}}) | from_entries)
+          patRule: ($inst | to_entries | map(select(.value.network.sshViaGateway? != null) | {key, value: {public_port: .value.network.sshViaGateway}}) | from_entries),
+          jobRunnerApplication: $jr,
+          jobRunnerPolicy: ($jr | with_entries(.value = {project_permission_sets: ["ServerlessJobsFullAccess"]})),
+          jobRunnerApiKey: $jr
         }
-      | ._meta = {instance: ($inst | with_entries(.value |= (
+      | ._meta = {job: ($jobs | with_entries(.value |= {
+          # An env value {apiKey, field} is wired from the leaf of that key (LIB-0053 §4).
+          wiring: ((.env // {}) | objects | to_entries | map(select((.value | type) == "object" and (.value | has("apiKey"))))
+            | map({key, value: {apiKey: .value.apiKey, field: (.value.field // "secret_key")}}) | from_entries)
+        })), instance: ($inst | with_entries(.value |= (
           (if (.network // {}) | has("privateNetwork") then .network.privateNetwork == true else $pn end) as $attached |
           ((.network // {}).publicIpv4 == true) as $ipv4 |
           {
@@ -607,6 +642,11 @@ EOF
              "secret_key = dependency.apikey_\($w.apiKey | gsub("-"; "_")).outputs.module.secret_key"
            else empty end)] | join(", ")) as $f |
         "\($a | tojson) = { \($f) }") | "{ " + join(", ") + " }"' <<<"$CUR_KEYRING_WIRING")"$'\n'
+  fi
+  if [ "$module" = scaleway/job-definition ] && [ -n "${CUR_JOB_WIRING:-}" ] && [ "$CUR_JOB_WIRING" != "{}" ]; then
+    lines="${lines}secret_wiring|$(jq -r '
+      to_entries | map("\(.key | tojson) = dependency.apikey_\(.value.apiKey | gsub("-"; "_")).outputs.module.\(.value.field)")
+      | "{ " + join(", ") + " }"' <<<"$CUR_JOB_WIRING")"$'\n'
   fi
   # Aligned on `=`, as terragrunt hcl format would leave it.
   while IFS='|' read -r input expr; do
@@ -1052,7 +1092,7 @@ for rel in ${unit_files[@]+"${unit_files[@]}"}; do
       (if (.prefix | type) != "string" or .prefix == "" then "prefix must be a non-empty string" else empty end),
       (if (.suffix | type) != "string" or .suffix == "" then "suffix must be a non-empty string" else empty end),
       (.scaleway // {} | if type != "object" then "scaleway must be a mapping" else
-        keys_in("scaleway"; if $unit == "zone" then ["project", "deployer", "state"] else ["project", "deployer", "state", "bucket", "iam", "blockVolume", "cockpit", "privateNetwork", "publicGateway", "instance", "sharedKeyring"] end),
+        keys_in("scaleway"; if $unit == "zone" then ["project", "deployer", "state"] else ["project", "deployer", "state", "bucket", "iam", "blockVolume", "cockpit", "privateNetwork", "publicGateway", "instance", "sharedKeyring", "job"] end),
         (.project | entry_ok("scaleway.project")),
         # The deployer is three leaves, each overridden by its own key (LIB-0038 §1).
         (.deployer // {} | if type != "object" then "scaleway.deployer must be a mapping of application, policy and apiKey (LIB-0038 §1)" else
@@ -1256,6 +1296,7 @@ for rel in ${unit_files[@]+"${unit_files[@]}"}; do
       stub="$unit_dir/$module/$name"
       CUR_NAME="$name"
       CUR_KEYRING_WIRING=""
+      CUR_JOB_WIRING=""
       CUR_XBUCKETS=""
       # `buckets` becomes this instance's own bucket_<key> dependencies, and
       # one xbucket_<n> per bucket another workload grants it (LIB-0045 §7),
@@ -1271,6 +1312,11 @@ for rel in ${unit_files[@]+"${unit_files[@]}"}; do
               *) instance_deps+=("bucket_$(tr - _ <<<"$b")") ;;
             esac
           done < <(jq -r --arg n "$name" "${jq_path}[\$n].buckets[]? | strings" <<<"$json")
+        elif [ "$dep" = job_deps ]; then
+          while IFS= read -r d; do
+            [ -n "$d" ] && instance_deps+=("$d")
+          done < <(jq -r --arg n "$name" '[.scaleway._meta.job[$n].wiring[] | .apiKey] | unique[] | "apikey_\(gsub("-"; "_"))"' <<<"$json")
+          CUR_JOB_WIRING=$(jq -c --arg n "$name" '.scaleway._meta.job[$n].wiring' <<<"$json")
         elif [ "$dep" = config_deps ] || [ "$dep" = instance_deps ]; then
           while IFS= read -r d; do
             [ -n "$d" ] && instance_deps+=("$d")
