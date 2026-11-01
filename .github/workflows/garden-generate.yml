@@ -2,8 +2,8 @@
 # schemas are generated from the library's tags and changelogs, and committed
 # under workloads/noisypigeon.garden/garden/ (LIB-0035 §2, LIB-0037).
 # template-release dispatches this on every library release, and a change to
-# .pigeon/version runs it too; run it by hand to regenerate. Its commit lands outside workload.yaml, so sites.yml then deploys
-# it through noisypigeon/noisypigeon.garden.
+# .pigeon/version runs it too; run it by hand to regenerate. Its commit
+# changes garden, so site-r2-garden.yml then deploys it (LIB-0051).
 name: garden-generate
 
 on:

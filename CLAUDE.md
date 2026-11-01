@@ -12,23 +12,25 @@ It also holds the two public sites, as the `blog` workload (LIB-0032) and the
   (`config.toml`, `content/`, `static/`, `CHANGELOG.md`), beside its
   `workload.yaml` (LIB-0037). It lives in its zone's project, and the zone's
   `hosts` gives it the apex and `www`.
-- **`noisypigeon/noisypigeon.com` is now only the Pages shim** (LIB-0031,
-  LIB-0037 §4), implied by `workload.yaml`'s `deployments.githubPages`.
-  Merging a site change here dispatches its `pages.yml`, which builds this
-  repo's `main`. A post is a PR like any other, but only `workload.yaml` and
-  `secrets.workload.yaml` changes run a plan.
 - **`workloads/noisypigeon.garden/garden/`** is the noisypigeon.garden Zola
-  site. Its shim is `noisypigeon/noisypigeon.garden`.
-- **Each site's two Pages records** were imported, not created, and its
-  `deployments.githubPages` implies them, so change one only on purpose.
+  site.
+- **Both sites are served from R2** (LIB-0051). Each workload's
+  `deployments.cloudflare` implies its bucket, its apex and `www` custom
+  domains, its deploy token, and its zone's `sites-root` and `sites-www`
+  rulesets. `site-r2-blog.yml` and `site-r2-garden.yml` build and deploy each
+  site on merge, and check it live. A post is a PR like any other, but only
+  `workload.yaml` and `secrets.workload.yaml` changes run a plan.
+- **The Pages shims, `noisypigeon/noisypigeon.com` and
+  `noisypigeon/noisypigeon.garden`, are retired** and to be archived.
 - **Most of garden is generated.** Its module redirect pages under
   `content/terraform/`, `content/theme-versions/` and `content/releases/`, its
   version pages under `content/workflows/` and `content/claude-plugins/`, and
   its schemas under `static/terraform/` and `static/schemas/`, come from
   `garden-generate.yml`, which the library dispatches on every release. They
   are committed, so a short URL is a file with a history. Never hand-edit them:
-  run the workflow. Every `terraform init`, this repo's included, resolves
-  through them.
+  run the workflow. Every outside `terraform init` resolves through them.
+  runway's own leaves take each module straight from its git tag, so runway
+  plans even while garden is down (LIB-0051 amendment 8).
 
 Each Cloudflare zone is a unit of its own (LIB-0036), at
 `zones/<zone>/zone.yaml`: noisypigeon.com, pigeon.dev, willowgraysen.com and

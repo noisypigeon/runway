@@ -1,6 +1,6 @@
 # Deploys the blog to its R2 bucket, served on noisypigeon.com and www, and
-# checks it there against LIB-0051 §1. It folds into sites.yml once garden
-# has moved too (LIB-0051 §5).
+# checks it there against LIB-0051 §1. It runs on a change to the blog, and
+# template-release.yml dispatches it on a theme release (LIB-0051 amendment 9).
 name: site-r2-blog
 
 on:
