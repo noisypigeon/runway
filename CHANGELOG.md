@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-31
 
+- [ci] feat(lib-0051): serve noisypigeon.garden and www from R2 ([#184](https://github.com/noisypigeon/runway/pull/184))
 - [repo] feat(lib-0051): garden's flip, first apply: drop githubPages ([#183](https://github.com/noisypigeon/runway/pull/183))
 - [terraform] chore: take github/terragrunt and github/workflows v10.2.0 ([#182](https://github.com/noisypigeon/runway/pull/182))
 - [github/workflows] feat(github/terragrunt): take workload modules from their git tags, not garden ([#181](https://github.com/noisypigeon/runway/pull/181))
