@@ -1,13 +1,9 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v4.json
 # The blog, at noisypigeon.com, in its zone (LIB-0037). It lives in the zone's
-# project, and the zone's hosts give it the apex and www. githubPages deploys
-# it through noisypigeon/noisypigeon.com and implies its two Pages CNAMEs,
-# whose state moved here from workloads/blog/: change one only on purpose.
+# project, and the zone's hosts give it the apex and www.
 workload:
   name: blog
   deployments:
-    # LIB-0051 §4 step 2, the flip, first apply: githubPages goes, so its two
-    # Pages CNAMEs are destroyed and free the apex and www for R2. The next
-    # commit drops hosts, so R2 serves the apex and www.
-    cloudflare:
-      hosts: [r2-test]
+    # Served from its R2 bucket on the apex and www (LIB-0051), www
+    # redirecting to the apex. site-r2-blog.yml deploys it.
+    cloudflare: {}
