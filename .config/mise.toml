@@ -10,10 +10,10 @@ TG_TF_PATH = "terraform"
 
 [tasks.terraform-prepare]
 run = [
-  "./.pigeon/tools.sh",
-  ".pigeon/src/tools/github/scripts/resolve-root-hcl.sh",
-  ".pigeon/src/tools/github/scripts/resolve-workloads.sh",
-  ".pigeon/src/tools/github/scripts/check-policies.sh",
+  "./.config/pigeon/tools.sh",
+  ".config/pigeon/src/tools/github/scripts/resolve-root-hcl.sh",
+  ".config/pigeon/src/tools/github/scripts/resolve-workloads.sh",
+  ".config/pigeon/src/tools/github/scripts/check-policies.sh",
 ]
 
 [tasks.plan]
@@ -32,8 +32,8 @@ run = ["terragrunt hcl format --check", "terraform fmt -recursive -check terrafo
 
 [tasks.secrets-edit]
 usage = 'arg "<file>" help="terraform, cloudflare, scaleway, backblaze, env, cloudflare_breakglass or backblaze_breakglass"'
-run = "sops --input-type dotenv --output-type dotenv terraform/secrets/{{arg(name=\"file\")}}.enc"
+run = "sops --config .config/sops.yaml --input-type dotenv --output-type dotenv terraform/secrets/{{arg(name=\"file\")}}.enc"
 
 [tasks.secrets-edit-workload]
 usage = 'arg "<workload>" help="A directory under workloads/"'
-run = "sops workloads/{{arg(name=\"workload\")}}/secrets.yaml"
+run = "sops --config .config/sops.yaml workloads/{{arg(name=\"workload\")}}/secrets.yaml"

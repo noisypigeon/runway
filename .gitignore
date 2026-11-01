@@ -1,7 +1,7 @@
 .DS_Store
 *.env
 /.lib-src/
-/.pigeon/src/
+/.config/pigeon/src/
 .terragrunt-cache/
 .terraform/
 .terraform.lock.hcl
