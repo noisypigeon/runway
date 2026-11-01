@@ -172,3 +172,7 @@ They sign in with the spoke's key, as every IAM kind does (LIB-0043 §1).
      them.
 2. **`scaleway-job-run.yml` masks the definition's and the run's IDs** and
    prints neither (LIB-0054 §4). Scaleway's console lists a job's runs.
+3. **An entry may set `retries`** (whole number, default `0`). It becomes
+   the definition's `retry_policy.max_retries`. Scaleway gives every
+   definition a retry policy of 0, so v0.1.0, which left the block out, planned
+   to remove it on every run.

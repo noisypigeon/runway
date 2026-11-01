@@ -57,6 +57,18 @@ variable "timeout" {
   default     = "1h"
 }
 
+variable "retries" {
+  type        = number
+  description = "How many times Scaleway retries a failed run (its retry_policy.max_retries). Scaleway sets 0 itself, so the default matches it and plans No changes."
+  default     = 0
+  nullable    = false
+
+  validation {
+    condition     = var.retries >= 0 && floor(var.retries) == var.retries
+    error_message = "retries must be a whole number, 0 or more."
+  }
+}
+
 variable "schedule" {
   type        = string
   description = "Cron schedule, e.g. \"15 3 * * *\". Set, the job is recurring and Scaleway starts its runs; null, it is ad hoc."
