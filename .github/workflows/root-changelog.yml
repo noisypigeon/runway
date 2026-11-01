@@ -53,7 +53,7 @@ jobs:
   rollup:
     needs: releases
     if: github.event.pull_request.merged == true && needs.releases.outputs.releases == 'false'
-    uses: noisypigeon/runway/.github/workflows/spoke-root-changelog.yml@github/workflows/v11.0.1
+    uses: noisypigeon/runway/.github/workflows/spoke-root-changelog.yml@github/workflows/v11.1.0
     with:
       # First match wins.
       precedence: |
