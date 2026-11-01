@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-31
 
+- [terraform] chore: take github/terragrunt and github/workflows v10.2.0 ([#182](https://github.com/noisypigeon/runway/pull/182))
 - [github/workflows] feat(github/terragrunt): take workload modules from their git tags, not garden ([#181](https://github.com/noisypigeon/runway/pull/181))
 - [github/terragrunt] feat(github/terragrunt): take workload modules from their git tags, not garden ([#181](https://github.com/noisypigeon/runway/pull/181))
 - [ci] feat(lib-0051): serve noisypigeon.com and www from R2 ([#180](https://github.com/noisypigeon/runway/pull/180))
