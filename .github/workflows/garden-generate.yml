@@ -2,7 +2,7 @@
 # schemas are generated from the library's tags and changelogs, and committed
 # under workloads/noisypigeon.garden/garden/ (LIB-0035 §2, LIB-0037).
 # template-release dispatches this on every library release, and a change to
-# .pigeon/version runs it too; run it by hand to regenerate. Its commit
+# .config/version runs it too; run it by hand to regenerate. Its commit
 # changes garden, so site-r2-garden.yml then deploys it (LIB-0051).
 name: garden-generate
 
@@ -12,7 +12,7 @@ on:
   push:
     branches: [main]
     paths:
-      - ".pigeon/version"
+      - ".config/version"
   workflow_dispatch: {}
 
 permissions:
@@ -24,8 +24,8 @@ concurrency:
 
 jobs:
   generate:
-    uses: noisypigeon/runway/.github/workflows/site-generate.yml@github/workflows/v10.2.0
+    uses: noisypigeon/runway/.github/workflows/site-generate.yml@github/workflows/v11.0.1
     with:
       src_dir: workloads/noisypigeon.garden/garden
-      generate_cmd: ".pigeon/src/tools/github/scripts/generate-module-redirects.sh --content-root workloads/noisypigeon.garden/garden/content --static-root workloads/noisypigeon.garden/garden/static"
+      generate_cmd: ".config/src/tools/github/scripts/generate-module-redirects.sh --content-root workloads/noisypigeon.garden/garden/content --static-root workloads/noisypigeon.garden/garden/static"
     secrets: inherit

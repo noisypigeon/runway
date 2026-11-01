@@ -83,8 +83,8 @@ data.
 - A PR outside `tools/` takes no `release:*` label, and releases nothing. A PR
   that changes a `tools/` unit takes exactly one (see
   [Releasing a `tools/` change](#releasing-a-tools-change)).
-- Take a library change by bumping `.pigeon/version` and the
-  `@github/workflows/vX.Y.Z` refs, `root_hcl_version` in `spoke.hcl`, or the
+- Take a library change by bumping `.config/version` and the
+  `@github/workflows/vX.Y.Z` refs, `root_hcl_version` in `.config/spoke.hcl`, or the
   plugin pin in `.claude/settings.json`. Never track a branch. For local
   iteration, point `PIGEON_SRC` at a checkout of this repo.
 - `fetch-lib.sh` and `.lib-version` are kept only for the Pages shims, frozen at
@@ -104,7 +104,7 @@ tags still resolve:
 | A Terraform module | `tools/terraform/<provider>/<module>/` | `terraform/<provider>/<module>/vX.Y.Z` | `noisypigeon.garden/terraform/<provider>/<module>/vX.Y.Z`, a stable interface of its own (LIB-0009) |
 | The theme | `tools/static-site/zola/` | `static-site/zola/vX.Y.Z` (was `zola-site/`) | a site's `[extra].theme_version`, through `resolve-theme.sh` |
 | The `root.hcl` template | `tools/github/terragrunt/` | `github/terragrunt/vX.Y.Z` (was `terragrunt/root-hcl/`) | `spoke.hcl`'s `root_hcl_version` (LIB-0003) |
-| The reusable CI, its scripts and policies | `tools/github/workflows/`, `scripts/`, `policies/` | `github/workflows/vX.Y.Z` (was `workflows/`) | `uses:` and `.pigeon/version`; `noisypigeon.garden/github/workflows/vX.Y.Z/` names each `uses:` line |
+| The reusable CI, its scripts and policies | `tools/github/workflows/`, `scripts/`, `policies/` | `github/workflows/vX.Y.Z` (was `workflows/`) | `uses:` and `.config/version`; `noisypigeon.garden/github/workflows/vX.Y.Z/` names each `uses:` line |
 | A dashboard set | `tools/observability/dashboards/<set>/` | `observability/dashboards/<set>/vX.Y.Z` (was `grafana-dashboards/<set>/`) | its raw URL at the tag |
 | An observability stack | `tools/observability/<stack>/`, e.g. `lgtm-stack` | `observability/<stack>/vX.Y.Z` (`lgtm-stack` was `pigeon-cli`) | a checkout of the tag |
 | A Claude Code plugin | `tools/claude/plugins/<plugin>/` | `claude/plugins/<plugin>/vX.Y.Z` (was `claude-plugins/`) | the `library` marketplace pinned at the tag; `noisypigeon.garden/claude/plugins/<plugin>/vX.Y.Z/` gives the settings |
@@ -118,10 +118,10 @@ tags still resolve:
   `.github/workflows/` holds only runway's own workflows, and `scripts-test`
   fails if a reusable one lands there.
 - **runway consumes `tools/` only by pinned tag** (LIB-0001 invariant 2).
-  `.pigeon/tools.sh` clones this repo into `.pigeon/src/` at `.pigeon/version`,
+  `.config/tools.sh` clones this repo into `.config/src/` at `.config/version`,
   and the callers name
   `noisypigeon/runway/.github/workflows/<w>.yml@github/workflows/vX.Y.Z`. Scripts
-  then run from `.pigeon/src/tools/github/scripts/`. The `release-pr` skill
+  then run from `.config/src/tools/github/scripts/`. The `release-pr` skill
   comes from the `library` plugin, pinned in `.claude/settings.json`. A change
   under `tools/` reaches runway only when a later PR bumps the pin. Never
   consume `tools/` at `HEAD`.
@@ -212,6 +212,11 @@ each citing the record it serves:
   `workloads/<w>/<provider>/<module>/<instance>/` and
   `zones/<zone>/<provider>/<module>/<instance>/`.
 - A leaf's path is its state key. Don't move one without a state move.
+- **The spoke's config lives in `.config/`** (LIB-0052): `spoke.hcl`,
+  `policies.yaml`, `mise.toml`, `sops.yaml` and the generated `root.hcl` and
+  `secrets-schema.json`. Every leaf includes
+  `find_in_parent_folders(".config/root.hcl")`, and its state key is still its
+  path from the repo root. Run sops by hand with `--config .config/sops.yaml`.
 - **`root.hcl` is generated. Never edit it.** Bump `root_hcl_version`, run
   `mise run terraform-prepare` and commit the diff.
 - State is on Scaleway, versioned in place, so there is no backup job.

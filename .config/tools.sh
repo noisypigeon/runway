@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Clones noisypigeon/runway, whose tools/ is the library (LIB-0047, LIB-0050),
-# into .pigeon/src/ at the tag .pigeon/version names. Set PIGEON_SRC to use
+# into .config/src/ at the tag .config/version names. Set PIGEON_SRC to use
 # your own checkout instead.
 set -euo pipefail
 
@@ -16,13 +16,13 @@ if [ -n "${PIGEON_SRC:-}" ]; then
   exit 0
 fi
 
-REF="$(tr -d '[:space:]' < "$REPO_ROOT/.pigeon/version")"
+REF="$(tr -d '[:space:]' < "$REPO_ROOT/.config/version")"
 if [ -z "$REF" ]; then
-  echo "::error::$REPO_ROOT/.pigeon/version is empty; it must name a library tag" >&2
+  echo "::error::$REPO_ROOT/.config/version is empty; it must name a library tag" >&2
   exit 1
 fi
 
-SRC="$REPO_ROOT/.pigeon/src"
+SRC="$REPO_ROOT/.config/src"
 
 if [ -d "$SRC/.git" ]; then
   git -C "$SRC" fetch --quiet --tags --prune --force origin
@@ -32,7 +32,7 @@ else
 fi
 
 if ! git -C "$SRC" rev-parse --verify --quiet "$REF" >/dev/null; then
-  echo "::error::library has no ref $REF (from .pigeon/version)" >&2
+  echo "::error::library has no ref $REF (from .config/version)" >&2
   exit 1
 fi
 git -C "$SRC" checkout --quiet --detach "$REF"

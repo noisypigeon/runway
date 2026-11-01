@@ -7,7 +7,7 @@
 # runway's lib/ and bump root_hcl_version. Every leaf under <spoke>/terraform/
 # includes it with find_in_parent_folders("root.hcl"). Materialized rather than
 # included from the library clone because Terragrunt does not support nested
-# includes (DEV-0059), and because a leaf's path_relative_to_include() -- its
+# includes (DEV-0059), and because a leaf's local.leaf_path -- its
 # state key -- is relative to this file's own directory, which has to be the
 # spoke's root (LIB-0001 invariant 4). Committed rather than gitignored because
 # Terragrunt's [main...HEAD] filter plans inside git worktrees, where only
@@ -146,9 +146,18 @@
 # a bucket it isn't granted, or capabilities beyond the grant.
 
 locals {
+  # Where the spoke keeps this file (LIB-0052 §§1-2): .config/, beside
+  # spoke.hcl and secrets-schema.json, or for one version more the repo root.
+  # config_dir is this file's directory; repo_root is the repo's; leaf_path is
+  # a leaf's path from the repo root, which is its state key either way.
+  config_dir = get_parent_terragrunt_dir()
+  repo_root  = basename(local.config_dir) == ".config" ? dirname(local.config_dir) : local.config_dir
+  leaf_path  = trimprefix(path_relative_to_include(), "../")
+  pigeon_dir = fileexists("${local.repo_root}/.config/version") ? "${local.repo_root}/.config" : "${local.repo_root}/.pigeon"
+
   # The spoke's instance values. Missing spoke.hcl is a hard error, which is
   # what we want: guessing a state bucket is how a plan lands in the wrong one.
-  spoke = read_terragrunt_config("${get_parent_terragrunt_dir()}/spoke.hcl")
+  spoke = read_terragrunt_config("${local.config_dir}/spoke.hcl")
 
   # The providers this spoke uses, and how (LIB-0005). Required: a spoke.hcl
   # without it is a hard error.
@@ -173,7 +182,7 @@ locals {
   unknown_providers = setsubtract(keys(local.providers), local.known_providers)
   provider_prefixes = flatten([for name, cfg in local.providers : concat(try(cfg.leaves, []), try(cfg.breakglass.leaves, []))])
 
-  leaf           = "${path_relative_to_include()}/"
+  leaf           = "${local.leaf_path}/"
   workloads_only = { for name in local.known_providers : name => try(local.providers[name].workloads_only, false) == true }
   # A workload leaf gets exactly the provider its path names (LIB-0029 §4):
   # `leaves` can't name workloads/*/<provider>/, and shouldn't turn a
@@ -234,7 +243,7 @@ locals {
   guard_unknown           = length(local.unknown_providers) > 0 ? file("spoke.hcl providers has unknown keys ${join(", ", local.unknown_providers)}; known: ${join(", ", local.known_providers)}") : true
   guard_prefixes          = alltrue([for p in local.provider_prefixes : endswith(p, "/")]) ? true : file("spoke.hcl providers: every leaves prefix must end in a slash, or it matches sibling paths too")
   guard_backend           = contains(local.known_state_backend, local.state_backend) ? true : file("spoke.hcl state_backend is ${local.state_backend}; known: ${join(", ", local.known_state_backend)}")
-  guard_grafana           = local.grafana_enabled && !local.scaleway_enabled ? file("providers.grafana is on for ${path_relative_to_include()} but providers.scaleway is not; its data source needs the Scaleway provider") : true
+  guard_grafana           = local.grafana_enabled && !local.scaleway_enabled ? file("providers.grafana is on for ${local.leaf_path} but providers.scaleway is not; its data source needs the Scaleway provider") : true
   guard_bucket_key        = contains(keys(local.spoke.locals), "state_bucket_secret") ? file("spoke.hcl sets state_bucket_secret: root.hcl v3 reads the state bucket from TERRAFORM_STATE_BUCKET_NAME (LIB-0010) in terraform/secrets/terraform.enc; delete state_bucket_secret") : true
   guard_r2_account        = local.state_backend == "cloudflare" && !contains(keys(local.providers), "cloudflare") ? file("spoke.hcl state_backend is cloudflare but providers has no cloudflare; the R2 endpoint is built from CLOUDFLARE_PROVIDER_ACCOUNT_ID in terraform/secrets/cloudflare.enc (LIB-0010, LIB-0012)") : true
   guard_breakglass_leaves = alltrue([for name in local.breakglass_providers : local.workloads_only[name] || length(try(local.providers[name].breakglass.leaves, [])) > 0]) ? true : file("spoke.hcl providers sets breakglass without leaves for ${join(", ", [for name in local.breakglass_providers : name if !local.workloads_only[name] && length(try(local.providers[name].breakglass.leaves, [])) == 0])}; breakglass must list the leaves allowed to use it (LIB-0014)")
@@ -277,8 +286,8 @@ locals {
   # (leaves scoping, LIB-0005), plus any optional file that exists. So a
   # Grafana leaf never decrypts backblaze.enc, and a file for a provider this
   # spoke doesn't enable is never read at all.
-  secrets_schema = jsondecode(file("${get_parent_terragrunt_dir()}/secrets-schema.json"))
-  secrets_dir    = "${get_parent_terragrunt_dir()}/terraform/secrets"
+  secrets_schema = jsondecode(file("${local.config_dir}/secrets-schema.json"))
+  secrets_dir    = "${local.repo_root}/terraform/secrets"
   secret_files   = local.secrets_schema.files
 
   # spoke_credentials.<name> (LIB-0041 §3): the provider is on and the spoke
@@ -381,7 +390,7 @@ locals {
       if contains(try(local.secret_files[name].reserved, []), lower(k))
     ] if local.secret_file_optional[name]
   ])
-  guard_missing_secret_files = length(local.missing_secret_files) > 0 ? file("${path_relative_to_include()} needs ${join(", ", local.missing_secret_files)}, required by spoke.hcl's state_backend and providers (LIB-0012; see secrets-schema.json)") : true
+  guard_missing_secret_files = length(local.missing_secret_files) > 0 ? file("${local.leaf_path} needs ${join(", ", local.missing_secret_files)}, required by spoke.hcl's state_backend and providers (LIB-0012; see secrets-schema.json)") : true
   guard_missing_secrets      = length(local.missing_secrets) > 0 ? file("terraform/secrets/ lacks ${join(", ", local.missing_secrets)}, each required in that file (LIB-0012; see secrets-schema.json)") : true
   guard_empty_secrets        = length(local.empty_secrets) > 0 ? file("terraform/secrets/ and the environment leave empty ${join(", ", local.empty_secrets)} (LIB-0012)") : true
   guard_unexpected_secrets   = length(local.unexpected_secrets) > 0 ? file("terraform/secrets/ holds keys outside their file's own: ${join(", ", local.unexpected_secrets)}; move, rename or delete them (LIB-0012; see secrets-schema.json)") : true
@@ -442,7 +451,7 @@ locals {
   # workload_* local below is a unit's, a zone's included. Since v7.0.0 a leaf
   # at the old depth, workloads/<workload>/<provider>/<module>/<instance>, is
   # refused (LIB-0037 §6).
-  path_segments      = split("/", path_relative_to_include())
+  path_segments      = split("/", local.leaf_path)
   unit_root          = local.path_segments[0]
   is_nested_workload = length(local.path_segments) == 6 && local.unit_root == "workloads" && (length(regexall("^[a-z0-9-]+(\\.[a-z0-9-]+)+$", try(local.path_segments[1], ""))) > 0 || try(local.path_segments[1], "") == "private")
   is_old_workload    = length(local.path_segments) == 5 && local.unit_root == "workloads"
@@ -472,13 +481,13 @@ locals {
   # rather than the git filter, so these need no mark_as_read. A root
   # zones.yaml is only looked for, to be refused.
   zones = {
-    for f in(local.is_workload_leaf ? fileset(get_parent_terragrunt_dir(), "zones/*/zone.yaml") : []) :
+    for f in(local.is_workload_leaf ? fileset(local.repo_root, "zones/*/zone.yaml") : []) :
     split("/", f)[1] => {
-      hosts = try({ for h, w in yamldecode(file("${get_parent_terragrunt_dir()}/${f}")).zone.hosts : h => tostring(w) }, {})
+      hosts = try({ for h, w in yamldecode(file("${local.repo_root}/${f}")).zone.hosts : h => tostring(w) }, {})
     }
   }
   # An old-layout workload (LIB-0037 §6), looked for only to be refused.
-  old_workload_files = local.is_workload_leaf ? fileset(get_parent_terragrunt_dir(), "workloads/*/values.yaml") : []
+  old_workload_files = local.is_workload_leaf ? fileset(local.repo_root, "workloads/*/values.yaml") : []
 
   # Workload leaves (LIB-0023). HCL evaluates both arms of a conditional, so
   # every expression below runs for every leaf and is written to be harmless
@@ -489,7 +498,7 @@ locals {
   workload_instance = try(local.path_segments[4 + local.unit_offset], "")
   unit_dir          = local.is_nested_workload ? "workloads/${local.workload_parent}/${local.workload}" : "zones/${local.workload}"
   workload_file     = local.is_nested_workload ? "${local.unit_dir}/workload.yaml" : "zones/${local.workload}/zone.yaml"
-  workload_doc      = try(yamldecode(file(mark_as_read("${get_parent_terragrunt_dir()}/${local.workload_file}"))), null)
+  workload_doc      = try(yamldecode(file(mark_as_read("${local.repo_root}/${local.workload_file}"))), null)
   # A unit file's content sits under one key, `zone` or `workload`, with its
   # records at dnsRecords (LIB-0039 §§1-2). Everything below reads it
   # unwrapped, with dnsRecords at cloudflare.dnsRecord, the kind table's path;
@@ -513,7 +522,7 @@ locals {
   # §§1-2): `prefix` and `suffix` from deployments.scaleway.project, else
   # its zone's; its zone from the directory; and a project entry only when
   # it has its own project. resolve-workloads.sh's expand_workload is its twin.
-  workload_zone_doc     = local.is_nested_workload && !local.is_private_workload ? try(yamldecode(file("${get_parent_terragrunt_dir()}/zones/${local.workload_parent}/zone.yaml")), null) : null
+  workload_zone_doc     = local.is_nested_workload && !local.is_private_workload ? try(yamldecode(file("${local.repo_root}/zones/${local.workload_parent}/zone.yaml")), null) : null
   workload_zone_raw     = try(local.workload_zone_doc.zone, null)
   workload_zone_prefix  = try(tostring(local.workload_zone_raw.prefix), replace(try(tostring(local.workload_zone_raw.name), local.workload_parent), "/[^a-z0-9-]/", "-"))
   workload_project      = merge({}, try(local.workload_raw.deployments.scaleway.project, null))
@@ -545,7 +554,7 @@ locals {
   # fails the run.
   workload_secrets_file = local.is_nested_workload ? "${local.unit_dir}/secrets.workload.yaml" : "${local.unit_root}/${local.workload}/secrets.yaml"
   workload_secrets_doc = merge({}, [
-    for f in ["${get_parent_terragrunt_dir()}/${local.workload_secrets_file}"] :
+    for f in ["${local.repo_root}/${local.workload_secrets_file}"] :
     jsondecode(run_cmd("--terragrunt-quiet", "sops", "--decrypt", "--output-type", "json", mark_as_read(f)))
     if local.is_workload_leaf && !local.is_zone_unit && fileexists(f)
   ]...)
@@ -599,7 +608,7 @@ locals {
   }
   workload_b2_xgrants = {
     for b, x in local.workload_b2_xbuckets : b => try(
-      [for c in yamldecode(file(mark_as_read("${get_parent_terragrunt_dir()}/workloads/${x.owner}/workload.yaml"))).workload.backblaze.bucket[x.bucket].grants["${local.workload_parent}/${local.workload}"] : tostring(c)],
+      [for c in yamldecode(file(mark_as_read("${local.repo_root}/workloads/${x.owner}/workload.yaml"))).workload.backblaze.bucket[x.bucket].grants["${local.workload_parent}/${local.workload}"] : tostring(c)],
       null
     )
   }
@@ -637,7 +646,7 @@ locals {
   # else the owner in origin's URL. git runs only when needed, behind a for's
   # filter, since HCL evaluates both arms of a conditional.
   spoke_origin = join("", [
-    for c in ["origin"] : run_cmd("--terragrunt-quiet", "sh", "-c", "git -C \"$1\" remote get-url origin 2>/dev/null || true", "sh", get_parent_terragrunt_dir())
+    for c in ["origin"] : run_cmd("--terragrunt-quiet", "sh", "-c", "git -C \"$1\" remote get-url origin 2>/dev/null || true", "sh", local.repo_root)
     if local.workload_pages_on && local.workload_pages_user_in == "" && get_env("GITHUB_REPOSITORY_OWNER", "") == ""
   ])
   spoke_owner         = get_env("GITHUB_REPOSITORY_OWNER", try(regex("github\\.com[:/]([^/]+)/", local.spoke_origin)[0], ""))
@@ -776,7 +785,7 @@ locals {
   # redirects www to the apex. resolve-workloads.sh's expand_zone is its twin.
   zone_site_raw = {
     for h, w in(local.is_zone_unit ? try(local.zones[local.workload].hosts, {}) : {}) :
-    h => try(yamldecode(file("${get_parent_terragrunt_dir()}/workloads/${local.workload}/${w}/workload.yaml")).workload, null)
+    h => try(yamldecode(file("${local.repo_root}/workloads/${local.workload}/${w}/workload.yaml")).workload, null)
   }
   zone_site_names = {
     for h, wr in local.zone_site_raw : h => try([for x in wr.deployments.cloudflare.hosts : tostring(x)], h == "@" ? ["@", "www"] : [h])
@@ -1372,7 +1381,7 @@ locals {
 
   # Where a `workload`-state leaf's state sits in its workload's bucket
   # (LIB-0028 §3): under scaleway.state.prefix, by default workloads/<workload>/,
-  # which makes the key exactly what path_relative_to_include() gives. Read by
+  # which makes the key exactly what local.leaf_path gives. Read by
   # the stub's remote_state, which this file can't declare for it: only the stub
   # has the dependencies the bucket name and the deployer's key come from.
   workload_state        = try(local.workload_kind.state, "spoke")
@@ -1429,25 +1438,25 @@ locals {
   workload_tag_dir = local.is_workload_leaf && local.workload_version != "" ? trimspace(run_cmd(
     "--terragrunt-quiet", "sh", "-c",
     "for d in tools/terraform lib/terraform; do git -C \"$1\" cat-file -e \"$2:$d/$3\" 2>/dev/null && { echo \"$d\"; exit 0; }; done; echo",
-    "sh", "${get_parent_terragrunt_dir()}/.pigeon/src", local.workload_tag_ref, local.workload_module,
+    "sh", "${local.pigeon_dir}/src", local.workload_tag_ref, local.workload_module,
   )) : ""
   workload_source = local.workload_tag_dir != "" ? "git::${trimsuffix(local.workload_lib_repo, ".git")}.git//${local.workload_tag_dir}/${local.workload_module}?ref=${local.workload_tag_ref}" : "https://noisypigeon.garden/terraform/${local.workload_module}/v${local.workload_version}"
 
-  guard_workload_values = local.is_workload_leaf && local.workload_values == null ? file("${local.workload_file} is missing or not valid YAML, but ${path_relative_to_include()} is its stub (LIB-0023)") : true
+  guard_workload_values = local.is_workload_leaf && local.workload_values == null ? file("${local.workload_file} is missing or not valid YAML, but ${local.leaf_path} is its stub (LIB-0023)") : true
   # The old layout (LIB-0037 §6): a leaf at its depth, and any values.yaml.
-  guard_workload_old_leaf = local.is_old_workload ? file("${path_relative_to_include()} is a workload leaf in the old layout, workloads/<workload>/, refused since root.hcl v7.0.0: a workload lives in workloads/<zone>/<workload>/ or workloads/private/<workload>/ (LIB-0037 §6)") : true
+  guard_workload_old_leaf = local.is_old_workload ? file("${local.leaf_path} is a workload leaf in the old layout, workloads/<workload>/, refused since root.hcl v7.0.0: a workload lives in workloads/<zone>/<workload>/ or workloads/private/<workload>/ (LIB-0037 §6)") : true
   guard_workload_old_file = length(local.old_workload_files) > 0 ? file("${join(", ", local.old_workload_files)}: a workloads/<workload>/values.yaml is refused since root.hcl v7.0.0; move it to workloads/<zone>/<workload>/workload.yaml (LIB-0037 §6)") : true
-  guard_workload_retired  = local.is_workload_leaf && local.workload_retired ? file("${path_relative_to_include()}: ${local.workload_module} is no longer a kind; its resources are the ${local.workload_module == "cloudflare/apex-redirect" ? "cloudflare/dns-record and cloudflare/ruleset leaves an apexRedirect implies" : "scaleway/iam-application, iam-policy and iam-api-key leaves at the instance deployer"}. Regenerate the stubs with workflows v7, and move its state by LIB-0038 §5") : true
-  guard_workload_kind     = local.is_workload_leaf && !local.workload_retired && local.workload_kind == null ? file("${path_relative_to_include()}: ${local.workload_module} is not a workload kind (LIB-0023 §2)") : true
-  guard_workload_unit     = local.is_workload_leaf && local.workload_kind != null && !contains(try(local.workload_kind.units, []), local.is_zone_unit ? "zone" : "workload") ? file("${path_relative_to_include()}: ${local.workload_module} is not a kind a ${local.is_zone_unit ? "zone" : "workload"} takes (LIB-0036 §§1, 3)") : true
-  guard_workload_declared = local.is_workload_leaf && !try(local.workload_kind.declared, true) ? file("${path_relative_to_include()} has no entry in ${local.workload_file}; run resolve-workloads.sh, which generates stubs from values.yaml (LIB-0023)") : true
+  guard_workload_retired  = local.is_workload_leaf && local.workload_retired ? file("${local.leaf_path}: ${local.workload_module} is no longer a kind; its resources are the ${local.workload_module == "cloudflare/apex-redirect" ? "cloudflare/dns-record and cloudflare/ruleset leaves an apexRedirect implies" : "scaleway/iam-application, iam-policy and iam-api-key leaves at the instance deployer"}. Regenerate the stubs with workflows v7, and move its state by LIB-0038 §5") : true
+  guard_workload_kind     = local.is_workload_leaf && !local.workload_retired && local.workload_kind == null ? file("${local.leaf_path}: ${local.workload_module} is not a workload kind (LIB-0023 §2)") : true
+  guard_workload_unit     = local.is_workload_leaf && local.workload_kind != null && !contains(try(local.workload_kind.units, []), local.is_zone_unit ? "zone" : "workload") ? file("${local.leaf_path}: ${local.workload_module} is not a kind a ${local.is_zone_unit ? "zone" : "workload"} takes (LIB-0036 §§1, 3)") : true
+  guard_workload_declared = local.is_workload_leaf && !try(local.workload_kind.declared, true) ? file("${local.leaf_path} has no entry in ${local.workload_file}; run resolve-workloads.sh, which generates stubs from values.yaml (LIB-0023)") : true
   guard_workload_names    = local.is_workload_leaf && (local.workload_prefix == "" || local.workload_suffix == "") ? file("${local.workload_file} needs a non-empty prefix and suffix (LIB-0023 §4)") : true
-  guard_workload_inputs   = local.is_workload_leaf && !alltrue([for k in keys(local.workload_inputs) : can(regex("^[a-z_][a-z0-9_]*$", k))]) ? file("${path_relative_to_include()}: ${local.workload_file} has an input name that isn't a Terraform identifier") : true
-  guard_workload_pin      = local.is_workload_leaf && !can(regex("^([0-9]+(\\.[0-9]+){0,2})?$", local.workload_pin)) ? file("${path_relative_to_include()}: version \"${local.workload_pin}\" must be X, X.Y or X.Y.Z (LIB-0023 §3)") : true
-  guard_workload_both     = local.is_workload_leaf && length(setintersection(keys(local.workload_secret_entry), [for k in keys(local.workload_entry) : k if k != "version"])) > 0 ? file("${path_relative_to_include()}: ${join(", ", setintersection(keys(local.workload_secret_entry), keys(local.workload_entry)))} set in both ${local.workload_file} and ${local.workload_secrets_file}; keep each input in one (LIB-0025)") : true
-  guard_workload_refs     = local.is_workload_leaf && !alltrue([for k, name in local.workload_refs : contains(keys(local.workload_env), name)]) ? file("${path_relative_to_include()}: a secretRef in ${local.workload_file} names something ${local.workload_secrets_file}'s env doesn't have (LIB-0025)") : true
-  guard_workload_scalars  = local.is_workload_leaf && !alltrue(concat([for k, v in local.workload_sensitive : v != null], [for k, v in try(local.workload_secrets.env, {}) : can(tostring(v))])) ? file("${path_relative_to_include()}: every value in ${local.workload_secrets_file} must be one value, not a list or a map (LIB-0025)") : true
-  guard_workload_version  = local.is_workload_leaf && local.workload_version == "" ? file("${path_relative_to_include()}: no terraform/${local.workload_module} tag matches version \"${local.workload_pin}\" (LIB-0023 §3)") : true
+  guard_workload_inputs   = local.is_workload_leaf && !alltrue([for k in keys(local.workload_inputs) : can(regex("^[a-z_][a-z0-9_]*$", k))]) ? file("${local.leaf_path}: ${local.workload_file} has an input name that isn't a Terraform identifier") : true
+  guard_workload_pin      = local.is_workload_leaf && !can(regex("^([0-9]+(\\.[0-9]+){0,2})?$", local.workload_pin)) ? file("${local.leaf_path}: version \"${local.workload_pin}\" must be X, X.Y or X.Y.Z (LIB-0023 §3)") : true
+  guard_workload_both     = local.is_workload_leaf && length(setintersection(keys(local.workload_secret_entry), [for k in keys(local.workload_entry) : k if k != "version"])) > 0 ? file("${local.leaf_path}: ${join(", ", setintersection(keys(local.workload_secret_entry), keys(local.workload_entry)))} set in both ${local.workload_file} and ${local.workload_secrets_file}; keep each input in one (LIB-0025)") : true
+  guard_workload_refs     = local.is_workload_leaf && !alltrue([for k, name in local.workload_refs : contains(keys(local.workload_env), name)]) ? file("${local.leaf_path}: a secretRef in ${local.workload_file} names something ${local.workload_secrets_file}'s env doesn't have (LIB-0025)") : true
+  guard_workload_scalars  = local.is_workload_leaf && !alltrue(concat([for k, v in local.workload_sensitive : v != null], [for k, v in try(local.workload_secrets.env, {}) : can(tostring(v))])) ? file("${local.leaf_path}: every value in ${local.workload_secrets_file} must be one value, not a list or a map (LIB-0025)") : true
+  guard_workload_version  = local.is_workload_leaf && local.workload_version == "" ? file("${local.leaf_path}: no terraform/${local.workload_module} tag matches version \"${local.workload_pin}\" (LIB-0023 §3)") : true
   guard_workload_reserved = local.is_workload_leaf && contains(try(keys(local.workload_buckets), []), "state") ? file("${local.workload_file}: scaleway.bucket.state is reserved for the workload's state bucket; configure it as scaleway.state (LIB-0028)") : true
   guard_workload_prefix   = local.is_workload_leaf && !can(regex("^[^/].*/$", local.workload_state_prefix)) ? file("${local.workload_file}: scaleway.state.prefix \"${local.workload_state_prefix}\" must not start with / and must end with one (LIB-0028 §3)") : true
   guard_workload_versions = local.is_workload_leaf && try(local.workload_scaleway.state.enable_versioning, true) == false ? file("${local.workload_file}: scaleway.state.enable_versioning can't be false; versioning is the state's only protection (LIB-0028 §2)") : true
@@ -1456,15 +1465,15 @@ locals {
   # LIB-0024 §1's flat scaleway.deployer, the bundle's inputs (LIB-0038 §1).
   workload_deployer_flat  = sort(setsubtract(concat(keys(local.workload_deployer), keys(local.workload_deployer_secrets)), local.workload_deployer_keys))
   guard_workload_dep_flat = local.is_workload_leaf && length(local.workload_deployer_flat) > 0 ? file("${local.workload_file}: scaleway.deployer.${join(", scaleway.deployer.", local.workload_deployer_flat)}: the deployer is three leaves, so each input goes under scaleway.deployer.application, .policy or .apiKey, by its module's own name (LIB-0038 §1)") : true
-  guard_workload_backend  = !local.workload_stub_backend ? file("${path_relative_to_include()} keeps its state in the workload's bucket but its stub declares no remote_state; regenerate it with a resolve-workloads.sh from workflows v4.9.0 or later (LIB-0028 §5)") : true
-  guard_workload_b2_on    = local.is_workload_leaf && local.leaf_provider == "backblaze" && !contains(keys(local.providers), "backblaze") ? file("${path_relative_to_include()} is a Backblaze workload leaf, but spoke.hcl's providers map has no backblaze (LIB-0029 §4)") : true
+  guard_workload_backend  = !local.workload_stub_backend ? file("${local.leaf_path} keeps its state in the workload's bucket but its stub declares no remote_state; regenerate it with a resolve-workloads.sh from workflows v4.9.0 or later (LIB-0028 §5)") : true
+  guard_workload_b2_on    = local.is_workload_leaf && local.leaf_provider == "backblaze" && !contains(keys(local.providers), "backblaze") ? file("${local.leaf_path} is a Backblaze workload leaf, but spoke.hcl's providers map has no backblaze (LIB-0029 §4)") : true
   guard_workload_b2_list  = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && length(try(tolist(local.workload_b2_key_entry.buckets), [])) == 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.buckets must list at least one of this workload's backblaze.bucket keys (LIB-0029 §3)") : true
   guard_workload_b2_known = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && length(setsubtract(local.workload_b2_own_buckets, try(keys(local.workload_b2_buckets), []))) > 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.buckets names a bucket this workload's backblaze.bucket doesn't have (LIB-0029 §3)") : true
   guard_workload_b2_grant = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && length(local.workload_b2_ungranted) > 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.buckets: ${join(", ", local.workload_b2_ungranted)} isn't granted to ${local.workload_parent}/${local.workload}, or doesn't exist; the owning bucket's grants must name it (LIB-0045 §§6-7)") : true
   guard_workload_b2_reach = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && length(local.workload_b2_overreach) > 0 ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.capabilities: ${join(", ", local.workload_b2_overreach)} exceed what a bucket of another workload it names grants ${local.workload_parent}/${local.workload} (LIB-0045 §§6-7)") : true
   guard_workload_b2_dep   = local.is_workload_leaf && contains(try(keys(local.workload_b2_keys), []), "deployer") ? file("${local.workload_file}: backblaze.apiKey.deployer is reserved for the workload's own key; configure it as backblaze.deployer (LIB-0041 §1)") : true
   guard_workload_b2_ids   = local.is_workload_leaf && local.workload_kind_key == "backblaze/api-key" && (can(local.workload_b2_key_entry.bucket_ids) || can(local.workload_secrets.backblaze.apiKey[local.workload_instance].bucket_ids)) ? file("${local.workload_file}: backblaze.apiKey.${local.workload_instance}.bucket_ids can't be set; list the buckets in buckets instead (LIB-0029 §3)") : true
-  guard_workload_cf_on    = local.is_workload_leaf && local.leaf_provider == "cloudflare" && !contains(keys(local.providers), "cloudflare") ? file("${path_relative_to_include()} is a Cloudflare workload leaf, but spoke.hcl's providers map has no cloudflare (LIB-0030 §1)") : true
+  guard_workload_cf_on    = local.is_workload_leaf && local.leaf_provider == "cloudflare" && !contains(keys(local.providers), "cloudflare") ? file("${local.leaf_path} is a Cloudflare workload leaf, but spoke.hcl's providers map has no cloudflare (LIB-0030 §1)") : true
   guard_workload_cf_spoke = local.is_workload_leaf && local.leaf_provider == "cloudflare" && (can(local.workload_cf_entry.account_id) || can(local.workload_cf_entry.zone_id) || can(local.workload_cf_secrets.account_id) || can(local.workload_cf_secrets.zone_id)) ? file("${local.workload_file}: ${local.workload_cf_path}.${local.workload_instance} can't set account_id or zone_id; the account is the spoke's, and a zone is named (LIB-0030 §§4-5)") : true
   guard_workload_cf_zone  = local.is_workload_leaf && local.workload_cf_zone_kind && local.workload_zone == "" ? file("${local.workload_file}: ${local.workload_cf_path}.${local.workload_instance} has no zone, and the workload sets no cloudflare.zone (LIB-0030 §3)") : true
   # Scaleway's compute kinds (LIB-0043 §§1-6): what can't work, on every
@@ -1532,7 +1541,7 @@ locals {
     can(local.workload_raw.scaleway.project) ? "scaleway.project moves to deployments.scaleway.project (LIB-0037 §2)" : "",
     can(local.workload_raw.cloudflare.zone) || can(local.workload_raw.cloudflare[local.workload_cf_yaml[local.workload_module]][local.workload_instance].zone) ? "cloudflare.zone is refused; the directory names the zone (LIB-0037 §§1, 6)" : "",
     local.workload_name == "zone" ? "name can't be zone, which a zone's own resources carry (LIB-0037 §1)" : "",
-    fileexists("${get_parent_terragrunt_dir()}/${local.unit_dir}/secrets.yaml") ? "secrets.yaml is refused; rename it secrets.workload.yaml (LIB-0037 §§1, 6)" : "",
+    fileexists("${local.repo_root}/${local.unit_dir}/secrets.yaml") ? "secrets.yaml is refused; rename it secrets.workload.yaml (LIB-0037 §§1, 6)" : "",
     !local.is_private_workload && local.workload_zone_raw == null ? "zone ${local.workload_parent} has no zones/${local.workload_parent}/zone.yaml (LIB-0037 §1)" : "",
     local.workload_pages_on && local.is_private_workload ? "deployments.githubPages needs a host, which a private workload never has (LIB-0037 §§1, 4)" : "",
     local.is_nested_workload && contains(try(keys(local.workload_raw.deployments), []), "cloudflare") && local.workload_host == "" ? "deployments.cloudflare needs a host; give this workload one in zones/${local.workload_parent}/zone.yaml (LIB-0051 §2)" : "",
@@ -1547,12 +1556,12 @@ locals {
   guard_workload_nested = length(local.workload_nested_problems) > 0 ? file("${local.workload_file}: ${join("; ", local.workload_nested_problems)}") : true
 
   # Zone units (LIB-0036 §§1-4).
-  guard_zones_file    = fileexists("${get_parent_terragrunt_dir()}/zones.yaml") ? file("zones.yaml is refused: each zone is zones/<zone>/zone.yaml, naming the workload that may write in it (LIB-0036 §1)") : true
-  guard_zone_leaf     = local.is_zone_leaf ? file("${path_relative_to_include()} is a hand-written zone leaf, and those are retired: declare its entries in zones/${local.cloudflare_zone}/zone.yaml (LIB-0036 §4)") : true
+  guard_zones_file    = fileexists("${local.repo_root}/zones.yaml") ? file("zones.yaml is refused: each zone is zones/<zone>/zone.yaml, naming the workload that may write in it (LIB-0036 §1)") : true
+  guard_zone_leaf     = local.is_zone_leaf ? file("${local.leaf_path} is a hand-written zone leaf, and those are retired: declare its entries in zones/${local.cloudflare_zone}/zone.yaml (LIB-0036 §4)") : true
   guard_zone_apex     = local.is_zone_unit && length(regexall("^[a-z0-9-]+(\\.[a-z0-9-]+)+$", local.workload)) == 0 ? file("zones/${local.workload}/: a zone's directory must be its apex domain (LIB-0036 §1)") : true
   guard_zone_prefix   = local.is_zone_unit && length(regexall("^[a-z0-9-]+$", local.workload_prefix)) == 0 ? file("${local.workload_file}: prefix \"${local.workload_prefix}\" may hold only a-z, 0-9 and - (LIB-0036 §1)") : true
   guard_zone_own_zone = local.is_zone_unit && (can(local.workload_raw.cloudflare.zone) || can(local.workload_raw.cloudflare[local.workload_cf_yaml[local.workload_module]][local.workload_instance].zone)) ? file("${local.workload_file}: a zone's entries can't set zone; the directory names it (LIB-0036 §1)") : true
-  guard_zone_secrets  = local.is_zone_unit && fileexists("${get_parent_terragrunt_dir()}/${local.workload_secrets_file}") ? file("${local.workload_secrets_file}: a zone has no secrets.yaml (LIB-0036, Out of scope)") : true
+  guard_zone_secrets  = local.is_zone_unit && fileexists("${local.repo_root}/${local.workload_secrets_file}") ? file("${local.workload_secrets_file}: a zone has no secrets.yaml (LIB-0036, Out of scope)") : true
   guard_zone_workload = local.is_zone_unit && can(local.workload_raw.workload) ? file("${local.workload_file}: workload is refused since root.hcl v7.0.0; hosts names the workloads under workloads/${local.workload}/ (LIB-0037 §§3, 6)") : true
   # An apexRedirect is a shorthand with the old module's four inputs (LIB-0038
   # §3), and a target_url it can take a host from.
@@ -1589,7 +1598,7 @@ locals {
   # and a host's names are its workload's, not the zone's.
   zone_hosts        = local.is_zone_unit ? try(local.zones[local.workload].hosts, {}) : {}
   zone_record_type  = upper(try(tostring(local.workload_cf_entry.type), ""))
-  zone_missing_host = [for h, w in local.zone_hosts : w if !fileexists("${get_parent_terragrunt_dir()}/workloads/${local.workload}/${w}/workload.yaml")]
+  zone_missing_host = [for h, w in local.zone_hosts : w if !fileexists("${local.repo_root}/workloads/${local.workload}/${w}/workload.yaml")]
   guard_zone_hosts  = length(local.zone_missing_host) > 0 ? file("${local.workload_file}: hosts names ${join(", ", local.zone_missing_host)}, with no workloads/${local.workload}/<workload>/workload.yaml (LIB-0037 §3)") : true
   guard_zone_host_record = local.is_zone_unit && local.workload_module == "cloudflare/dns-record" && (
     anytrue([for h, w in local.zone_hosts : h != "@" && (local.workload_record_name == h || endswith(local.workload_record_name, ".${h}"))]) ||
@@ -1770,7 +1779,7 @@ EOF
 
   # The key is the same whichever backend holds it (LIB-0001 invariant 4), so
   # moving a spoke between backends moves objects, never keys.
-  state_key = "${path_relative_to_include()}/terraform.tfstate"
+  state_key = "${local.leaf_path}/terraform.tfstate"
 
   scaleway_state_config = {
     endpoints = {

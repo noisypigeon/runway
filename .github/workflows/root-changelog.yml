@@ -53,11 +53,11 @@ jobs:
   rollup:
     needs: releases
     if: github.event.pull_request.merged == true && needs.releases.outputs.releases == 'false'
-    uses: noisypigeon/runway/.github/workflows/spoke-root-changelog.yml@github/workflows/v10.2.0
+    uses: noisypigeon/runway/.github/workflows/spoke-root-changelog.yml@github/workflows/v11.0.1
     with:
       # First match wins.
       precedence: |
-        ^(terraform/|root\.hcl$|spoke\.hcl$|\.sops\.yaml$)=terraform
+        ^(terraform/|\.config/)=terraform
         ^tools/docs/adr/=adr
         ^tools/docs/runbooks/=docs
         ^tools/=tools
