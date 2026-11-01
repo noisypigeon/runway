@@ -24,6 +24,9 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-31
 
+- [github/workflows] feat(github/terragrunt): scaleway.job, Serverless Jobs for ad-hoc and recurring work (LIB-0053) ([#192](https://github.com/noisypigeon/runway/pull/192))
+- [github/terragrunt] feat(github/terragrunt): scaleway.job, Serverless Jobs for ad-hoc and recurring work (LIB-0053) ([#192](https://github.com/noisypigeon/runway/pull/192))
+- [scaleway/job-definition] feat(github/terragrunt): scaleway.job, Serverless Jobs for ad-hoc and recurring work (LIB-0053) ([#192](https://github.com/noisypigeon/runway/pull/192))
 - [adr] docs(adr): LIB-0053, Scaleway Serverless Jobs for ad-hoc and recurring jobs ([#191](https://github.com/noisypigeon/runway/pull/191))
 - [adr] chore: delete fetch-lib.sh and .lib-version (LIB-0052 step 4) ([#190](https://github.com/noisypigeon/runway/pull/190))
 - [terraform] chore: move runway's config into .config/ (LIB-0052) ([#189](https://github.com/noisypigeon/runway/pull/189))

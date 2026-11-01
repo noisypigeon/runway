@@ -4,6 +4,10 @@ All notable changes to the reusable CI are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [11.1.0] - 2026-10-31
+
+- feat(github/terragrunt): scaleway.job, Serverless Jobs for ad-hoc and recurring work (LIB-0053) ([#192](https://github.com/noisypigeon/runway/pull/192))
+
 ## [11.0.1] - 2026-10-31
 
 - fix(github/workflows): finish v11's .config/ support before runway moves ([#188](https://github.com/noisypigeon/runway/pull/188))
