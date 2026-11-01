@@ -6,8 +6,8 @@
 workload:
   name: blog
   deployments:
-    githubPages: {}
-    # LIB-0051 §4 step 1: the site's R2 bucket, served at r2-test beside
-    # Pages until the flip, which drops githubPages and these hosts.
+    # LIB-0051 §4 step 2, the flip, first apply: githubPages goes, so its two
+    # Pages CNAMEs are destroyed and free the apex and www for R2. The next
+    # commit drops hosts, so R2 serves the apex and www.
     cloudflare:
       hosts: [r2-test]
