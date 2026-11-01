@@ -72,12 +72,12 @@ on:
         description: "Script (relative to the caller's repo root) that materializes library at the version the caller pins."
         type: string
         required: false
-        default: ".config/pigeon/tools.sh"
+        default: ".config/tools.sh"
       changelog_script:
         description: "Path (relative to the caller's repo root) to root-changelog.sh, as left by fetch_script."
         type: string
         required: false
-        default: ".config/pigeon/src/tools/github/scripts/root-changelog.sh"
+        default: ".config/src/tools/github/scripts/root-changelog.sh"
       root_changelog_tag:
         description: "Bracket tag used in the caller's root CHANGELOG.md rollup line, e.g. 'blog'. Empty (the default) skips the root rollup entirely -- what a single-site repo wants."
         type: string
@@ -143,7 +143,7 @@ jobs:
       - name: Fetch library
         env:
           FETCH_SCRIPT: ${{ inputs.fetch_script }}
-        run: '[ -e "$FETCH_SCRIPT" ] || FETCH_SCRIPT="${FETCH_SCRIPT/.config\/pigeon\//.pigeon/}"; "./$FETCH_SCRIPT"'
+        run: '[ -e "$FETCH_SCRIPT" ] || FETCH_SCRIPT="${FETCH_SCRIPT/.config\//.pigeon/}"; "./$FETCH_SCRIPT"'
 
       - name: Update blog changelog and daily digest
         env:
@@ -157,7 +157,7 @@ jobs:
           CHANGELOG_SCRIPT: ${{ inputs.changelog_script }}
           ROOT_CHANGELOG_TAG: ${{ inputs.root_changelog_tag }}
         run: |
-          [ -e "$CHANGELOG_SCRIPT" ] || CHANGELOG_SCRIPT="${CHANGELOG_SCRIPT/.config\/pigeon\//.pigeon/}"
+          [ -e "$CHANGELOG_SCRIPT" ] || CHANGELOG_SCRIPT="${CHANGELOG_SCRIPT/.config\//.pigeon/}"
           TODAY=$(TZ="America/Los_Angeles" date +%Y-%m-%d)
           OFFSET=$(TZ="America/Los_Angeles" date +%z | sed -E 's/([+-][0-9]{2})([0-9]{2})/\1:\2/')
 

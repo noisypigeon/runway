@@ -36,12 +36,12 @@ on:
         description: "Script (relative to the caller's repo root) that materializes library at the version the caller pins."
         type: string
         required: false
-        default: ".config/pigeon/tools.sh"
+        default: ".config/tools.sh"
       changelog_script:
         description: "Path (relative to the caller's repo root) to root-changelog.sh, as left by fetch_script."
         type: string
         required: false
-        default: ".config/pigeon/src/tools/github/scripts/root-changelog.sh"
+        default: ".config/src/tools/github/scripts/root-changelog.sh"
       git_user_name:
         type: string
         required: false
@@ -108,7 +108,7 @@ jobs:
       - name: Fetch library
         env:
           FETCH_SCRIPT: ${{ inputs.fetch_script }}
-        run: '[ -e "$FETCH_SCRIPT" ] || FETCH_SCRIPT="${FETCH_SCRIPT/.config\/pigeon\//.pigeon/}"; "./$FETCH_SCRIPT"'
+        run: '[ -e "$FETCH_SCRIPT" ] || FETCH_SCRIPT="${FETCH_SCRIPT/.config\//.pigeon/}"; "./$FETCH_SCRIPT"'
 
       - name: Write the root changelog line
         env:
@@ -120,7 +120,7 @@ jobs:
           GIT_USER_NAME: ${{ inputs.git_user_name }}
           GIT_USER_EMAIL: ${{ inputs.git_user_email }}
         run: |
-          [ -e "$CHANGELOG_SCRIPT" ] || CHANGELOG_SCRIPT="${CHANGELOG_SCRIPT/.config\/pigeon\//.pigeon/}"
+          [ -e "$CHANGELOG_SCRIPT" ] || CHANGELOG_SCRIPT="${CHANGELOG_SCRIPT/.config\//.pigeon/}"
           git config user.name "$GIT_USER_NAME"
           git config user.email "$GIT_USER_EMAIL"
 

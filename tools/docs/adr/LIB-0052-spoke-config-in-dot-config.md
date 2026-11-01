@@ -174,3 +174,16 @@ Where this entry and the text above disagree, this entry is what runs.
    - the base worktree for destroys gets the clone at both paths;
    - `terragrunt-detect`'s default pattern adds `.config/`'s files;
    - the provider cache keys on `.config/root.hcl` too.
+5. **`terragrunt-run` plans every unit when `.config/`'s `root.hcl`,
+   `spoke.hcl` or `secrets-schema.json` changes,** as it already did for the
+   root's copies. Without that, runway's move planned only its hand-written
+   leaves, which proved nothing about the units' keys.
+6. **The library fetch sits in `.config/` itself, at the owner's call,** not
+   in `.config/pigeon/`: `.config/tools.sh` and `.config/version`, with the
+   gitignored clone in `.config/src/`. Workflow defaults and `root.hcl` name
+   those paths, and still fall back to `.pigeon/`. No spoke had taken
+   v11.0.0's `.config/pigeon/` paths, so no fallback to them is kept.
+7. **`plan-archive.sh` names `.config/sops.yaml`** when it exists. sops
+   searches only upward from the working directory for `.sops.yaml`, so after
+   the move the saved plan's encryption found no rules, and the move's plan
+   failed at "Pack saved plan".

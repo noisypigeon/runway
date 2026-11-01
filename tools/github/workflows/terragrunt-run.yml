@@ -101,7 +101,7 @@ on:
         description: "Path (relative to the caller's repo root) to the library's tools/github/scripts, as left by prepare_cmd's fetcher."
         type: string
         required: false
-        default: ".config/pigeon/src/tools/github/scripts"
+        default: ".config/src/tools/github/scripts"
     secrets:
       SOPS_AGE_KEY:
         required: true
@@ -259,7 +259,7 @@ jobs:
           WANT: ${{ inputs.scripts_dir }}
         run: |
           d="$WANT"
-          [ -d "$d" ] || d="${d/.config\/pigeon\//.pigeon/}"
+          [ -d "$d" ] || d="${d/.config\//.pigeon/}"
           echo "scripts_dir=$d" >> "$GITHUB_OUTPUT"
 
       - name: Clear terragrunt cache
@@ -351,7 +351,9 @@ jobs:
             "$resolver"
             changed=$(git diff --name-only "$base" HEAD)
             # Each a unit directory, workloads/<zone>/<w> or zones/<z>.
-            if grep -qE '^(root\.hcl|spoke\.hcl|terraform/secrets/)' <<<"$changed"; then
+            # Every unit when the spoke's config or a secret changed, at the
+            # root or in .config/ (LIB-0052).
+            if grep -qE '^(\.config/)?(root\.hcl|spoke\.hcl|secrets-schema\.json)$|^terraform/secrets/' <<<"$changed"; then
               names=$(for f in workloads/*/*/workload.yaml zones/*/zone.yaml; do if [ -f "$f" ]; then dirname "$f"; fi; done)
             else
               names=$(grep -E '^workloads/[^/]+/[^/]+/(workload|secrets\.workload)\.yaml$' <<<"$changed" | cut -d/ -f1-3 || true)
@@ -390,12 +392,12 @@ jobs:
             # module sources resolve from their git tags too (LIB-0051
             # amendment 8): a worktree carries no gitignored library clone.
             # The base may look for it where the head no longer keeps it
-            # (.pigeon/src before LIB-0052, .config/pigeon/src after), so both
+            # (.pigeon/src before LIB-0052, .config/src after), so both
             # paths point at whichever clone the head has.
             src=""
-            for p in .config/pigeon .pigeon; do [ -z "$src" ] && [ -d "$p/src" ] && src="$GITHUB_WORKSPACE/$p/src"; done
+            for p in .config .pigeon; do [ -z "$src" ] && [ -d "$p/src" ] && src="$GITHUB_WORKSPACE/$p/src"; done
             if [ -n "$src" ]; then
-              for p in .config/pigeon .pigeon; do
+              for p in .config .pigeon; do
                 [ -e "$RUNNER_TEMP/base/$p/src" ] || { mkdir -p "$RUNNER_TEMP/base/$p" && ln -s "$src" "$RUNNER_TEMP/base/$p/src"; }
               done
             fi
