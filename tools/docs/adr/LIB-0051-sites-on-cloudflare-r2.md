@@ -196,6 +196,10 @@ Where this entry and the text above disagree, this entry is what runs.
      would have missed every module version page, since `v1.2.3` contains
      dots.
    - **Deleting stale objects.** That happens only after the new ones are up.
+   - **The `x/` key.** `aws s3 cp` to a key ending in `/` writes beneath it,
+     so the first test-host deploy had no `x/` and a directory URL with its
+     slash answered 404. The aliases are written with `s3api put-object`,
+     sixteen at a time.
 3. **The workload side.** `deployments.cloudflare` takes optional `hosts`,
    names in its zone. Without it, the site is served on its host's names:
    `@` and `www` for an apex host.
