@@ -4,6 +4,10 @@ All notable changes to the reusable CI are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [11.2.0] - 2026-11-01
+
+- feat(github/workflows): redact identifiers from run comments, and rotate keys by generation (LIB-0054) ([#195](https://github.com/noisypigeon/runway/pull/195))
+
 ## [11.1.0] - 2026-10-31
 
 - feat(github/terragrunt): scaleway.job, Serverless Jobs for ad-hoc and recurring work (LIB-0053) ([#192](https://github.com/noisypigeon/runway/pull/192))

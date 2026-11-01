@@ -24,6 +24,11 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-11-01
 
+- [github/workflows] feat(github/workflows): redact identifiers from run comments, and rotate keys by generation (LIB-0054) ([#195](https://github.com/noisypigeon/runway/pull/195))
+- [github/terragrunt] feat(github/workflows): redact identifiers from run comments, and rotate keys by generation (LIB-0054) ([#195](https://github.com/noisypigeon/runway/pull/195))
+- [scaleway/iam-api-key] feat(github/workflows): redact identifiers from run comments, and rotate keys by generation (LIB-0054) ([#195](https://github.com/noisypigeon/runway/pull/195))
+- [cloudflare/api-token] feat(github/workflows): redact identifiers from run comments, and rotate keys by generation (LIB-0054) ([#195](https://github.com/noisypigeon/runway/pull/195))
+- [backblaze/api-key] feat(github/workflows): redact identifiers from run comments, and rotate keys by generation (LIB-0054) ([#195](https://github.com/noisypigeon/runway/pull/195))
 - [repo] feat(data-ops): pigeon-cli's first Serverless Jobs (LIB-0053) ([#194](https://github.com/noisypigeon/runway/pull/194))
 - [terraform] chore: take v11.1.0, and add the run-scaleway-job dispatch (LIB-0053) ([#193](https://github.com/noisypigeon/runway/pull/193))
 
