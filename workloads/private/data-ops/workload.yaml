@@ -21,6 +21,15 @@ workload:
   # Each entry writes its old leaf's own name parts and inputs, so its name
   # doesn't change; the random code moved with its state (LIB-0046 §§3-4).
   scaleway:
+    # The deployer creates the jobs below, so it needs Serverless Jobs beside
+    # the default ObjectStorageFullAccess. The template only grants sets for
+    # the compute kinds it knows, and v11.1.0 doesn't count `job` among them,
+    # so this states them until it does (LIB-0053's amendment).
+    deployer:
+      policy:
+        project_permission_sets:
+          - ObjectStorageFullAccess
+          - ServerlessJobsFullAccess
     bucket:
       pigeon-cli-email:
         name_prefix: pigeon-cli
@@ -39,3 +48,23 @@ workload:
       pigeon-transform:
         name_prefix: pigeon
         name_suffix: transform
+    # pigeon-cli's Serverless Jobs (LIB-0053). The image is the public one
+    # LIB-0019 publishes. Both only print the version, to prove the path:
+    # `version` runs from the Actions tab (run-scaleway-job.yml), and
+    # `version-daily` runs on Scaleway's own schedule.
+    job:
+      version:
+        image: ghcr.io/noisypigeon/pigeon-cli:0.4.59
+        args: ["--version"]
+        cpu: 500
+        memory: 512
+        storage: 1024
+        timeout: 5m
+      version-daily:
+        image: ghcr.io/noisypigeon/pigeon-cli:0.4.59
+        args: ["--version"]
+        cpu: 500
+        memory: 512
+        storage: 1024
+        timeout: 5m
+        schedule: "17 6 * * *"
