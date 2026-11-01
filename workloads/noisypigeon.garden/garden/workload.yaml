@@ -8,3 +8,8 @@ workload:
   name: garden
   deployments:
     githubPages: {}
+    # LIB-0051 §4 step 1: garden on R2 at a test host, beside Pages, until
+    # site-r2-garden.yml's checks pass there. The flip drops githubPages and
+    # this hosts list, so R2 serves the apex and www.
+    cloudflare:
+      hosts: [r2-test]

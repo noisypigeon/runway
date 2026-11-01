@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   generate:
-    uses: noisypigeon/runway/.github/workflows/site-generate.yml@github/workflows/v10.1.1
+    uses: noisypigeon/runway/.github/workflows/site-generate.yml@github/workflows/v10.1.2
     with:
       src_dir: workloads/noisypigeon.garden/garden
       generate_cmd: ".pigeon/src/tools/github/scripts/generate-module-redirects.sh --content-root workloads/noisypigeon.garden/garden/content --static-root workloads/noisypigeon.garden/garden/static"
