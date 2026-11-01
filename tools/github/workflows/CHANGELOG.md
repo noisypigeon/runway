@@ -4,6 +4,10 @@ All notable changes to the reusable CI are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [10.2.0] - 2026-10-31
+
+- feat(github/terragrunt): take workload modules from their git tags, not garden ([#181](https://github.com/noisypigeon/runway/pull/181))
+
 ## [10.1.3] - 2026-10-31
 
 - fix(github/workflows): write site-r2's directory aliases with put-object ([#176](https://github.com/noisypigeon/runway/pull/176))
