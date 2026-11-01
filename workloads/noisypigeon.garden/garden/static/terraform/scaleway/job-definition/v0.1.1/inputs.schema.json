@@ -1,0 +1,337 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,2}$",
+      "description": "Pins this module: X.Y.Z exactly, X.Y or X to the newest release within it. Omitted, the newest release (LIB-0023 §3)."
+    },
+    "args": {
+      "anyOf": [
+        {
+          "type": "array"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Arguments to the startup command. Null keeps the image's."
+    },
+    "command": {
+      "anyOf": [
+        {
+          "type": "array"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Startup command, overriding the image's entrypoint. Null keeps the image's."
+    },
+    "cpu": {
+      "anyOf": [
+        {
+          "type": "number",
+          "default": 1000
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "vCPU for each run, in mvCPU (1000 is one vCPU)"
+    },
+    "env": {
+      "anyOf": [
+        {
+          "type": "object",
+          "default": {}
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Plain environment variables. Never a secret: those go in secret_env or secret_wiring."
+    },
+    "image": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Container image, pinned to a tag or a digest, e.g. ghcr.io/noisypigeon/pigeon-cli:v1.2.3. The registry must allow anonymous pulls."
+    },
+    "memory": {
+      "anyOf": [
+        {
+          "type": "number",
+          "default": 2048
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Memory for each run, in MB"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Job definition name"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Project ID"
+    },
+    "retries": {
+      "anyOf": [
+        {
+          "type": "number",
+          "default": 0
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "How many times Scaleway retries a failed run (its retry_policy.max_retries). Scaleway sets 0 itself, so the default matches it and plans No changes."
+    },
+    "schedule": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Cron schedule, e.g. \"15 3 * * *\". Set, the job is recurring and Scaleway starts its runs; null, it is ad hoc."
+    },
+    "secret_env": {
+      "anyOf": [
+        {
+          "type": "object",
+          "default": {}
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Environment variables that are secrets, by variable name: a workload's secretRefs, resolved. Each is stored in Secret Manager and reaches the run by secret reference."
+    },
+    "secret_wiring": {
+      "anyOf": [
+        {
+          "type": "object",
+          "default": {}
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Environment variables wired from another leaf, e.g. an API key's secret, by variable name. Stored and referenced as secret_env is."
+    },
+    "storage": {
+      "anyOf": [
+        {
+          "type": "number",
+          "default": 10240
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Local storage for each run, in MiB"
+    },
+    "timeout": {
+      "anyOf": [
+        {
+          "type": "string",
+          "default": "1h"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "A run's timeout, as a Go duration, e.g. 2h30m"
+    },
+    "timezone": {
+      "anyOf": [
+        {
+          "type": "string",
+          "default": "Europe/London"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "The schedule's time zone, a tz database name"
+    }
+  },
+  "$id": "https://noisypigeon.garden/terraform/scaleway/job-definition/v0.1.1/inputs.schema.json"
+}
