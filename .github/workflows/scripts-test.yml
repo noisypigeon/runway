@@ -4,7 +4,8 @@ name: scripts-test
 # among them (LIB-0026 §6), on any PR that touches tools/github/scripts/. This is
 # the library's own CI, not a reusable workflow: no spoke calls it. It also
 # checks that every reusable workflow lives in tools/github/workflows/, and none
-# in .github/workflows/ (LIB-0049 §1).
+# in .github/workflows/ (LIB-0049 §1), and that terragrunt-run.yml never
+# prints the raw Terraform output (LIB-0054 §4).
 
 on:
   pull_request:
@@ -55,3 +56,12 @@ jobs:
             fi
           done
           exit "$status"
+
+      # The raw Terraform output carries identifiers, so it reaches only the
+      # comment renderer, which redacts them, never the job log (LIB-0054 §4).
+      - name: The raw Terraform output stays out of the job log
+        run: |
+          if grep -nE '\b(cat|head|tail|tee|less|more)\b[^#]*output\.txt' tools/github/workflows/terragrunt-run.yml; then
+            echo "::error file=tools/github/workflows/terragrunt-run.yml::output.txt must not be printed to the job log (LIB-0054 §4)"
+            exit 1
+          fi

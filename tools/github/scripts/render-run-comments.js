@@ -12,6 +12,8 @@
 // for the markup around each section.
 const BUDGET = 60000;
 
+const WITHHELD = '(withheld: an identifier survived redaction; the encrypted plan artifact holds the full output)';
+
 // `HH:MM:SS.mmm LEVEL [unit] terraform: message`, Terragrunt's own lines
 // without the `terraform: `, and the run summary's lines with no unit at all.
 const LINE = /^(?:\d\d:\d\d:\d\d\.\d+\s+)?(STDOUT|STDERR|INFO|WARN|ERROR|DEBUG|TRACE)\s+\[([^\]]+)\]\s?(?:terraform: )?(.*)$/;
@@ -38,6 +40,80 @@ function maskText(text, masked) {
   const values = [...new Set(masked.filter((v) => v && v.length >= 3))].sort((a, b) => b.length - a.length);
   for (const v of values) out = out.split(v).join('***');
   return out;
+}
+
+// Identifiers are not secrets, so maskText never sees them, but a public
+// comment must not carry them either (LIB-0054 §2): resource IDs, access key
+// IDs, SRNs and bucket names. Each is replaced with `(redacted)`.
+const REDACTED = '(redacted)';
+// Shapes redacted anywhere in the text. A UUID, with or without a region
+// prefix; a Scaleway access key ID; a Cloudflare-shaped 32-hex ID; a
+// Backblaze-shaped 24- or 25-hex key ID. Word boundaries keep a 40-hex commit
+// SHA intact.
+const SHAPES = [
+  /\b(?:[a-z]{2}-[a-z]{3}(?:-\d)?\/)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
+  /\bSCW[A-Z0-9]{17}\b/g,
+  /\b[0-9a-f]{32}\b/gi,
+  /\b[0-9a-f]{24,25}\b/gi,
+];
+// An attribute that names something: `name = …`, or `"name" = …` in outputs.
+const ATTR = /^(\s*[-+~]?\s*)("?)([A-Za-z0-9_]+)\2(\s*=\s*)(.*)$/;
+const ID_ATTR = /^(id|[A-Za-z0-9_]+_ids?|access_key|srn|arn|bucket|bucket_name)$/;
+const BUCKET_ATTR = /^(name|[A-Za-z0-9_]*endpoint)$/;
+// What type a line's resource is: a plan's `# addr will be created`, a
+// `resource "type" "name" {` header, or an apply's `addr: Creating...`.
+const TYPE_OF = [
+  /^\s*# (?:\S+\.)?([a-z0-9]+_[a-z0-9_]+)\.[^.\s]+(?:\[[^\]]*\])? (?:will|must|has)/,
+  /^\s*[-+~]?\s*(?:resource|data) "([a-z0-9_]+)" "/,
+  /^(?:\S+\.)?([a-z0-9]+_[a-z0-9_]+)\.[^.\s:]+(?:\[[^\]]*\])?: /,
+];
+
+function redactShapes(text) {
+  let out = text;
+  for (const re of SHAPES) out = out.replace(re, REDACTED);
+  return out;
+}
+
+function hasShape(text) {
+  return SHAPES.some((re) => new RegExp(re.source, re.flags.replace('g', '')).test(text));
+}
+
+// Fails closed (LIB-0054 §3): a leaf in which an identifier survived
+// redaction is withheld whole, rather than posted.
+function guardPieces(pieces) {
+  return pieces.some(hasShape) ? [WITHHELD] : pieces;
+}
+
+// A leaf's lines with every identifier redacted (LIB-0054 §2): by attribute
+// (and every element of a list an ID attribute opens), by progress line, by
+// shape, and a bucket's name wherever the line belongs to a bucket.
+function redactLines(lines, unit) {
+  const bucketLeaf = /(^|\/)(object-)?bucket(\/|$)|r2-bucket/.test(unit || '');
+  let type = '';
+  let inList = false;
+  return lines.map((line) => {
+    for (const re of TYPE_OF) {
+      const t = line.match(re);
+      if (t) { type = t[1]; break; }
+    }
+    let out = line.replace(/\[id=[^\]]*\]/g, `[id=${REDACTED}]`);
+    if (inList) {
+      if (/^\s*[-+~]?\s*\]/.test(out)) inList = false;
+      else out = out.replace(/"[^"]*"/g, REDACTED);
+    } else {
+      const a = out.match(ATTR);
+      if (a) {
+        const name = a[3];
+        const bucket = bucketLeaf || /bucket/.test(type);
+        if (ID_ATTR.test(name) || (bucket && BUCKET_ATTR.test(name))) {
+          const value = a[5].replace(/"[^"]*"/g, REDACTED);
+          out = `${a[1]}${a[2]}${name}${a[2]}${a[4]}${value}`;
+          if (/\[\s*$/.test(a[5])) inList = true;
+        }
+      }
+    }
+    return redactShapes(out);
+  });
 }
 
 function parse(output, roots) {
@@ -171,6 +247,8 @@ function render(input) {
   const roots = input.roots || [];
   const masked = input.masked || [];
   const parsed = parse(maskText(input.output || '', masked), roots);
+  for (const [unit, lines] of parsed.leaves) parsed.leaves.set(unit, redactLines(lines, unit));
+  parsed.run = redactLines(parsed.run, '');
   // A stage of a staged plan or apply (LIB-0042 §2) runs only its own units.
   // The destroys were applied with the first stage, so a later one leaves
   // out every destroy it didn't select rather than report it with no result.
@@ -204,10 +282,15 @@ function render(input) {
   const shown = rows.filter((r) => r.kind !== 'unchanged');
   const quiet = rows.filter((r) => r.kind === 'unchanged');
   const troubled = !input.success || rows.some((r) => r.kind === 'failed' || r.kind === 'unknown');
+  const withheld = [];
   const sections = shown.map((row) => [row, ctx.leaves.get(row.unit) || []]);
   if (troubled && parsed.run.length) sections.push([{ unit: 'Run', label: 'Terragrunt', open: false, kind: 'run' }, parsed.run]);
   for (const [row, lines] of sections) {
-    const pieces = splitBody(lines.length ? lines : ['(no output)'], room);
+    const pieces = guardPieces(splitBody(lines.length ? lines : ['(no output)'], room));
+    if (pieces[0] === WITHHELD) {
+      row.label = `${row.label} (detail withheld)`;
+      withheld.push(row.unit);
+    }
     pieces.forEach((piece, i) => {
       const s = section(row.unit, row, piece, i + 1, pieces.length);
       if (cur.length + s.length > room) flush();
@@ -248,7 +331,7 @@ function render(input) {
     footer,
   ].join('\n');
 
-  return { summary, details: bodies, settled };
+  return { summary, details: bodies, settled, withheld };
 }
 
 // Fills the summary's {{detail:N}} placeholders with the detail comments'
@@ -260,4 +343,4 @@ function linkSummary(summary, urls) {
   });
 }
 
-module.exports = { render, linkSummary, countPlan, BUDGET, _test: { normalizeUnit, parse, countPlan, splitBody, maskText, fenceFor } };
+module.exports = { render, linkSummary, countPlan, BUDGET, _test: { normalizeUnit, parse, countPlan, splitBody, maskText, fenceFor, redactLines, hasShape, guardPieces, WITHHELD } };

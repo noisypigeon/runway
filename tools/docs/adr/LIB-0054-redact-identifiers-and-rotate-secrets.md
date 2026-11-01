@@ -140,6 +140,10 @@ Rotation goes in this order. Each step must pass before the next starts.
    - Add a new recipient to `.config/sops.yaml`.
    - Run `sops updatekeys` over every encrypted file, swap `SOPS_AGE_KEY`,
      then remove the old recipient and re-run `updatekeys`.
+   - Then run `sops rotate` on every file. `updatekeys` keeps each file's data
+     key, which the old age key could still recover from history.
+   - Do it with no plan waiting to be applied, because a plan archive is
+     encrypted to the key it was made with.
    - This goes first, so every value rotated after it is encrypted only to
      the new key. The old key still opens git history, which by then holds
      only dead values.
@@ -152,9 +156,13 @@ Rotation goes in this order. Each step must pass before the next starts.
      default `0`, folded into `terraform_data.rotation`'s input, so changing
      it replaces the key, creating the new one before destroying the old.
    - **How it's set:** `root.hcl` passes a spoke-wide `rotation_generation`
-     from `.config/spoke.hcl` to every key kind, and an entry can override it.
-     One bump rotates every managed key in one reviewed PR, with no
-     hand-typed `-replace`.
+     from `.config/spoke.hcl` to every key kind. `rotation_generations` maps
+     a unit's directory to a number of its own, for a canary, and an entry's
+     own `rotation_generation` wins over both. One bump rotates every managed
+     key in one reviewed PR, with no hand-typed `-replace`.
+   - **The timestamps are re-created too.** A key without `rotation_days`
+     takes its expiry from its first creation, so a replaced key would
+     otherwise keep the old expiry.
    - **Order:** staged applies (LIB-0024) take care of it, because a
      deployer's dependents read its new key from its outputs.
    - **A canary first:** it runs on one zone before the rest.

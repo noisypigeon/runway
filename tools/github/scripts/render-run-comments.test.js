@@ -144,14 +144,14 @@ test('every comment carries the run marker, and details are marked as parts', ()
 
 test('masked values are replaced with *** everywhere', () => {
   const output = [
-    '00:00:00.000 STDOUT [a/b/c] terraform: project_id = "s3cr3t-project-id"',
+    '00:00:00.000 STDOUT [a/b/c] terraform: description = "s3cr3t-project-id"',
     '00:00:00.000 STDERR [a/b/c] terraform: Error: token hunter2token rejected',
   ].join('\n');
   const r = plan({ output, masked: ['s3cr3t-project-id', 'hunter2token', ''] });
   const all = [r.summary, ...r.details].join('\n');
   assert.ok(!all.includes('s3cr3t-project-id'));
   assert.ok(!all.includes('hunter2token'));
-  assert.ok(all.includes('project_id = "***"'));
+  assert.ok(all.includes('description = "***"'));
 });
 
 test('a fence never closes early on backticks in the output', () => {
@@ -248,4 +248,93 @@ test('an output-only plan is a change, never settled', () => {
   const r = plan({ output: noChanges('w/a'), jsonPlans: { 'w/a': json } });
   assert.equal(r.settled, false);
   assert.match(r.summary, /\| `w\/a` \| \+0 ~1 -0 \|/);
+});
+
+// LIB-0054: identifiers are redacted. Every identifier below is made up, in
+// the shape of the real thing.
+const UUID = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
+const SCW = 'SCWABCDEFGHJKMNPQRST';
+const CF = '0123456789abcdef0123456789abcdef';
+const B2 = '0051a2b3c4d5e6f0000000003';
+
+test('IDs are redacted by attribute, in plan and output form, and in ID lists', () => {
+  const lines = _test.redactLines([
+    `  + application_id  = "${UUID}"`,
+    '      + id              = (known after apply)',
+    `        id              = "plain-text-id"`,
+    `  "id" = "plain-text-id"`,
+    `      ~ zone_id = "aaa" -> "bbb"`,
+    '          + project_ids          = [',
+    '              + "first-project",',
+    '            ]',
+    '      + name            = "wg-data-ops-job-runner"',
+    '      + cpu_limit       = 500',
+  ], 'workloads/x/scaleway/iam-policy/job-runner');
+  assert.deepEqual(lines, [
+    '  + application_id  = (redacted)',
+    '      + id              = (known after apply)',
+    '        id              = (redacted)',
+    '  "id" = (redacted)',
+    '      ~ zone_id = (redacted) -> (redacted)',
+    '          + project_ids          = [',
+    '              + (redacted),',
+    '            ]',
+    '      + name            = "wg-data-ops-job-runner"',
+    '      + cpu_limit       = 500',
+  ]);
+});
+
+test('progress lines lose their [id=…]', () => {
+  const [a, b] = _test.redactLines([
+    `module.this.scaleway_iam_api_key.api_key: Creation complete after 1s [id=${SCW}]`,
+    'module.this.scaleway_iam_policy.policy[0]: Refreshing state... [id=some-id]',
+  ], 'u');
+  assert.equal(a, 'module.this.scaleway_iam_api_key.api_key: Creation complete after 1s [id=(redacted)]');
+  assert.equal(b, 'module.this.scaleway_iam_policy.policy[0]: Refreshing state... [id=(redacted)]');
+});
+
+test('shapes are redacted anywhere, and a commit SHA is not', () => {
+  const sha = '0123456789abcdef0123456789abcdef01234567';
+  const [line] = _test.redactLines([`x fr-par/${UUID} ${SCW} ${CF} ${B2} ${sha} abc1234`], 'u');
+  assert.equal(line, `x (redacted) (redacted) (redacted) (redacted) ${sha} abc1234`);
+});
+
+test("a bucket's name is redacted, by resource type or by leaf", () => {
+  const byType = _test.redactLines([
+    '  # module.this.scaleway_object_bucket.this will be created',
+    '  + resource "scaleway_object_bucket" "this" {',
+    '      + name     = "pigeon-cli-email-x7y8"',
+    '      + endpoint = "https://pigeon-cli-email-x7y8.s3.fr-par.scw.cloud"',
+    '      + region   = "fr-par"',
+    '    }',
+    '  # module.this.scaleway_iam_policy.policy will be created',
+    '      + name     = "a-policy"',
+  ], 'terraform/scaleway/other/x');
+  assert.deepEqual(byType.slice(2, 5), ['      + name     = (redacted)', '      + endpoint = (redacted)', '      + region   = "fr-par"']);
+  assert.equal(byType[7], '      + name     = "a-policy"');
+  const byLeaf = _test.redactLines(['  "name" = "pigeon-cli-email-x7y8"'], 'workloads/x/scaleway/bucket/pigeon-cli-email');
+  assert.deepEqual(byLeaf, ['  "name" = (redacted)']);
+  const anywhere = _test.redactLines(['      + bucket = "pigeon-cli-email-x7y8"'], 'u');
+  assert.deepEqual(anywhere, ['      + bucket = (redacted)']);
+});
+
+test('a rendered apply carries no identifier, and still shows each action', () => {
+  const output = [
+    `00:00:00.000 STDOUT [w/scaleway/iam-api-key/job-runner] terraform: module.this.scaleway_iam_api_key.api_key: Creation complete after 1s [id=${SCW}]`,
+    '00:00:00.000 STDOUT [w/scaleway/iam-api-key/job-runner] terraform: Apply complete! Resources: 1 added, 0 changed, 0 destroyed.',
+    `00:00:00.000 STDOUT [w/scaleway/iam-policy/job-runner] terraform:   "id" = "${UUID}"`,
+    '00:00:00.000 STDOUT [w/scaleway/iam-policy/job-runner] terraform: Apply complete! Resources: 1 added, 0 changed, 0 destroyed.',
+  ].join('\n');
+  const r = render({ ...base, command: 'apply', marker: '<!-- terragrunt-apply -->', output });
+  const all = [r.summary, ...r.details].join('\n');
+  for (const id of [SCW, UUID]) assert.ok(!all.includes(id));
+  assert.ok(all.includes('Creation complete after 1s [id=(redacted)]'));
+  assert.deepEqual(r.withheld, []);
+});
+
+test('fails closed: a leaf in which an identifier survives is withheld whole', () => {
+  assert.ok(_test.hasShape(`left ${UUID.toUpperCase()}`));
+  assert.ok(!_test.hasShape('nothing here (redacted)'));
+  assert.deepEqual(_test.guardPieces(['fine', `missed ${SCW}`]), [_test.WITHHELD]);
+  assert.deepEqual(_test.guardPieces(['fine', 'also fine']), ['fine', 'also fine']);
 });

@@ -155,3 +155,20 @@ They sign in with the spoke's key, as every IAM kind does (LIB-0043 §1).
    waits, and reports its status.
 3. **No secret shows in plain env.** The definition's env holds no secret
    values, and its secrets reach the run.
+
+## Amendments
+
+### 2026-11-01: the deployer needs Serverless Jobs, and the run hides its IDs
+
+1. **The workload deployer is granted `ServerlessJobsFullAccess`** when the
+   workload declares any `scaleway.job`. It is also granted
+   `SecretManagerFullAccess` when a job's env holds a `secretRef` or an
+   `apiKey`, because the module keeps those values in Secret Manager.
+   - The job definitions sign in with the deployer's key (§1:
+     credentials workload), but v11.1.0 granted the deployer sets only for
+     LIB-0043's compute kinds.
+   - The first apply of a job failed with `insufficient permissions`, and
+     data-ops stated its deployer's sets by hand until the template granted
+     them.
+2. **`scaleway-job-run.yml` masks the definition's and the run's IDs** and
+   prints neither (LIB-0054 §4). Scaleway's console lists a job's runs.
