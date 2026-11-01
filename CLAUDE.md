@@ -87,8 +87,6 @@ data.
   `@github/workflows/vX.Y.Z` refs, `root_hcl_version` in `.config/spoke.hcl`, or the
   plugin pin in `.claude/settings.json`. Never track a branch. For local
   iteration, point `PIGEON_SRC` at a checkout of this repo.
-- `fetch-lib.sh` and `.lib-version` are kept only for the Pages shims, frozen at
-  `workflows/v9.4.3` (LIB-0050's amendment). Don't bump or use them.
 
 ## The library: `tools/`
 
@@ -132,9 +130,6 @@ tags still resolve:
   first, then its old one, and reads each tag at its own prefix (`tools/` or
   `lib/`). `tools/README.md` and `tools/terraform/README.md` hold the per-unit
   detail.
-- **The Pages shims' `pages.yml` can't live here.** `actions/deploy-pages`
-  deploys only the calling repo's site (DEV-0156). Each shim's `pages.yml` is
-  one `uses:` of `site-pages.yml` (LIB-0035 §3).
 - **The archived `noisypigeon/library` keeps every tag it had,** so an old pin
   still resolves.
 
@@ -147,8 +142,8 @@ merge:
 1. it bumps each changed unit's version;
 2. it writes the unit's `CHANGELOG.md` and the root line;
 3. it cuts the tag and the GitHub Release, whose notes are the PR body;
-4. it dispatches `garden-generate.yml`, and for a theme release the blog
-   shim's `pages.yml`.
+4. it dispatches `garden-generate.yml`, and for a theme release
+   `site-r2-blog.yml`.
 
 runway writes the library tracks' tags, and no tag of its own, for a leaf, a
 workload or a site (LIB-0047 §4).

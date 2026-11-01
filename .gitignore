@@ -1,6 +1,5 @@
 .DS_Store
 *.env
-/.lib-src/
 /.config/src/
 .terragrunt-cache/
 .terraform/

@@ -187,3 +187,7 @@ Where this entry and the text above disagree, this entry is what runs.
    searches only upward from the working directory for `.sops.yaml`, so after
    the move the saved plan's encryption found no rules, and the move's plan
    failed at "Pack saved plan".
+8. **Step 4 ran before the shims were archived.** Since LIB-0051's
+   amendment 9 nothing dispatches the shims, and both sites' DNS points at R2,
+   so `fetch-lib.sh`, `.lib-version` and the `/.lib-src/` ignore had no
+   caller. They are deleted. Archiving the shim repos stays the owner's.

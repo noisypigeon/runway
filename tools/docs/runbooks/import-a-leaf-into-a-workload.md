@@ -36,8 +36,8 @@ create a duplicate. Tell everyone who can comment `terragrunt apply`.
 
 ## What you need
 
-- Checkouts of both spokes, each after `./fetch-lib.sh` and
-  `.lib-src/.github/scripts/resolve-root-hcl.sh`.
+- Checkouts of both spokes, each after `./.config/tools.sh` and
+  `.config/src/tools/github/scripts/resolve-root-hcl.sh` (LIB-0052).
 - Their sops age keys, so `root.hcl` can decrypt each spoke's secrets. This
   checks it in each, without writing anything. The `.enc` files are dotenv,
   which sops doesn't infer from the extension:
@@ -66,8 +66,8 @@ create a duplicate. Tell everyone who can comment `terragrunt apply`.
    Then generate the stubs and check them:
 
    ```bash
-   .lib-src/.github/scripts/resolve-workloads.sh
-   .lib-src/.github/scripts/resolve-workloads.sh --check
+   .config/src/tools/github/scripts/resolve-workloads.sh
+   .config/src/tools/github/scripts/resolve-workloads.sh --check
    ```
 
 3. **For each resource**, in this order:
