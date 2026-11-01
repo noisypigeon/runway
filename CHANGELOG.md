@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-31
 
+- [adr] feat(lib-0051): retire the Pages path and garden's test host ([#185](https://github.com/noisypigeon/runway/pull/185))
 - [ci] feat(lib-0051): serve noisypigeon.garden and www from R2 ([#184](https://github.com/noisypigeon/runway/pull/184))
 - [repo] feat(lib-0051): garden's flip, first apply: drop githubPages ([#183](https://github.com/noisypigeon/runway/pull/183))
 - [terraform] chore: take github/terragrunt and github/workflows v10.2.0 ([#182](https://github.com/noisypigeon/runway/pull/182))
