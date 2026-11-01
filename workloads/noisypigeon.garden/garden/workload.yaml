@@ -1,15 +1,12 @@
 # yaml-language-server: $schema=https://noisypigeon.garden/schemas/workload/v4.json
 # garden, at noisypigeon.garden, in its zone (LIB-0037). It lives in the
-# zone's project, and the zone's hosts give it the apex and www. githubPages
-# deploys it through noisypigeon/noisypigeon.garden and implies its two Pages
-# CNAMEs, whose state moved here from workloads/garden/: change one only on
-# purpose.
+# zone's project, and the zone's hosts give it the apex and www.
 workload:
   name: garden
   deployments:
-    # LIB-0051 §4 step 2, the flip, first apply: githubPages goes, so its two
-    # Pages CNAMEs are destroyed and free the apex and www for R2. The next
-    # commit adds the apex and www to hosts, keeping r2-test so that apply
-    # destroys nothing while garden is down (LIB-0051 amendment 8).
+    # Served from its R2 bucket on the apex and www (LIB-0051), www
+    # redirecting to the apex. r2-test stays until garden is back, so the
+    # flip's second apply only creates (LIB-0051 amendment 8); a later PR
+    # drops it. site-r2-garden.yml deploys it.
     cloudflare:
-      hosts: [r2-test]
+      hosts: ["@", www, r2-test]
