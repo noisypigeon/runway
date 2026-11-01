@@ -351,7 +351,9 @@ jobs:
             "$resolver"
             changed=$(git diff --name-only "$base" HEAD)
             # Each a unit directory, workloads/<zone>/<w> or zones/<z>.
-            if grep -qE '^(root\.hcl|spoke\.hcl|terraform/secrets/)' <<<"$changed"; then
+            # Every unit when the spoke's config or a secret changed, at the
+            # root or in .config/ (LIB-0052).
+            if grep -qE '^(\.config/)?(root\.hcl|spoke\.hcl|secrets-schema\.json)$|^terraform/secrets/' <<<"$changed"; then
               names=$(for f in workloads/*/*/workload.yaml zones/*/zone.yaml; do if [ -f "$f" ]; then dirname "$f"; fi; done)
             else
               names=$(grep -E '^workloads/[^/]+/[^/]+/(workload|secrets\.workload)\.yaml$' <<<"$changed" | cut -d/ -f1-3 || true)

@@ -174,3 +174,7 @@ Where this entry and the text above disagree, this entry is what runs.
    - the base worktree for destroys gets the clone at both paths;
    - `terragrunt-detect`'s default pattern adds `.config/`'s files;
    - the provider cache keys on `.config/root.hcl` too.
+5. **`terragrunt-run` plans every unit when `.config/`'s `root.hcl`,
+   `spoke.hcl` or `secrets-schema.json` changes,** as it already did for the
+   root's copies. Without that, runway's move planned only its hand-written
+   leaves, which proved nothing about the units' keys.
