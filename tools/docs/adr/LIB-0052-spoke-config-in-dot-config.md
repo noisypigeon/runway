@@ -183,3 +183,7 @@ Where this entry and the text above disagree, this entry is what runs.
    gitignored clone in `.config/src/`. Workflow defaults and `root.hcl` name
    those paths, and still fall back to `.pigeon/`. No spoke had taken
    v11.0.0's `.config/pigeon/` paths, so no fallback to them is kept.
+7. **`plan-archive.sh` names `.config/sops.yaml`** when it exists. sops
+   searches only upward from the working directory for `.sops.yaml`, so after
+   the move the saved plan's encryption found no rules, and the move's plan
+   failed at "Pack saved plan".

@@ -50,7 +50,11 @@ case "$1" in
       if [ -f "$extra" ]; then cp "$extra" "$work/plans/$(basename "$extra")"; fi
     done
     tar -C "$work/plans" -czf "$work/plans.tgz" .
-    sops encrypt --input-type binary --output-type binary \
+    # A spoke's sops rules live in .config/sops.yaml since LIB-0052, which
+    # sops doesn't search for, so it is named; .sops.yaml at the root it finds.
+    sops_config=()
+    [ -f .config/sops.yaml ] && sops_config=(--config .config/sops.yaml)
+    sops ${sops_config[@]+"${sops_config[@]}"} encrypt --input-type binary --output-type binary \
       --filename-override terraform/secrets/plan.enc "$work/plans.tgz" > "$archive"
     echo "Packed $(wc -l < "$work/files.txt" | tr -d ' ') plan(s) for $(wc -l < "$units_file" | tr -d ' ') selected unit(s) into $archive:"
     sed 's/^/  /' "$work/files.txt"
