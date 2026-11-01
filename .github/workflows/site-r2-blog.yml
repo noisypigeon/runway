@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   deploy:
-    uses: noisypigeon/runway/.github/workflows/site-r2.yml@github/workflows/v10.1.3
+    uses: noisypigeon/runway/.github/workflows/site-r2.yml@github/workflows/v10.2.0
     with:
       src_dir: workloads/noisypigeon.com/blog
       base_url: https://noisypigeon.com
