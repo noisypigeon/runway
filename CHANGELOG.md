@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-11-01
+
+- [terraform] chore: take v11.1.0, and add the run-scaleway-job dispatch (LIB-0053) ([#193](https://github.com/noisypigeon/runway/pull/193))
+
 ## 2026-10-31
 
 - [github/workflows] feat(github/terragrunt): scaleway.job, Serverless Jobs for ad-hoc and recurring work (LIB-0053) ([#192](https://github.com/noisypigeon/runway/pull/192))
