@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-11-01
 
+- [repo] feat(data-ops): pigeon-cli's first Serverless Jobs (LIB-0053) ([#194](https://github.com/noisypigeon/runway/pull/194))
 - [terraform] chore: take v11.1.0, and add the run-scaleway-job dispatch (LIB-0053) ([#193](https://github.com/noisypigeon/runway/pull/193))
 
 ## 2026-10-31
