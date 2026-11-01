@@ -236,3 +236,19 @@ Where this entry and the text above disagree, this entry is what runs.
      Terraform refused to plan the bucket until its kind was marked
      sensitive. `site-r2.yml` reads it with `terragrunt output -json`, which
      prints sensitive values.
+8. **A spoke that serves garden never needs garden to plan.**
+   - **Why.** Every workload leaf took its module from its
+     `noisypigeon.garden` short URL, and `resolve-workloads.sh --check` read
+     each module's schema from there too. Garden's flip takes two applies
+     with garden down between them, so the plan for the second, which brings
+     garden back, could not have fetched a module.
+   - **Modules.** `root.hcl` takes each module straight from its git tag,
+     which is the target garden's redirect page names, at the path the tag
+     holds: `tools/terraform/` since LIB-0050, `lib/terraform/` before. It
+     reads that from the library clone in `.pigeon/src`, which the base
+     worktree for destroys shares. Without the clone, the short URL.
+   - **Schemas.** `WORKLOAD_SCHEMA_DIR` names a local copy of the site's
+     files, read before the URL. runway points it at garden's committed
+     `static/`.
+   - **LIB-0009 stands** for every other consumer: the short URL stays the
+     stable interface, and is the fallback here.

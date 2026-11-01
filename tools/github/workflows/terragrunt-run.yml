@@ -374,6 +374,12 @@ jobs:
             done
 
             git worktree add -q --detach "$RUNNER_TEMP/base" "$base"
+            # The base plans its destroys with the same library clone, so its
+            # module sources resolve from their git tags too (LIB-0051
+            # amendment 8): a worktree carries no gitignored .pigeon/src.
+            if [ -d .pigeon/src ] && [ ! -e "$RUNNER_TEMP/base/.pigeon/src" ]; then
+              mkdir -p "$RUNNER_TEMP/base/.pigeon" && ln -s "$GITHUB_WORKSPACE/.pigeon/src" "$RUNNER_TEMP/base/.pigeon/src"
+            fi
             if [ -d "$RUNNER_TEMP/base/workloads" ] || [ -d "$RUNNER_TEMP/base/zones" ]; then
               (cd "$RUNNER_TEMP/base" && "$resolver" >/dev/null && "$resolver" --list) | LC_ALL=C sort > "$RUNNER_TEMP/base-stubs.txt"
             else
