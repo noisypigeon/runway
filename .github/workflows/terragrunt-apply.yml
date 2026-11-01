@@ -19,7 +19,7 @@ jobs:
       github.event.issue.pull_request != null &&
       github.event.comment.body == 'terragrunt apply' &&
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
-    uses: noisypigeon/runway/.github/workflows/terragrunt-ack.yml@github/workflows/v10.2.0
+    uses: noisypigeon/runway/.github/workflows/terragrunt-ack.yml@github/workflows/v11.0.1
 
   apply:
     # This gate is all that stands between a PR comment and real infrastructure.
@@ -34,10 +34,10 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v10.2.0
+    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v11.0.1
     with:
       command: apply
-      prepare_cmd: ./.pigeon/tools.sh && .pigeon/src/tools/github/scripts/resolve-root-hcl.sh --check && .pigeon/src/tools/github/scripts/check-secrets.sh && WORKLOAD_SCHEMA_DIR=workloads/noisypigeon.garden/garden/static .pigeon/src/tools/github/scripts/resolve-workloads.sh --check && .pigeon/src/tools/github/scripts/check-policies.sh
+      prepare_cmd: ./.config/tools.sh && .config/src/tools/github/scripts/resolve-root-hcl.sh --check && .config/src/tools/github/scripts/check-secrets.sh && WORKLOAD_SCHEMA_DIR=workloads/noisypigeon.garden/garden/static .config/src/tools/github/scripts/resolve-workloads.sh --check && .config/src/tools/github/scripts/check-policies.sh
     secrets: inherit
 
   # After an apply that left workload leaves deferred, plan the next stage
@@ -49,8 +49,8 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v10.2.0
+    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v11.0.1
     with:
       command: plan
-      prepare_cmd: ./.pigeon/tools.sh && .pigeon/src/tools/github/scripts/resolve-root-hcl.sh --check && .pigeon/src/tools/github/scripts/check-secrets.sh && WORKLOAD_SCHEMA_DIR=workloads/noisypigeon.garden/garden/static .pigeon/src/tools/github/scripts/resolve-workloads.sh --check && .pigeon/src/tools/github/scripts/check-policies.sh
+      prepare_cmd: ./.config/tools.sh && .config/src/tools/github/scripts/resolve-root-hcl.sh --check && .config/src/tools/github/scripts/check-secrets.sh && WORKLOAD_SCHEMA_DIR=workloads/noisypigeon.garden/garden/static .config/src/tools/github/scripts/resolve-workloads.sh --check && .config/src/tools/github/scripts/check-policies.sh
     secrets: inherit
