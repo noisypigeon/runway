@@ -19,7 +19,7 @@ jobs:
       github.event.issue.pull_request != null &&
       github.event.comment.body == 'terragrunt apply' &&
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
-    uses: noisypigeon/runway/.github/workflows/terragrunt-ack.yml@github/workflows/v10.1.2
+    uses: noisypigeon/runway/.github/workflows/terragrunt-ack.yml@github/workflows/v10.1.3
 
   apply:
     # This gate is all that stands between a PR comment and real infrastructure.
@@ -34,7 +34,7 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v10.1.2
+    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v10.1.3
     with:
       command: apply
       prepare_cmd: ./.pigeon/tools.sh && .pigeon/src/tools/github/scripts/resolve-root-hcl.sh --check && .pigeon/src/tools/github/scripts/check-secrets.sh && .pigeon/src/tools/github/scripts/resolve-workloads.sh --check && .pigeon/src/tools/github/scripts/check-policies.sh
@@ -49,7 +49,7 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v10.1.2
+    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v10.1.3
     with:
       command: plan
       prepare_cmd: ./.pigeon/tools.sh && .pigeon/src/tools/github/scripts/resolve-root-hcl.sh --check && .pigeon/src/tools/github/scripts/check-secrets.sh && .pigeon/src/tools/github/scripts/resolve-workloads.sh --check && .pigeon/src/tools/github/scripts/check-policies.sh
