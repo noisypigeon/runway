@@ -1,0 +1,127 @@
+name: scaleway-job-run
+
+# Runs one of a workload's Serverless Jobs once, and waits for it (LIB-0053
+# §5). The job is a scaleway.job entry; a recurring one's schedule is
+# Scaleway's own, so this is for ad-hoc runs, or a scheduled job run by hand.
+#
+# It signs in with the workload's job-runner key (LIB-0053 §6), read from that
+# leaf's state with terragrunt, as site-r2.yml reads its deploy token: the
+# caller holds no Scaleway secret. A run leaves nothing behind.
+on:
+  workflow_call:
+    inputs:
+      unit_dir:
+        description: "The workload's directory, holding its workload.yaml, e.g. workloads/private/data-ops."
+        type: string
+        required: true
+      job:
+        description: "The scaleway.job key to run."
+        type: string
+        required: true
+      args:
+        description: "Optional JSON array of arguments for this run, replacing the definition's, e.g. [\"report\", \"--since\", \"7d\"]."
+        type: string
+        required: false
+        default: ""
+      env:
+        description: "Optional JSON object of extra environment variables for this run. Never a secret: the run's log and Scaleway's console show them."
+        type: string
+        required: false
+        default: ""
+      wait:
+        description: "Whether to wait for the run to end, and fail if it fails."
+        type: boolean
+        required: false
+        default: true
+      prepare_cmd:
+        description: "Command run from the repo root before terragrunt reads state: fetching the library and generating the workload's stubs."
+        type: string
+        required: false
+        default: "./.config/tools.sh && .config/src/tools/github/scripts/resolve-workloads.sh"
+    secrets:
+      SOPS_AGE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+
+      - name: Prepare
+        env:
+          PREPARE_CMD: ${{ inputs.prepare_cmd }}
+        run: |
+          [ -e .config/tools.sh ] || PREPARE_CMD="${PREPARE_CMD//.config\//.pigeon/}"
+          bash -c "$PREPARE_CMD"
+
+      - name: Read the job and the job-runner key from state
+        id: target
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          TG_TF_PATH: terraform
+          UNIT_DIR: ${{ inputs.unit_dir }}
+          JOB: ${{ inputs.job }}
+        run: |
+          out() { terragrunt --log-level error --working-dir "$UNIT_DIR/scaleway/$1" output -json module; }
+          id=$(out "job-definition/$JOB" | jq -r '.id // empty')
+          secret=$(out iam-api-key/job-runner | jq -r '.secret_key // empty')
+          if [ -z "$id" ] || [ -z "$secret" ]; then
+            echo "::error::$UNIT_DIR has no applied scaleway/job-definition/$JOB or scaleway/iam-api-key/job-runner; declare scaleway.job.$JOB and apply it first (LIB-0053)"
+            exit 1
+          fi
+          echo "::add-mask::$secret"
+          # A step's log header shows its env, so the definition's ID is
+          # masked too (LIB-0054 §4).
+          echo "::add-mask::${id#*/}"
+          {
+            echo "region=${id%%/*}"
+            echo "id=${id#*/}"
+            echo "secret=$secret"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Start the run
+        id: start
+        env:
+          SCW_SECRET_KEY: ${{ steps.target.outputs.secret }}
+          REGION: ${{ steps.target.outputs.region }}
+          DEFINITION: ${{ steps.target.outputs.id }}
+          ARGS: ${{ inputs.args }}
+          RUN_ENV: ${{ inputs.env }}
+        run: |
+          body=$(jq -n --arg args "$ARGS" --arg env "$RUN_ENV" '
+            {}
+            + (if $args != "" then {args: ($args | fromjson)} else {} end)
+            + (if $env != "" then {environment_variables: ($env | fromjson | with_entries(.value |= tostring))} else {} end)')
+          resp=$(curl -fsS -X POST -H "X-Auth-Token: $SCW_SECRET_KEY" -H "Content-Type: application/json" \
+            --data "$body" "https://api.scaleway.com/serverless-jobs/v1alpha2/regions/$REGION/job-definitions/$DEFINITION/start")
+          run=$(jq -r '.job_runs[0].id // empty' <<<"$resp")
+          [ -n "$run" ] || { echo "::error::Scaleway started no run"; exit 1; }
+          # The run's ID stays out of the log (LIB-0054 §4); Scaleway's console
+          # lists the job's runs.
+          echo "::add-mask::$run"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "Started a run of ${{ inputs.unit_dir }}'s job ${{ inputs.job }}."
+
+      - name: Wait for the run
+        if: inputs.wait
+        env:
+          SCW_SECRET_KEY: ${{ steps.target.outputs.secret }}
+          REGION: ${{ steps.target.outputs.region }}
+          RUN: ${{ steps.start.outputs.run }}
+        run: |
+          state=""
+          while :; do
+            state=$(curl -fsS -H "X-Auth-Token: $SCW_SECRET_KEY" \
+              "https://api.scaleway.com/serverless-jobs/v1alpha2/regions/$REGION/job-runs/$RUN" | jq -r '.state')
+            case "$state" in
+              succeeded) echo "The run succeeded."; exit 0 ;;
+              failed | interrupted) echo "::error::The run ended $state; its logs are in Scaleway Cockpit"; exit 1 ;;
+              *) sleep 15 ;;
+            esac
+          done
