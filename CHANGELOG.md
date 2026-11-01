@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-31
 
+- [repo] feat(lib-0051): flip noisypigeon.com from Pages to R2 ([#179](https://github.com/noisypigeon/runway/pull/179))
 - [ci] feat(lib-0051): the blog on R2 at a test host, beside Pages ([#178](https://github.com/noisypigeon/runway/pull/178))
 - [ci] chore: take github/workflows v10.1.3, and redeploy garden on its own change ([#177](https://github.com/noisypigeon/runway/pull/177))
 - [github/workflows] fix(github/workflows): write site-r2's directory aliases with put-object ([#176](https://github.com/noisypigeon/runway/pull/176))
