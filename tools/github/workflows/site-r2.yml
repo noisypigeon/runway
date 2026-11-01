@@ -136,15 +136,19 @@ jobs:
           s3 s3 sync "$PUBLIC/" "s3://$BUCKET/" --only-show-errors
           # Every x/index.html also as x and x/, so a directory URL with or
           # without its slash, and ?terraform-get=1 on a redirect page, finds it.
+          # s3api put-object, since s3 cp to a key ending in / writes under it
+          # instead; sixteen at a time, since a site has hundreds of pages.
           : > "$RUNNER_TEMP/expected"
           (cd "$PUBLIC" && find . -type f | sed 's#^\./##') >> "$RUNNER_TEMP/expected"
-          while IFS= read -r page; do
-            dir="${page%/index.html}"
-            for key in "$dir" "$dir/"; do
-              s3 s3 cp "$PUBLIC/$page" "s3://$BUCKET/$key" --content-type "text/html; charset=utf-8" --only-show-errors
-              echo "$key" >> "$RUNNER_TEMP/expected"
-            done
-          done < <(cd "$PUBLIC" && find . -mindepth 2 -type f -name index.html | sed 's#^\./##')
+          (cd "$PUBLIC" && find . -mindepth 2 -type f -name index.html | sed 's#^\./##') |
+            while IFS= read -r page; do
+              dir="${page%/index.html}"
+              printf '%s\n%s\n%s\n%s/\n' "$page" "$dir" "$page" "$dir"
+            done > "$RUNNER_TEMP/aliases"
+          sed -n 'n;p' "$RUNNER_TEMP/aliases" >> "$RUNNER_TEMP/expected"
+          export ENDPOINT BUCKET PUBLIC
+          xargs -d '\n' -n 2 -P 16 bash -c 'aws --endpoint-url "$ENDPOINT" s3api put-object --bucket "$BUCKET" --key "$1" --body "$PUBLIC/$0" --content-type "text/html; charset=utf-8" >/dev/null' \
+            < "$RUNNER_TEMP/aliases"
           # Only then delete what the build no longer has.
           s3 s3api list-objects-v2 --bucket "$BUCKET" --query 'Contents[].Key' --output json | jq -r '.[]?' | LC_ALL=C sort > "$RUNNER_TEMP/actual"
           LC_ALL=C sort -u "$RUNNER_TEMP/expected" > "$RUNNER_TEMP/expected.sorted"
