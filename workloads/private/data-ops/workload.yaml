@@ -39,3 +39,23 @@ workload:
       pigeon-transform:
         name_prefix: pigeon
         name_suffix: transform
+    # pigeon-cli's Serverless Jobs (LIB-0053), from its public ghcr.io image.
+    # A job with schedule is recurring; one without runs when dispatched
+    # through scaleway-job-run.yml. These two only print pigeon-cli's version,
+    # to prove both paths before real jobs replace them.
+    job:
+      version:
+        image: ghcr.io/noisypigeon/pigeon-cli:0.4.59
+        args: ["--version"]
+        cpu: 500
+        memory: 512
+        storage: 1024
+        timeout: 5m
+      version-daily:
+        image: ghcr.io/noisypigeon/pigeon-cli:0.4.59
+        args: ["--version"]
+        cpu: 500
+        memory: 512
+        storage: 1024
+        timeout: 5m
+        schedule: "17 6 * * *"

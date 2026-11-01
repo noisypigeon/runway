@@ -1,0 +1,45 @@
+# Runs one of a workload's Serverless Jobs once (LIB-0053 §5), from the
+# Actions tab. The job is a scaleway.job entry in that workload's
+# workload.yaml.
+name: scaleway-job-run
+
+on:
+  workflow_dispatch:
+    inputs:
+      unit_dir:
+        description: "The workload's directory"
+        type: choice
+        options:
+          - workloads/private/data-ops
+        default: workloads/private/data-ops
+      job:
+        description: "The scaleway.job key to run"
+        type: string
+        required: true
+      args:
+        description: "Optional JSON array of arguments, replacing the job's, e.g. [\"--version\"]"
+        type: string
+        required: false
+        default: ""
+      env:
+        description: "Optional JSON object of extra environment variables, never secrets"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scaleway-job-run-${{ inputs.unit_dir }}-${{ inputs.job }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: noisypigeon/runway/.github/workflows/scaleway-job-run.yml@github/workflows/v11.1.0
+    with:
+      unit_dir: ${{ inputs.unit_dir }}
+      job: ${{ inputs.job }}
+      args: ${{ inputs.args }}
+      env: ${{ inputs.env }}
+    secrets: inherit
