@@ -1,0 +1,36 @@
+name: scrub-run-comments
+
+# Deletes the old run comments that carry Terraform output (LIB-0054 §5):
+# every github-actions[bot] terragrunt comment with a code fence, which is
+# each detail comment and each comment from before LIB-0026. The summaries
+# are kept. Run it by hand, once, with dry_run first; it prints counts only.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only count the comments it would delete."
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  scrub:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the library
+        run: ./.config/tools.sh
+
+      - name: Delete the run comments that carry Terraform output
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          args=()
+          [ "$DRY_RUN" = true ] && args=(--dry-run)
+          .config/src/tools/github/scripts/scrub-run-comments.sh "${args[@]}" "$GITHUB_REPOSITORY"

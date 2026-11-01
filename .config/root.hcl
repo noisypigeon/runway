@@ -269,6 +269,12 @@ locals {
   # Whether state-backup.yml copies the state to B2 (LIB-0012 §2). It also
   # makes the backup keys part of terraform/secrets/terraform.enc.
   state_backup = lookup(local.spoke.locals, "state_backup", false)
+  # Bumping it replaces every API key and token a unit's kinds create, at once
+  # (LIB-0054 §6). rotation_generations maps a unit's directory to a number
+  # of its own, for a canary; an entry's own rotation_generation wins over
+  # both. 0 changes nothing.
+  rotation_generation  = lookup(local.spoke.locals, "rotation_generation", 0)
+  rotation_generations = lookup(local.spoke.locals, "rotation_generations", {})
 
   # Secrets (LIB-0012): one sops dotenv file per concern under the spoke's
   # terraform/secrets/, each decrypted in-memory via sops/age (ADR-0123,
@@ -493,12 +499,13 @@ locals {
   # every expression below runs for every leaf and is written to be harmless
   # for a hand-written one. Only the guards and workload_tf act, and only on a
   # workload leaf.
-  workload          = try(local.path_segments[1 + local.unit_offset], "")
-  workload_module   = "${try(local.path_segments[2 + local.unit_offset], "")}/${try(local.path_segments[3 + local.unit_offset], "")}"
-  workload_instance = try(local.path_segments[4 + local.unit_offset], "")
-  unit_dir          = local.is_nested_workload ? "workloads/${local.workload_parent}/${local.workload}" : "zones/${local.workload}"
-  workload_file     = local.is_nested_workload ? "${local.unit_dir}/workload.yaml" : "zones/${local.workload}/zone.yaml"
-  workload_doc      = try(yamldecode(file(mark_as_read("${local.repo_root}/${local.workload_file}"))), null)
+  workload                 = try(local.path_segments[1 + local.unit_offset], "")
+  workload_module          = "${try(local.path_segments[2 + local.unit_offset], "")}/${try(local.path_segments[3 + local.unit_offset], "")}"
+  workload_instance        = try(local.path_segments[4 + local.unit_offset], "")
+  unit_dir                 = local.is_nested_workload ? "workloads/${local.workload_parent}/${local.workload}" : "zones/${local.workload}"
+  unit_rotation_generation = lookup(local.rotation_generations, local.unit_dir, local.rotation_generation)
+  workload_file            = local.is_nested_workload ? "${local.unit_dir}/workload.yaml" : "zones/${local.workload}/zone.yaml"
+  workload_doc             = try(yamldecode(file(mark_as_read("${local.repo_root}/${local.workload_file}"))), null)
   # A unit file's content sits under one key, `zone` or `workload`, with its
   # records at dnsRecords (LIB-0039 §§1-2). Everything below reads it
   # unwrapped, with dnsRecords at cloudflare.dnsRecord, the kind table's path;
@@ -759,11 +766,11 @@ locals {
   # of that key; a custom domain per name it serves, apex for @; and
   # site-deploy, the token that writes its objects, once the bucket exists.
   # resolve-workloads.sh's expand_workload is its twin.
-  workload_r2_on    = local.is_nested_workload && !local.is_private_workload && local.workload_host != "" && contains(try(keys(local.workload_raw.deployments), []), "cloudflare")
-  workload_r2_fqdn  = local.workload_host == "@" ? local.workload_parent : "${local.workload_host}.${local.workload_parent}"
+  workload_r2_on          = local.is_nested_workload && !local.is_private_workload && local.workload_host != "" && contains(try(keys(local.workload_raw.deployments), []), "cloudflare")
+  workload_r2_fqdn        = local.workload_host == "@" ? local.workload_parent : "${local.workload_host}.${local.workload_parent}"
   workload_r2_bucket_name = replace(local.workload_r2_fqdn, ".", "-")
-  workload_r2_hosts = try([for h in local.workload_raw.deployments.cloudflare.hosts : tostring(h)], local.workload_host == "@" ? ["@", "www"] : [local.workload_host])
-  workload_r2_bucket = { for k, v in { site = { exact_name = local.workload_r2_bucket_name } } : k => v if local.workload_r2_on }
+  workload_r2_hosts       = try([for h in local.workload_raw.deployments.cloudflare.hosts : tostring(h)], local.workload_host == "@" ? ["@", "www"] : [local.workload_host])
+  workload_r2_bucket      = { for k, v in { site = { exact_name = local.workload_r2_bucket_name } } : k => v if local.workload_r2_on }
   workload_r2_domains = {
     for h in local.workload_r2_hosts : (h == "@" ? "apex" : replace(h, ".", "-")) => {
       domain      = h == "@" ? local.workload_parent : "${h}.${local.workload_parent}"
@@ -951,6 +958,9 @@ locals {
   } }
   # The deployer's grants (§8): ObjectStorageFullAccess for the state bucket,
   # and one set per compute kind the workload declares.
+  # Jobs (LIB-0053 §1, as amended) add ServerlessJobsFullAccess, and
+  # SecretManagerFullAccess when a job's env holds a secret, which the module
+  # keeps in Secret Manager.
   wc_deployer_sets = concat(["ObjectStorageFullAccess"], [
     for k, set in {
       blockVolume    = "BlockStorageFullAccess"
@@ -958,8 +968,10 @@ locals {
       privateNetwork = "PrivateNetworksFullAccess"
       publicGateway  = "VPCGatewayFullAccess"
       cockpit        = "ObservabilityFullAccess"
+      job            = "ServerlessJobsFullAccess"
     } : set if contains(local.wc_scaleway_keys, k)
-  ])
+    ], anytrue([for k, env in local.wc_job_env : anytrue([for n, x in env : can(x.secretRef) || can(x.apiKey)])]) ? ["SecretManagerFullAccess"] : []
+  )
   wc_kebab = "^[a-z0-9]+(-[a-z0-9]+)*$"
 
   # Each kind also says where its state lives (LIB-0028 §4): `spoke` in the
@@ -1323,10 +1335,10 @@ locals {
     # Cloudflare (LIB-0030), signed in with the workload's token (LIB-0033 §4).
     # spoke_inputs reach the module as sensitive variables, never literals.
     "cloudflare/bucket" = {
-      declared     = local.workload_cf_declared
-      entry        = local.workload_cf_entry
-      secrets      = local.workload_cf_secrets
-      wiring       = {}
+      declared = local.workload_cf_declared
+      entry    = local.workload_cf_entry
+      secrets  = local.workload_cf_secrets
+      wiring   = {}
       # An entry with exact_name takes no name_prefix or name_suffix, which
       # the module refuses beside it.
       defaults = {
@@ -1336,10 +1348,10 @@ locals {
       spoke_inputs = { account_id = local.cloudflare_account_id }
       # Its endpoint output carries the account ID, a sensitive input, so the
       # generated output must be marked sensitive too (LIB-0051 amendment 7).
-      sensitive    = true
-      credentials  = "workload"
-      state        = "workload"
-      units        = ["workload"]
+      sensitive   = true
+      credentials = "workload"
+      state       = "workload"
+      units       = ["workload"]
     }
     # deployments.cloudflare's custom domains (LIB-0051 §2), signed in with
     # the workload's token, in the workload's zone.
@@ -1423,6 +1435,7 @@ locals {
   workload_inputs = {
     for k, v in merge(
       try(local.workload_kind.defaults, {}),
+      local.unit_rotation_generation > 0 && contains(["scaleway/iam-api-key", "cloudflare/api-token", "backblaze/api-key"], local.workload_module) ? { rotation_generation = local.unit_rotation_generation } : {},
       { for k, v in local.workload_entry : k => v if k != "version" && !can(v.secretRef) },
     ) : k => v if !contains(keys(local.workload_sensitive), k)
   }
