@@ -7,9 +7,9 @@
 workload:
   name: garden
   deployments:
-    githubPages: {}
-    # LIB-0051 §4 step 1: garden on R2 at a test host, beside Pages, until
-    # site-r2-garden.yml's checks pass there. The flip drops githubPages and
-    # this hosts list, so R2 serves the apex and www.
+    # LIB-0051 §4 step 2, the flip, first apply: githubPages goes, so its two
+    # Pages CNAMEs are destroyed and free the apex and www for R2. The next
+    # commit adds the apex and www to hosts, keeping r2-test so that apply
+    # destroys nothing while garden is down (LIB-0051 amendment 8).
     cloudflare:
       hosts: [r2-test]
