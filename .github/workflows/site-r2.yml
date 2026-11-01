@@ -1,0 +1,212 @@
+name: site-r2
+
+# Builds a site workload's Zola site and deploys it to the R2 bucket its
+# deployments.cloudflare implies, then checks it is served the way LIB-0051 §1
+# needs (LIB-0051 §3). It replaces site-pages.yml's Pages shim: the spoke
+# deploys its own sites, so nothing is dispatched across repos.
+#
+# The bucket's credentials are its site-deploy token's, read from that leaf's
+# state with terragrunt, so the caller holds no deploy secret: the token's ID
+# and the SHA-256 of its value sign in to R2's S3 API (cloudflare/api-token's
+# s3_* outputs). The bucket and its endpoint come from cloudflare/bucket/site.
+#
+# An R2 custom domain serves keys, not directories, so every x/index.html is
+# also uploaded as x and x/; the zone's sites-root rule serves / itself. Keys
+# the build no longer has are deleted only after the new ones are up.
+on:
+  workflow_call:
+    inputs:
+      src_dir:
+        description: "The site workload's directory, holding its config.toml and its workload.yaml, e.g. workloads/example.com/site."
+        type: string
+        required: true
+      base_url:
+        description: "The URL to check the deployed site at, e.g. https://example.com. Empty skips the checks."
+        type: string
+        required: false
+        default: ""
+      www_url:
+        description: "A URL that must redirect to base_url, e.g. https://www.example.com. Empty skips that check."
+        type: string
+        required: false
+        default: ""
+      prepare_cmd:
+        description: "Command run from the repo root before terragrunt reads state: fetching the library and generating the workload's stubs."
+        type: string
+        required: false
+        default: "./.config/pigeon/tools.sh && .config/pigeon/src/tools/github/scripts/resolve-workloads.sh"
+      theme_script:
+        description: "Path (relative to the repo root) to tools/static-site/zola/resolve-theme.sh, as left by prepare_cmd."
+        type: string
+        required: false
+        default: ".config/pigeon/src/tools/static-site/zola/resolve-theme.sh"
+      build_cmd:
+        description: "Command to run (in src_dir) to build the site."
+        type: string
+        required: false
+        default: "zola build"
+      zola_version:
+        type: string
+        required: false
+        default: "0.23.6"
+    secrets:
+      SOPS_AGE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-r2-${{ inputs.src_dir }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: jdx/mise-action@v2
+
+      - name: Prepare
+        env:
+          PREPARE_CMD: ${{ inputs.prepare_cmd }}
+        run: |
+          [ -e .config/pigeon/tools.sh ] || PREPARE_CMD="${PREPARE_CMD//.config\/pigeon\//.pigeon/}"
+          bash -c "$PREPARE_CMD"
+
+      - name: Resolve the theme
+        working-directory: ${{ inputs.src_dir }}
+        env:
+          THEME_SCRIPT: ${{ inputs.theme_script }}
+        run: |
+          top=$(git rev-parse --show-toplevel)
+          [ -e "$top/$THEME_SCRIPT" ] || THEME_SCRIPT="${THEME_SCRIPT/.config\/pigeon\//.pigeon/}"
+          "$top/$THEME_SCRIPT"
+
+      - name: Install Zola
+        env:
+          ZOLA_VERSION: ${{ inputs.zola_version }}
+        run: |
+          curl -sSL "https://github.com/getzola/zola/releases/download/v${ZOLA_VERSION}/zola-v${ZOLA_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz -C /usr/local/bin zola
+
+      - name: Build
+        working-directory: ${{ inputs.src_dir }}
+        env:
+          BUILD_CMD: ${{ inputs.build_cmd }}
+        run: bash -c "$BUILD_CMD"
+
+      # Read before anything is written: no bucket or token, no deploy.
+      - name: Read the bucket and its token from state
+        id: target
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          TG_TF_PATH: terraform
+          SRC_DIR: ${{ inputs.src_dir }}
+        run: |
+          out() { terragrunt --log-level error --working-dir "$SRC_DIR/cloudflare/$1" output -json module; }
+          bucket=$(out bucket/site | jq -r '.name')
+          endpoint=$(out bucket/site | jq -r '.endpoint')
+          token=$(out api-token/site-deploy)
+          key_id=$(jq -r '.s3_access_key_id' <<<"$token")
+          secret=$(jq -r '.s3_secret_access_key' <<<"$token")
+          for v in "$bucket" "$endpoint" "$key_id" "$secret"; do
+            if [ -z "$v" ] || [ "$v" = null ]; then
+              echo "::error::$SRC_DIR has no applied cloudflare/bucket/site or cloudflare/api-token/site-deploy; apply deployments.cloudflare first (LIB-0051 §4)"
+              exit 1
+            fi
+          done
+          echo "::add-mask::$secret"
+          {
+            echo "bucket=$bucket"
+            echo "endpoint=$endpoint"
+            echo "key_id=$key_id"
+            echo "secret=$secret"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload
+        env:
+          AWS_ACCESS_KEY_ID: ${{ steps.target.outputs.key_id }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.target.outputs.secret }}
+          AWS_DEFAULT_REGION: auto
+          BUCKET: ${{ steps.target.outputs.bucket }}
+          ENDPOINT: ${{ steps.target.outputs.endpoint }}
+          PUBLIC: ${{ inputs.src_dir }}/public
+        run: |
+          s3() { aws --endpoint-url "$ENDPOINT" "$@"; }
+          s3 s3 sync "$PUBLIC/" "s3://$BUCKET/" --only-show-errors
+          # Every x/index.html also as x and x/, so a directory URL with or
+          # without its slash, and ?terraform-get=1 on a redirect page, finds it.
+          # s3api put-object, since s3 cp to a key ending in / writes under it
+          # instead; sixteen at a time, since a site has hundreds of pages.
+          : > "$RUNNER_TEMP/expected"
+          (cd "$PUBLIC" && find . -type f | sed 's#^\./##') >> "$RUNNER_TEMP/expected"
+          (cd "$PUBLIC" && find . -mindepth 2 -type f -name index.html | sed 's#^\./##') |
+            while IFS= read -r page; do
+              dir="${page%/index.html}"
+              printf '%s\n%s\n%s\n%s/\n' "$page" "$dir" "$page" "$dir"
+            done > "$RUNNER_TEMP/aliases"
+          sed -n 'n;p' "$RUNNER_TEMP/aliases" >> "$RUNNER_TEMP/expected"
+          export ENDPOINT BUCKET PUBLIC
+          xargs -d '\n' -n 2 -P 16 bash -c 'aws --endpoint-url "$ENDPOINT" s3api put-object --bucket "$BUCKET" --key "$1" --body "$PUBLIC/$0" --content-type "text/html; charset=utf-8" >/dev/null' \
+            < "$RUNNER_TEMP/aliases"
+          # Only then delete what the build no longer has.
+          s3 s3api list-objects-v2 --bucket "$BUCKET" --query 'Contents[].Key' --output json | jq -r '.[]?' | LC_ALL=C sort > "$RUNNER_TEMP/actual"
+          LC_ALL=C sort -u "$RUNNER_TEMP/expected" > "$RUNNER_TEMP/expected.sorted"
+          LC_ALL=C comm -23 "$RUNNER_TEMP/actual" "$RUNNER_TEMP/expected.sorted" > "$RUNNER_TEMP/stale"
+          while IFS= read -r key; do
+            s3 s3api delete-object --bucket "$BUCKET" --key "$key" >/dev/null
+          done < "$RUNNER_TEMP/stale"
+          echo "Uploaded $(wc -l < "$RUNNER_TEMP/expected.sorted") objects to $BUCKET, deleted $(wc -l < "$RUNNER_TEMP/stale") stale ones."
+
+      # LIB-0051 §1, against the live site.
+      - name: Check the site
+        if: inputs.base_url != ''
+        env:
+          BASE: ${{ inputs.base_url }}
+          WWW: ${{ inputs.www_url }}
+          PUBLIC: ${{ inputs.src_dir }}/public
+        run: |
+          fails=0
+          check() { # <what> <expected status> <url> [<grep in body>]
+            local body status
+            body=$(mktemp)
+            status=$(curl -sS -o "$body" -w '%{http_code}' --max-redirs 0 "$3" || true)
+            if [ "$status" != "$2" ]; then
+              echo "::error::$1: $3 answered $status, not $2"; fails=$((fails + 1)); return
+            fi
+            if [ -n "${4:-}" ] && ! grep -q -- "$4" "$body"; then
+              echo "::error::$1: $3 has no $4"; fails=$((fails + 1)); return
+            fi
+            echo "ok: $1"
+          }
+          check "the root" 200 "$BASE/" "<html"
+          dir=$(cd "$PUBLIC" && find . -mindepth 2 -type f -name index.html | sed 's#^\./##; s#/index\.html$##' | sort | head -n1)
+          if [ -n "$dir" ]; then
+            check "a directory, with its slash" 200 "$BASE/$dir/" "<html"
+            check "a directory, without its slash" 200 "$BASE/$dir" "<html"
+          fi
+          check "not found" 404 "$BASE/lib-0051-no-such-page/"
+          redirect=$(cd "$PUBLIC" && find terraform -mindepth 3 -type f -name index.html 2>/dev/null | sed 's#/index\.html$##' | sort | head -n1 || true)
+          if [ -n "$redirect" ]; then
+            check "a module redirect page's terraform-get" 200 "$BASE/$redirect?terraform-get=1" 'name="terraform-get"'
+          fi
+          asset=$(cd "$PUBLIC" && find . -type f \( -name '*.css' -o -name '*.json' \) | sed 's#^\./##' | sort | head -n1)
+          if [ -n "$asset" ]; then
+            check "a static file" 200 "$BASE/$asset"
+          fi
+          if [ -n "$WWW" ]; then
+            location=$(curl -sS -o /dev/null -w '%{redirect_url}' --max-redirs 0 "$WWW/" || true)
+            case "$location" in
+              "$BASE"/*|"$BASE") echo "ok: www redirects" ;;
+              *) echo "::error::www: $WWW/ redirects to '$location', not $BASE"; fails=$((fails + 1)) ;;
+            esac
+          fi
+          if [ "$fails" -gt 0 ]; then
+            echo "::error::$fails of LIB-0051 §1's checks failed"
+            exit 1
+          fi
