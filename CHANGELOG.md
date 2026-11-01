@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-10-31
 
+- [terraform] chore: move runway's config into .config/ (LIB-0052) ([#189](https://github.com/noisypigeon/runway/pull/189))
 - [github/workflows] fix(github/workflows): finish v11's .config/ support before runway moves ([#188](https://github.com/noisypigeon/runway/pull/188))
 - [github/terragrunt] fix(github/workflows): finish v11's .config/ support before runway moves ([#188](https://github.com/noisypigeon/runway/pull/188))
 - [github/workflows] feat(github/terragrunt)!: read a spoke's config from .config/ (LIB-0052) ([#186](https://github.com/noisypigeon/runway/pull/186))
