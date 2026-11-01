@@ -601,18 +601,17 @@ jobs:
       # theme-version pages, release posts and schemas are generated and
       # committed in this repo's workloads/noisypigeon.garden/garden/
       # (LIB-0035 §§2, 4), so every release dispatches garden-generate.yml
-      # here. Since LIB-0047 that is no longer a cross-repo dispatch. Its commit
-      # deploys itself, through runway's sites.yml and the
-      # noisypigeon/noisypigeon.garden shim; a release that changes no page
-      # commits nothing and deploys nothing. noisypigeon/noisypigeon.com only
-      # renders with the theme, so it rebuilds on a theme release only.
+      # here. Its commit deploys itself, through site-r2-garden.yml; a release
+      # that changes no page commits nothing and deploys nothing. The blog
+      # only renders with the theme, so it redeploys on a theme release only
+      # (LIB-0051 amendment 9).
       #
       # Runs *after* the tags are pushed above: the generator reads this
       # repo's tag list, so dispatching first would race the tag into
       # existence.
       #
-      # Both need BOT_GITHUB_TOKEN to carry actions: write on their repo, this
-      # one and noisypigeon/noisypigeon.com. If it doesn't, these steps fail
+      # Both need BOT_GITHUB_TOKEN to carry actions: write on this repo. If
+      # it doesn't, these steps fail
       # loudly -- which is the point. A missed dispatch leaves a version
       # tagged and released here whose short URL 404s on the site.
       - name: Trigger garden generation
@@ -621,13 +620,10 @@ jobs:
           GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: gh workflow run garden-generate.yml -R "$GITHUB_REPOSITORY" --ref main
 
-      # Replaces a dispatch at zola-sites-deploy.yml in noisypigeon/noisypigeon,
-      # which DEV-0159 removed from that repo -- so this step had been failing
-      # on every theme release until LIB-0002 repointed it here. The shim was
-      # renamed from noisypigeon/blog, and every shim's deploy is pages.yml
-      # (LIB-0034 §§4, 6).
-      - name: Trigger noisypigeon.com Pages deploy
+      # The blog is served from R2 and deployed here (LIB-0051), no longer
+      # through its Pages shim's pages.yml.
+      - name: Trigger the blog's deploy
         if: steps.zola_site.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
-        run: gh workflow run pages.yml -R noisypigeon/noisypigeon.com --ref main
+        run: gh workflow run site-r2-blog.yml -R "$GITHUB_REPOSITORY" --ref main

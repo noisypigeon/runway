@@ -252,3 +252,23 @@ Where this entry and the text above disagree, this entry is what runs.
      `static/`.
    - **LIB-0009 stands** for every other consumer: the short URL stays the
      stable interface, and is the fallback here.
+9. **Both sites moved on 2026-11-01.**
+   - **The test hosts.** Each site's deploy passed every §1 check at its
+     `r2-test` host before its flip.
+   - **The flips.** Each took two applies, as item 4 says: the Pages CNAMEs
+     went first, then the custom domains came in. noisypigeon.com was down
+     for about six minutes. noisypigeon.garden was down for about seven, and
+     its second plan ran with garden down, which proved item 8.
+   - **After each flip,** the deploy passed every §1 check on the real host:
+     the root, both forms of a directory, the 404, a static file and `www`.
+     Garden's run also checked a module redirect page's `terraform-get`.
+   - **Garden's `r2-test`** was kept through its flip, so the second plan
+     had nothing to destroy, and dropped afterwards.
+   - **No `sites.yml` (§3).** Each site deploys through its own workflow,
+     `site-r2-blog.yml` and `site-r2-garden.yml`, which path filters keep to
+     its own changes. `sites.yml` and its dispatch to the shims are gone. A
+     theme release dispatches `site-r2-blog.yml` in runway.
+   - **Left for the owner:** archiving the two shim repos, and dropping
+     `BOT_GITHUB_TOKEN`'s `actions: write` on them (§5). `site-pages.yml`,
+     `zola-site-pages.yml` and `site-dispatch.yml` have no caller in runway
+     now, and go in the next `github/workflows` major.

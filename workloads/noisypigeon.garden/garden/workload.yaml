@@ -5,8 +5,5 @@ workload:
   name: garden
   deployments:
     # Served from its R2 bucket on the apex and www (LIB-0051), www
-    # redirecting to the apex. r2-test stays until garden is back, so the
-    # flip's second apply only creates (LIB-0051 amendment 8); a later PR
-    # drops it. site-r2-garden.yml deploys it.
-    cloudflare:
-      hosts: ["@", www, r2-test]
+    # redirecting to the apex. site-r2-garden.yml deploys it.
+    cloudflare: {}
