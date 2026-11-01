@@ -10,6 +10,12 @@ resource "scaleway_job_definition" "this" {
   timeout                = var.timeout
   env                    = var.env
 
+  # Scaleway gives every definition a retry policy, so the module states it;
+  # left out, every plan would try to remove it.
+  retry_policy {
+    max_retries = var.retries
+  }
+
   dynamic "cron" {
     for_each = var.schedule == null ? [] : [var.schedule]
     content {
