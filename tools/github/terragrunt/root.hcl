@@ -1419,6 +1419,19 @@ locals {
     ],
   ))
   workload_version = try(regex("/v([0-9]+\\.[0-9]+\\.[0-9]+)(\\^\\{\\})?$", split("\n", trimspace(local.workload_tags))[0])[0], "")
+  # The module's source (LIB-0051 amendment 8): straight from its git tag, at
+  # the path that tag holds (tools/ since LIB-0050, lib/ before), read from
+  # the library clone in .pigeon/src. That is where noisypigeon.garden's
+  # redirect page points anyway, so a spoke that serves garden never needs
+  # garden up to plan. Without the clone, or for a tag it lacks, the short URL.
+  workload_lib_repo = get_env("LIB_TAG_REMOTE", "https://github.com/noisypigeon/runway")
+  workload_tag_ref  = "terraform/${local.workload_module}/v${local.workload_version}"
+  workload_tag_dir = local.is_workload_leaf && local.workload_version != "" ? trimspace(run_cmd(
+    "--terragrunt-quiet", "sh", "-c",
+    "for d in tools/terraform lib/terraform; do git -C \"$1\" cat-file -e \"$2:$d/$3\" 2>/dev/null && { echo \"$d\"; exit 0; }; done; echo",
+    "sh", "${get_parent_terragrunt_dir()}/.pigeon/src", local.workload_tag_ref, local.workload_module,
+  )) : ""
+  workload_source = local.workload_tag_dir != "" ? "git::${trimsuffix(local.workload_lib_repo, ".git")}.git//${local.workload_tag_dir}/${local.workload_module}?ref=${local.workload_tag_ref}" : "https://noisypigeon.garden/terraform/${local.workload_module}/v${local.workload_version}"
 
   guard_workload_values = local.is_workload_leaf && local.workload_values == null ? file("${local.workload_file} is missing or not valid YAML, but ${path_relative_to_include()} is its stub (LIB-0023)") : true
   # The old layout (LIB-0037 §6): a leaf at its depth, and any values.yaml.
@@ -1652,7 +1665,7 @@ variable "scaleway_secret_key" {
 
 %{endif~}
 module "this" {
-  source = "https://noisypigeon.garden/terraform/${local.workload_module}/v${local.workload_version}"
+  source = "${local.workload_source}"
 %{for k, v in local.workload_inputs~}
   ${k} = ${replace(replace(jsonencode(v), "$${", "$$${"), "%%{", "%%%{")}
 %{endfor~}
