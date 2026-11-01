@@ -36,7 +36,7 @@ concurrency:
 
 jobs:
   run:
-    uses: noisypigeon/runway/.github/workflows/scaleway-job-run.yml@github/workflows/v11.1.0
+    uses: noisypigeon/runway/.github/workflows/scaleway-job-run.yml@github/workflows/v11.2.0
     with:
       unit_dir: ${{ inputs.unit_dir }}
       job: ${{ inputs.job }}

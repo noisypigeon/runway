@@ -16,7 +16,7 @@ permissions:
 jobs:
   detect:
     if: github.event_name == 'pull_request'
-    uses: noisypigeon/runway/.github/workflows/terragrunt-detect.yml@github/workflows/v11.1.0
+    uses: noisypigeon/runway/.github/workflows/terragrunt-detect.yml@github/workflows/v11.2.0
     with:
       leaf_pattern: '^terraform/|^workloads/[^/]+/(values|secrets)\.yaml$|^workloads/[^/]+/[^/]+/(workload|secrets\.workload)\.yaml$|^zones/[^/]+/zone\.yaml$|^zones\.yaml$|^\.config/(root\.hcl|spoke\.hcl|sops\.yaml|policies\.yaml|secrets-schema\.json)$'
 
@@ -28,7 +28,7 @@ jobs:
       github.event.issue.pull_request != null &&
       github.event.comment.body == 'terragrunt plan' &&
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
-    uses: noisypigeon/runway/.github/workflows/terragrunt-ack.yml@github/workflows/v11.1.0
+    uses: noisypigeon/runway/.github/workflows/terragrunt-ack.yml@github/workflows/v11.2.0
 
   # On a push, or on a `terragrunt plan` comment, gated like apply (LIB-0022).
   plan:
@@ -48,7 +48,7 @@ jobs:
     concurrency:
       group: terragrunt-pr-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
-    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v11.1.0
+    uses: noisypigeon/runway/.github/workflows/terragrunt-run.yml@github/workflows/v11.2.0
     with:
       command: plan
       prepare_cmd: ./.config/tools.sh && .config/src/tools/github/scripts/resolve-root-hcl.sh --check && .config/src/tools/github/scripts/check-secrets.sh && WORKLOAD_SCHEMA_DIR=workloads/noisypigeon.garden/garden/static .config/src/tools/github/scripts/resolve-workloads.sh --check && .config/src/tools/github/scripts/check-policies.sh
