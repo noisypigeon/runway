@@ -8,7 +8,7 @@ in_search_index = true
 kind = "module"
 provider = "scaleway"
 module = "iam-api-key"
-latest_version = "0.3.0"
+latest_version = "0.4.0"
 github_url = "https://github.com/noisypigeon/runway/tree/main/tools/terraform/scaleway/iam-api-key"
 usage_example = """
 module "iam_api_key" {
@@ -16,5 +16,5 @@ module "iam_api_key" {
   application_id = module.iam_application.id
 }
 """
-versions = [{ version = "0.1.0", path = "terraform/scaleway/iam-api-key/v0.1.0" }, { version = "0.2.0", path = "terraform/scaleway/iam-api-key/v0.2.0" }, { version = "0.3.0", path = "terraform/scaleway/iam-api-key/v0.3.0" }]
+versions = [{ version = "0.1.0", path = "terraform/scaleway/iam-api-key/v0.1.0" }, { version = "0.2.0", path = "terraform/scaleway/iam-api-key/v0.2.0" }, { version = "0.3.0", path = "terraform/scaleway/iam-api-key/v0.3.0" }, { version = "0.4.0", path = "terraform/scaleway/iam-api-key/v0.4.0" }]
 +++

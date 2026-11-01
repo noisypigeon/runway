@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,2}$",
+      "description": "Pins this module: X.Y.Z exactly, X.Y or X to the newest release within it. Omitted, the newest release (LIB-0023 §3)."
+    },
+    "application_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "IAM application ID this key authenticates as"
+    },
+    "default_project_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Default project ID to use for Object Storage operations with this key (defaults to the provider's own project when unset)"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "IAM API key description"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "API key expiration timestamp (i.e. 2027-09-25T22:32:12Z). Defaults to 30 days after the key is first created."
+    },
+    "rotation_days": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Replace the API key every this many days, expiring it a week after each scheduled rotation (LIB-0038). Unset, the key expires 30 days after it was first created and is never replaced."
+    },
+    "rotation_generation": {
+      "anyOf": [
+        {
+          "type": "number",
+          "default": 0
+        },
+        {
+          "type": "object",
+          "required": [
+            "secretRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "type": "string",
+              "description": "A name in the workload secrets.yaml env map (LIB-0025)"
+            }
+          }
+        }
+      ],
+      "description": "Bump to replace the key now, create-before-destroy, with a fresh expiry (LIB-0054 §6). 0, the default, changes nothing."
+    }
+  },
+  "$id": "https://noisypigeon.garden/terraform/scaleway/iam-api-key/v0.4.0/inputs.schema.json"
+}
