@@ -291,7 +291,7 @@ if [ -n "$STATIC_ROOT" ]; then
 
   kinds_json='{}'
   schema_count=0
-  for wmodule in scaleway/project scaleway/iam-application scaleway/iam-policy scaleway/terraform-deployer-iam scaleway/bucket scaleway/iam-api-key scaleway/block-volume scaleway/cockpit-observability scaleway/private-network scaleway/public-gateway scaleway/compute-instance scaleway/compute-instance-config scaleway/gateway-pat-rule backblaze/bucket backblaze/api-key cloudflare/bucket cloudflare/dns-record cloudflare/ruleset cloudflare/apex-redirect cloudflare/api-token cloudflare/r2-custom-domain; do
+  for wmodule in scaleway/project scaleway/iam-application scaleway/iam-policy scaleway/terraform-deployer-iam scaleway/bucket scaleway/iam-api-key scaleway/block-volume scaleway/cockpit-observability scaleway/private-network scaleway/public-gateway scaleway/compute-instance scaleway/compute-instance-config scaleway/gateway-pat-rule scaleway/job-definition backblaze/bucket backblaze/api-key cloudflare/bucket cloudflare/dns-record cloudflare/ruleset cloudflare/apex-redirect cloudflare/api-token cloudflare/r2-custom-domain; do
     wversions="$(templates_tags "terraform/${wmodule}/v*" \
       | sed -nE 's#.*/v([0-9]+\.[0-9]+\.[0-9]+)$#\1#p' \
       | sort -t. -k1,1n -k2,2n -k3,3n -u)"

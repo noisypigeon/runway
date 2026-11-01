@@ -910,6 +910,13 @@ locals {
   wc_ipv4          = { for k, n in local.wc_net : k => try(n.publicIpv4 == true, false) }
   wc_pat           = { for k, n in local.wc_net : k => n.sshViaGateway if can(n.sshViaGateway) }
   wc_self_delete   = { for k, v in local.wc_instances : "self-delete-${k}" => k if try(v.selfDelete == true, false) }
+  # Serverless Jobs (LIB-0053). An env value is plain, a secretRef (to
+  # secret_env, by Secret Manager) or an apiKey reference (to secret_wiring,
+  # filled by the stub from that key's leaf).
+  wc_jobs       = { for k, v in try(merge({}, local.workload_scaleway.job), {}) : k => try(merge({}, v), {}) }
+  wc_job_env    = { for k, v in local.wc_jobs : k => try(merge({}, v.env), {}) }
+  wc_job_plain  = { for k, env in local.wc_job_env : k => { for n, x in env : n => tostring(x) if !can(x.secretRef) && !can(x.apiKey) } }
+  wc_job_secret = { for k, env in local.wc_job_env : k => { for n, x in env : n => lookup(local.workload_env, try(tostring(x.secretRef), ""), null) if can(x.secretRef) } }
   # Each instance's keyring, sharedKeyring underneath (§2). What a
   # dependency fills (a scaleway.bucket key's name, an apiKey's credentials)
   # is the stub's keyring_wiring; what a secretRef fills is keyring_secrets,
@@ -1105,6 +1112,57 @@ locals {
     }
     "scaleway/iam-api-key#self-delete" = {
       declared    = contains(keys(local.wc_self_delete), local.workload_instance)
+      entry       = null
+      secrets     = null
+      wiring      = { default_project_id = "string", application_id = "string" }
+      defaults    = {}
+      sensitive   = true
+      credentials = "spoke"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    # A Serverless Job definition (LIB-0053 §§1-3): its env split into plain
+    # values, secrets (secret_env) and apiKey wiring (secret_wiring).
+    "scaleway/job-definition" = {
+      declared         = contains(keys(local.wc_jobs), local.workload_instance)
+      entry            = contains(keys(local.wc_jobs), local.workload_instance) ? merge({ for k, v in local.wc_jobs[local.workload_instance] : k => v if k != "env" }, { env = local.wc_job_plain[local.workload_instance] }) : null
+      secrets          = null
+      wiring           = { project_id = "string", secret_wiring = "map(string)" }
+      wiring_sensitive = ["secret_wiring"]
+      json_sensitive   = { for k, v in { secret_env = try(local.wc_job_secret[local.workload_instance], {}) } : k => v if length(v) > 0 }
+      defaults         = { name = "${local.workload_prefix}-${local.workload_suffix}${local.workload_name_tag}-${local.workload_instance}" }
+      sensitive        = true
+      credentials      = "workload"
+      state            = "workload"
+      units            = ["workload"]
+    }
+    # job-runner, the key a dispatch starts a workload's job runs with
+    # (LIB-0053 §6): its own application, a ServerlessJobsFullAccess policy on
+    # the project alone, and a key. Nothing in the file overrides them.
+    "scaleway/iam-application#job-runner" = {
+      declared    = local.workload_instance == "job-runner" && length(local.wc_jobs) > 0
+      entry       = null
+      secrets     = null
+      wiring      = {}
+      defaults    = { name = "${local.workload_prefix}-${local.workload_suffix}${local.workload_name_tag}-job-runner" }
+      sensitive   = false
+      credentials = "spoke"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    "scaleway/iam-policy#job-runner" = {
+      declared    = local.workload_instance == "job-runner" && length(local.wc_jobs) > 0
+      entry       = null
+      secrets     = null
+      wiring      = { project_ids = "list(string)", application_id = "string" }
+      defaults    = { name = "${local.workload_prefix}-${local.workload_suffix}${local.workload_name_tag}-job-runner", project_permission_sets = ["ServerlessJobsFullAccess"] }
+      sensitive   = false
+      credentials = "spoke"
+      state       = "workload"
+      units       = ["workload"]
+    }
+    "scaleway/iam-api-key#job-runner" = {
+      declared    = local.workload_instance == "job-runner" && length(local.wc_jobs) > 0
       entry       = null
       secrets     = null
       wiring      = { default_project_id = "string", application_id = "string" }
@@ -1339,6 +1397,7 @@ locals {
     local.workload_module == "scaleway/bucket" && local.workload_instance == "state" ? "scaleway/bucket#state" :
     local.workload_instance == "deployer" && contains(["scaleway/iam-application", "scaleway/iam-policy", "scaleway/iam-api-key", "cloudflare/api-token", "backblaze/api-key"], local.workload_module) ? "${local.workload_module}#deployer" :
     startswith(local.workload_instance, "self-delete-") && contains(["scaleway/iam-application", "scaleway/iam-policy", "scaleway/iam-api-key"], local.workload_module) ? "${local.workload_module}#self-delete" :
+    local.workload_instance == "job-runner" && contains(["scaleway/iam-application", "scaleway/iam-policy", "scaleway/iam-api-key"], local.workload_module) ? "${local.workload_module}#job-runner" :
     local.workload_module
   )
   # The kinds LIB-0038 retired, refused by name rather than as unknown.
@@ -1454,6 +1513,7 @@ locals {
   guard_workload_inputs   = local.is_workload_leaf && !alltrue([for k in keys(local.workload_inputs) : can(regex("^[a-z_][a-z0-9_]*$", k))]) ? file("${local.leaf_path}: ${local.workload_file} has an input name that isn't a Terraform identifier") : true
   guard_workload_pin      = local.is_workload_leaf && !can(regex("^([0-9]+(\\.[0-9]+){0,2})?$", local.workload_pin)) ? file("${local.leaf_path}: version \"${local.workload_pin}\" must be X, X.Y or X.Y.Z (LIB-0023 §3)") : true
   guard_workload_both     = local.is_workload_leaf && length(setintersection(keys(local.workload_secret_entry), [for k in keys(local.workload_entry) : k if k != "version"])) > 0 ? file("${local.leaf_path}: ${join(", ", setintersection(keys(local.workload_secret_entry), keys(local.workload_entry)))} set in both ${local.workload_file} and ${local.workload_secrets_file}; keep each input in one (LIB-0025)") : true
+  guard_workload_job_refs = local.is_workload_leaf && local.workload_module == "scaleway/job-definition" && anytrue([for n, v in try(local.wc_job_secret[local.workload_instance], {}) : v == null]) ? file("${local.leaf_path}: a secretRef in scaleway.job.${local.workload_instance}.env names something ${local.workload_secrets_file}'s env doesn't have (LIB-0025, LIB-0053 §3)") : true
   guard_workload_refs     = local.is_workload_leaf && !alltrue([for k, name in local.workload_refs : contains(keys(local.workload_env), name)]) ? file("${local.leaf_path}: a secretRef in ${local.workload_file} names something ${local.workload_secrets_file}'s env doesn't have (LIB-0025)") : true
   guard_workload_scalars  = local.is_workload_leaf && !alltrue(concat([for k, v in local.workload_sensitive : v != null], [for k, v in try(local.workload_secrets.env, {}) : can(tostring(v))])) ? file("${local.leaf_path}: every value in ${local.workload_secrets_file} must be one value, not a list or a map (LIB-0025)") : true
   guard_workload_version  = local.is_workload_leaf && local.workload_version == "" ? file("${local.leaf_path}: no terraform/${local.workload_module} tag matches version \"${local.workload_pin}\" (LIB-0023 §3)") : true

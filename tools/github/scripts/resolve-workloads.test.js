@@ -181,3 +181,44 @@ test('a spoke that keeps its config at the root still gets stubs that include ro
   assert.equal(r.status, 0, r.err);
   assert.match(r.read('workloads/private/cold/backblaze/bucket/snap/terragrunt.hcl'), /find_in_parent_folders\("root\.hcl"\)/);
 });
+
+// LIB-0053: Serverless Jobs.
+const jobs = (job, extra = []) => ({
+  'workloads/private/runner/workload.yaml': [
+    'workload:',
+    '  deployments:',
+    '    scaleway:',
+    '      project:',
+    '        prefix: wg',
+    '        suffix: runner',
+    '  scaleway:',
+    '    iam:',
+    '      application: {}',
+    '      apiKey:',
+    '        reader: {}',
+    ...extra,
+    '    job:',
+    ...job.map((l) => `      ${l}`),
+    '',
+  ].join('\n'),
+});
+
+test('a scaleway.job implies its definition and the job-runner application, policy and key (LIB-0053)', () => {
+  const r = run(jobs(['nightly:', '  image: ghcr.io/example/app:v1.2.3', '  schedule: "15 3 * * *"', '  env:', '    MODE: report', '    ACCESS: {apiKey: reader, field: access_key}', '    SECRET: {apiKey: reader}']));
+  assert.equal(r.status, 0, r.err);
+  const w = 'workloads/private/runner/scaleway';
+  const def = r.read(`${w}/job-definition/nightly/terragrunt.hcl`);
+  assert.match(def, /dependency "apikey_reader"/);
+  assert.match(def, /"ACCESS" = dependency\.apikey_reader\.outputs\.module\.access_key/);
+  assert.match(def, /"SECRET" = dependency\.apikey_reader\.outputs\.module\.secret_key/);
+  for (const rel of ['iam-application/job-runner', 'iam-policy/job-runner', 'iam-api-key/job-runner']) {
+    assert.ok(exists(r, `${w}/${rel}/terragrunt.hcl`), rel);
+  }
+});
+
+test('a scaleway.job image must be pinned, and job-runner is reserved (LIB-0053)', () => {
+  const r = run(jobs(['adhoc:', '  image: ghcr.io/example/app:latest'], ['        job-runner: {}']));
+  assert.notEqual(r.status, 0);
+  assert.ok(r.errors.some((e) => /image must be pinned/.test(e)), r.err);
+  assert.ok(r.errors.some((e) => /job-runner/.test(e)), r.err);
+});
