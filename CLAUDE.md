@@ -174,9 +174,6 @@ This is also where the spokes' decisions live: blog and garden are runway
 workloads, and their shims hold no records (LIB-0017). The procedure, with the
 `gh` commands, is `tools/docs/runbooks/file-a-decision-record.md`.
 
-Until LIB-0056 §5's move is done, the older records are still files in
-`tools/docs/adr/`. That directory is frozen: never edit it.
-
 - **Older IDs stay valid and are never rewritten.**
   - `DEV-` records are frozen in the **ADR Archive** category.
   - `COM-` and `RUN-` records survive as amendments whose headings carry the

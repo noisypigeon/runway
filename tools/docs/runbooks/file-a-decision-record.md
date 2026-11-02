@@ -39,9 +39,6 @@ gh api graphql --paginate -f query='
   | grep -oE '^LIB-[0-9]{4}' | sort | tail -1
 ```
 
-Until the move in LIB-0056 §5 is done, also check `tools/docs/adr/` at `main`
-and take the larger.
-
 ## File a record
 
 1. Draft it locally as `LIB-NNNN.md`.

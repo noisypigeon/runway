@@ -53,7 +53,7 @@ Releases are tagged with per-module, path-scoped semantic versions matching wher
 
 **Only the current era's tags live here, and only they resolve.** The first three eras' tags remain in `noisypigeon/noisypigeon` and the fourth in `noisypigeon/garden`; none are deleted — ADR-0154 made that a permanent boundary — but none are served either. DEV-0160 step 0 retired the last mapping arm once `scaleway/project/v1.0.0`, its only remaining consumer, was repinned. Every version a consumer can resolve today is a `terraform/*` tag in this repo, because LIB-0002 re-cut all 53 of them here.
 
-**The public `noisypigeon.garden/terraform/<provider>/<module>/vX.Y.Z` short-URL namespace (see "Consuming" below, [LIB-0009](../docs/adr/LIB-0009-terraform-short-urls-move-to-noisypigeon-garden.md)) is published for every current-era tag, whatever version, and doesn't move when this directory does.** It is a stable public interface, deliberately decoupled from the repo's internal layout.
+**The public `noisypigeon.garden/terraform/<provider>/<module>/vX.Y.Z` short-URL namespace (see "Consuming" below, [LIB-0009](https://github.com/noisypigeon/runway/discussions/220)) is published for every current-era tag, whatever version, and doesn't move when this directory does.** It is a stable public interface, deliberately decoupled from the repo's internal layout.
 
 ## Consuming
 

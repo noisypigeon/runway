@@ -1,7 +1,7 @@
 # Rotate every secret
 
 This replaces every credential the spoke holds, in the order
-[LIB-0054](../adr/LIB-0054-redact-identifiers-and-rotate-secrets.md) §6 sets.
+[LIB-0054](https://github.com/noisypigeon/runway/discussions/265) §6 sets.
 Run it after identifier redaction has shipped and the old run comments have
 been swept (§§1–5), so that no new key's ID is ever posted.
 

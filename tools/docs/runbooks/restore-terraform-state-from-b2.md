@@ -3,8 +3,8 @@
 For a spoke on `state_backend = "cloudflare"`, where Terraform state lives in R2
 and, with `state_backup = true` in `spoke.hcl`, `state-backup.yml` copies it to
 a versioned Backblaze B2 bucket
-([LIB-0007](../adr/LIB-0007-terraform-state-on-r2-with-offsite-backup.md) §4,
-[LIB-0012](../adr/LIB-0012-per-concern-secrets-files.md) §2).
+([LIB-0007](https://github.com/noisypigeon/runway/discussions/218) §4,
+[LIB-0012](https://github.com/noisypigeon/runway/discussions/223) §2).
 This puts one leaf's state back into R2 from a version B2 kept.
 
 ## When to use it

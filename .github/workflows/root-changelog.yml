@@ -58,7 +58,6 @@ jobs:
       # First match wins.
       precedence: |
         ^(terraform/|\.config/)=terraform
-        ^tools/docs/adr/=adr
         ^tools/docs/runbooks/=docs
         ^tools/=tools
         ^\.github/=ci
