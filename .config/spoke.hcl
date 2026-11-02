@@ -2,6 +2,10 @@
 locals {
   root_hcl_version = "11.2.0"
 
+  # Rotation (LIB-0054 §6.2): the canary rotates one zone's keys first. Once
+  # it applies clean, rotation_generation = 1 rotates the rest.
+  rotation_generations = { "zones/pigeon.dev" = 1 }
+
   # A Grafana leaf must define local.grafana_auth_token.
   providers = {
     scaleway = {}
