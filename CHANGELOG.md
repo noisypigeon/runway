@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-11-01
 
+- [terraform] chore: rotate every managed key, rotation_generation = 1 (LIB-0054 §6.2) ([#207](https://github.com/noisypigeon/runway/pull/207))
 - [github/workflows] feat(github/workflows): add rust-crate-ci.yml, a crate's mise run ci on its pull requests (LIB-0055) ([#208](https://github.com/noisypigeon/runway/pull/208))
 - [terraform] chore: take github/workflows v11.2.1, which redacts IP and email addresses (LIB-0054) ([#206](https://github.com/noisypigeon/runway/pull/206))
 - [github/workflows] fix(github/workflows): redact IP and email addresses from run comments (LIB-0054) ([#205](https://github.com/noisypigeon/runway/pull/205))
