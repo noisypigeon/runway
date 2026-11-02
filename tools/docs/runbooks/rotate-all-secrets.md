@@ -28,13 +28,16 @@ bucket name anywhere: not in a PR, a commit, an issue or a chat.
    ```
 
    Add its contents to `~/.config/sops/age/keys.txt`, beside the old key, so
-   sops can use either.
+   sops can use either. The `.enc` files are dotenv, which sops can't tell
+   from their extension, so every command on them names
+   `--input-type dotenv`.
 2. **Add its public recipient** beside the old one in every
    `creation_rules` entry of `.config/sops.yaml`, comma-separated.
 3. **Re-encrypt every file to both recipients:**
 
    ```bash
-   for f in terraform/secrets/*.enc workloads/*/secrets.yaml workloads/*/*/secrets.workload.yaml; do [ -f "$f" ] && sops --config .config/sops.yaml updatekeys -y "$f"; done
+   for f in terraform/secrets/*.enc; do sops --config .config/sops.yaml updatekeys -y --input-type dotenv "$f"; done
+   for f in workloads/*/secrets.yaml workloads/*/*/secrets.workload.yaml; do [ -f "$f" ] && sops --config .config/sops.yaml updatekeys -y "$f"; done
    ```
 
 4. **Open a PR with that change.** Its plan should show `No changes.` for
@@ -47,7 +50,14 @@ bucket name anywhere: not in a PR, a commit, an issue or a chat.
    history, opens nothing new:
 
    ```bash
-   for f in terraform/secrets/*.enc workloads/*/secrets.yaml workloads/*/*/secrets.workload.yaml; do [ -f "$f" ] && sops --config .config/sops.yaml rotate -i "$f"; done
+   for f in terraform/secrets/*.enc; do sops --config .config/sops.yaml rotate -i --input-type dotenv --output-type dotenv "$f"; done
+   for f in workloads/*/secrets.yaml workloads/*/*/secrets.workload.yaml; do [ -f "$f" ] && sops --config .config/sops.yaml rotate -i "$f"; done
+   ```
+
+   Then check that only the new recipient is left:
+
+   ```bash
+   grep -h 'recipient' terraform/secrets/*.enc | sort -u
    ```
 
 8. **Open a PR with steps 6 and 7.** Its plan proves that CI decrypts with
