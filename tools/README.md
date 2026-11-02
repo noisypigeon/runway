@@ -27,7 +27,7 @@ sites runway holds as workloads. The full argument is
 | [`observability/lgtm-stack/`](observability/lgtm-stack) | a local Docker Compose observability stack | `observability/lgtm-stack/vX.Y.Z` |
 | `observability/dashboards/<set>/` | versioned Grafana dashboard JSON, fetched by tag URL | `observability/dashboards/<set>/vX.Y.Z` |
 | [`claude/plugins/`](claude/plugins) | Claude Code plugins, in the `library` marketplace | `claude/plugins/<plugin>/vX.Y.Z` |
-| [`docs/`](docs) | the decision records and runbooks | not released |
+| [`docs/`](docs) | the runbooks, and the frozen decision records until LIB-0056's move | not released |
 
 Each renamed track continues the one before LIB-0050 (`zola-site/`,
 `terragrunt/root-hcl/`, `workflows/`, `grafana-dashboards/<set>/`,
@@ -122,10 +122,15 @@ its GitHub Release (LIB-0049 §7).
 
 ## Decision records
 
-The family's ADRs live in [`docs/adr/`](docs/adr), as `LIB-NNNN-<slug>.md`.
+The family's ADRs are discussions in runway's
+[Decision records](https://github.com/noisypigeon/runway/discussions) category,
+titled `LIB-NNNN: <title>` (LIB-0056), and filed by
+[`docs/runbooks/file-a-decision-record.md`](docs/runbooks/file-a-decision-record.md).
 The spokes (runway, and the shims) have none of their own, because they
-depend on the library for their design standards
-([LIB-0017](docs/adr/LIB-0017-spokes-do-not-get-their-own-adrs.md)). The older
-`DEV-` records are archived verbatim in [`docs/adr/archive/`](docs/adr/archive),
-and the `COM-` and `RUN-` records (`NPC-` is an alias for `COM-`) are amendments
-on the `LIB-` records they applied. `pigeon-cli` keeps its own ADRs, as `CLI-` records in its `adr/`.
+depend on the library for their design standards (LIB-0017). The older `DEV-`
+records are frozen in the Decision records archive category, and the `COM-` and
+`RUN-` records (`NPC-` is an alias for `COM-`) are amendments on the `LIB-`
+records they applied. `pigeon-cli` keeps its own ADRs, as `CLI-` records in its
+`adr/`. Until LIB-0056's move is done, the older records are still files in
+[`docs/adr/`](docs/adr), frozen.
+
