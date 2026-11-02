@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-11-01
 
+- [docs] docs(lib-0056): delete tools/docs/adr/, now in the ADR Archive Discussions category ([#391](https://github.com/noisypigeon/runway/pull/391))
 - [adr] docs(adr): LIB-0056, decision records move to GitHub Discussions ([#209](https://github.com/noisypigeon/runway/pull/209))
 - [terraform] chore: rotate every managed key, rotation_generation = 1 (LIB-0054 §6.2) ([#207](https://github.com/noisypigeon/runway/pull/207))
 - [github/workflows] feat(github/workflows): add rust-crate-ci.yml, a crate's mise run ci on its pull requests (LIB-0055) ([#208](https://github.com/noisypigeon/runway/pull/208))
