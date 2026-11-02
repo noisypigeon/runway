@@ -3,7 +3,7 @@
 From `terragrunt/root-hcl` v4.2.0 a leaf's state is locked while Terraform
 writes it. The lock is `<state key>.tflock`, stored next to the state in
 either backend
-([LIB-0022](../adr/LIB-0022-replan-on-comment-and-locked-saved-plan-applies.md)
+([LIB-0022](https://github.com/noisypigeon/runway/discussions/233)
 §4). A run that dies mid-apply, or a local run that gets interrupted, can
 leave that object behind. Every plan and apply of the leaf then fails with
 `Error acquiring the state lock` until someone removes it.

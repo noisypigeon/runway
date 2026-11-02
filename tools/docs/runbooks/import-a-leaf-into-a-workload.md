@@ -1,11 +1,11 @@
 # Import a leaf into a workload or zone
 
 Moves the resources of one leaf into the leaves of a unit, without recreating
-them ([LIB-0032](../adr/LIB-0032-move-the-blog-into-runway.md) §3). The old
+them ([LIB-0032](https://github.com/noisypigeon/runway/discussions/243) §3). The old
 leaf is hand-written, `terraform/<provider>/...` in some spoke, or another
 unit's. The unit is a workload, `workloads/<w>/<provider>/<module>/<key>/`, or
 a zone, `zones/<zone>/cloudflare/<module>/<key>/`
-([LIB-0036](../adr/LIB-0036-zones-are-units-of-their-own.md) §7). The old leaf
+([LIB-0036](https://github.com/noisypigeon/runway/discussions/247) §7). The old leaf
 and the unit may be in different spokes.
 
 Below, `<unit>` is `workloads/<w>` or `zones/<zone>`, and the unit's file is

@@ -14,7 +14,7 @@ Paths below are relative to `tools/`, except `.github/`, `.claude/` and
 infrastructure that serves it, each pinning a version of what it takes from
 here, runway included. `noisypigeon.com` and `noisypigeon.garden` are only Pages shims for the
 sites runway holds as workloads. The full argument is
-[LIB-0001](docs/adr/LIB-0001-composable-hub-and-spoke-repo-architecture.md).
+[LIB-0001](https://github.com/noisypigeon/runway/discussions/212).
 
 ## What's here
 
@@ -27,7 +27,7 @@ sites runway holds as workloads. The full argument is
 | [`observability/lgtm-stack/`](observability/lgtm-stack) | a local Docker Compose observability stack | `observability/lgtm-stack/vX.Y.Z` |
 | `observability/dashboards/<set>/` | versioned Grafana dashboard JSON, fetched by tag URL | `observability/dashboards/<set>/vX.Y.Z` |
 | [`claude/plugins/`](claude/plugins) | Claude Code plugins, in the `library` marketplace | `claude/plugins/<plugin>/vX.Y.Z` |
-| [`docs/`](docs) | the runbooks, and the frozen decision records until LIB-0056's move | not released |
+| [`docs/`](docs) | the runbooks | not released |
 
 Each renamed track continues the one before LIB-0050 (`zola-site/`,
 `terragrunt/root-hcl/`, `workflows/`, `grafana-dashboards/<set>/`,
@@ -133,6 +133,5 @@ depend on the library for their design standards (LIB-0017). The older `DEV-`
 records are frozen there too, and the `COM-` and
 `RUN-` records (`NPC-` is an alias for `COM-`) are amendments on the `LIB-`
 records they applied. `pigeon-cli` keeps its own ADRs, as `CLI-` records in its
-`adr/`. Until LIB-0056's move is done, the older records are still files in
-[`docs/adr/`](docs/adr), frozen.
+`adr/`.
 
