@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-11-01
 
+- [docs] docs(runbooks): name the dotenv input type in rotate-all-secrets' sops loops ([#201](https://github.com/noisypigeon/runway/pull/201))
 - [scaleway/job-definition] fix(terraform/scaleway/job-definition): state the retry policy, so jobs plan No changes ([#200](https://github.com/noisypigeon/runway/pull/200))
 - [terraform] chore: take v11.2.0, add the run-comment sweep, and drop data-ops' deployer override (LIB-0054) ([#196](https://github.com/noisypigeon/runway/pull/196))
 - [github/workflows] feat(github/workflows): redact identifiers from run comments, and rotate keys by generation (LIB-0054) ([#195](https://github.com/noisypigeon/runway/pull/195))
