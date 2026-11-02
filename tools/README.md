@@ -68,6 +68,8 @@ reusable workflows and every script at it (LIB-0001 invariant 2).
 - **The crate release pipeline.** `rust-crate-release.yml`, `crate-*.sh` and
   `adr-issue.sh` were hoisted from pigeon-cli by its CLI-0161. They run in the
   caller's repo, and every crate-specific value is an input.
+  `rust-crate-ci.yml` runs the caller's own `mise run ci` on its pull
+  requests (LIB-0055).
 - **The site workflows.**
   - `site-dispatch.yml` dispatches a site's deploy in its Pages shim.
   - `site-pages.yml` is what the shim calls.
