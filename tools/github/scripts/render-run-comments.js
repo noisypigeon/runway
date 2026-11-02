@@ -48,17 +48,24 @@ function maskText(text, masked) {
 const REDACTED = '(redacted)';
 // Shapes redacted anywhere in the text. A UUID, with or without a region
 // prefix; a Scaleway access key ID; a Cloudflare-shaped 32-hex ID; a
-// Backblaze-shaped 24- or 25-hex key ID. Word boundaries keep a 40-hex commit
-// SHA intact.
+// Backblaze-shaped 24- or 25-hex key ID; an email or IP address. Word boundaries keep a
+// 40-hex commit SHA intact.
 const SHAPES = [
   /\b(?:[a-z]{2}-[a-z]{3}(?:-\d)?\/)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
   /\bSCW[A-Z0-9]{17}\b/g,
   /\b[0-9a-f]{32}\b/gi,
   /\b[0-9a-f]{24,25}\b/gi,
+  // An email address.
+  /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
+  // An IPv4 address: four dotted octets, so a three-part version is left
+  // alone. An IPv6 address: all eight groups, or a `::` form, so a time
+  // such as 03:17:29 is left alone.
+  /(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.])/g,
+  /(?<![0-9a-f:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,6}(?::[0-9a-f]{1,4}){1,6}|(?:[0-9a-f]{1,4}:){1,7}:|::(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})(?![0-9a-f:])/gi,
 ];
 // An attribute that names something: `name = …`, or `"name" = …` in outputs.
 const ATTR = /^(\s*[-+~]?\s*)("?)([A-Za-z0-9_]+)\2(\s*=\s*)(.*)$/;
-const ID_ATTR = /^(id|[A-Za-z0-9_]+_ids?|access_key|srn|arn|bucket|bucket_name)$/;
+const ID_ATTR = /^(id|[A-Za-z0-9_]+_ids?|access_key|srn|arn|bucket|bucket_name|[A-Za-z0-9_]*_ip|ip|ip_address|ips|[A-Za-z0-9_]*_ips|[A-Za-z0-9_]*email[A-Za-z0-9_]*)$/;
 const BUCKET_ATTR = /^(name|[A-Za-z0-9_]*endpoint)$/;
 // What type a line's resource is: a plan's `# addr will be created`, a
 // `resource "type" "name" {` header, or an apply's `addr: Creating...`.
