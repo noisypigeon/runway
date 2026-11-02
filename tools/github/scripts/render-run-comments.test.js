@@ -338,3 +338,25 @@ test('fails closed: a leaf in which an identifier survives is withheld whole', (
   assert.deepEqual(_test.guardPieces(['fine', `missed ${SCW}`]), [_test.WITHHELD]);
   assert.deepEqual(_test.guardPieces(['fine', 'also fine']), ['fine', 'also fine']);
 });
+
+test('IP addresses are redacted, by attribute and by shape, and versions are not', () => {
+  const [a, b, c, d] = _test.redactLines([
+    '      ~ creation_ip        = "203.0.113.45" -> (known after apply)',
+    'from 198.51.100.7 and 2001:db8::1 and 2001:db8:0:0:0:0:0:2',
+    'terraform 1.16.3, sops 3.13.3, at 12:34:56, created_at = "2026-10-25T03:17:29Z", schedule "17 6 * * *"',
+    '  + ip_address = "anything"',
+  ], 'u');
+  assert.equal(a, '      ~ creation_ip        = (redacted) -> (known after apply)');
+  assert.equal(b, 'from (redacted) and (redacted) and (redacted)');
+  assert.equal(c, 'terraform 1.16.3, sops 3.13.3, at 12:34:56, created_at = "2026-10-25T03:17:29Z", schedule "17 6 * * *"');
+  assert.equal(d, '  + ip_address = (redacted)');
+});
+
+test('email addresses are redacted, by attribute and by shape', () => {
+  const [a, b] = _test.redactLines([
+    '      ~ creator_email_at_creation = "someone@example.test" -> (known after apply)',
+    'created by someone.else+tag@mail.example.test, not by a path/like@this',
+  ], 'u');
+  assert.equal(a, '      ~ creator_email_at_creation = (redacted) -> (known after apply)');
+  assert.equal(b, 'created by (redacted), not by a path/like@this');
+});

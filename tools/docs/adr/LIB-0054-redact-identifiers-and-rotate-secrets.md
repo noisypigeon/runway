@@ -227,3 +227,21 @@ rules.
    - a plan of every unit shows `No changes.`;
    - a run of `run-scaleway-job` with `job=version` succeeds, signed in with
      the new job-runner key.
+
+## Amendments
+
+### 2026-11-02: IP and email addresses are identifiers too
+
+1. **§2 now covers IP addresses.**
+   - **By attribute:** `ip`, `ip_address`, `ips`, and anything ending in
+     `_ip` or `_ips`.
+   - **By shape:** an IPv4 address (four dotted octets), and an IPv6
+     address (all eight groups, or a `::` form).
+   - **What stays:** a three-part version such as `1.16.3`, and a time such
+     as `03:17:29`, are left alone.
+2. **§2 now covers email addresses,** by attribute (any name containing
+   `email`) and by shape.
+3. **Why:** the pigeon.dev canary's plans (noisypigeon/runway#204) printed
+   a Scaleway key's `creation_ip`, and a Cloudflare token's
+   `creator_email_at_creation`. Both were found before the full rotation,
+   whose many key replacements would each have printed them.
