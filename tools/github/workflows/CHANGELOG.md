@@ -4,6 +4,10 @@ All notable changes to the reusable CI are documented in this file.
 
 One line per release; its full notes are its GitHub Release (LIB-0049 §7).
 
+## [11.3.0] - 2026-11-01
+
+- feat(github/workflows): add rust-crate-ci.yml, a crate's mise run ci on its pull requests (LIB-0055) ([#208](https://github.com/noisypigeon/runway/pull/208))
+
 ## [11.2.1] - 2026-11-01
 
 - fix(github/workflows): redact IP and email addresses from run comments (LIB-0054) ([#205](https://github.com/noisypigeon/runway/pull/205))
