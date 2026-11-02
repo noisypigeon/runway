@@ -57,7 +57,8 @@ are the workload's `scaleway.bucket` entries; its cluster, Cockpit and IAM,
 and the spoke's state bucket, stay hand-written in the project for now.
 
 The library lives in this repo, under `tools/` (LIB-0047, LIB-0049, LIB-0050): modules,
-reusable workflows, scripts, plugins, decision records and runbooks. Read
+reusable workflows, scripts, plugins and runbooks. Its decision records are
+this repo's Discussions (LIB-0056). Read
 [The library](#the-library-tools) before you change anything under it.
 
 ## Sensitive: read this first
@@ -167,29 +168,41 @@ A failed garden generation shows up as a released version whose short URL
 
 ### Decision records
 
-Records live at `tools/docs/adr/LIB-NNNN-<slug>.md`. This is also where the
-spokes' decisions live: blog and garden are runway workloads, and their shims
-hold no records (LIB-0017).
+New records are discussions in runway's **ADR** category (LIB-0056).
+LIB-0001 to LIB-0056 are in **ADR Archive**, and are still amended there.
+This is also where the spokes' decisions live: blog and garden are runway
+workloads, and their shims hold no records (LIB-0017). The procedure, with the
+`gh` commands, is `tools/docs/runbooks/file-a-decision-record.md`.
+
+Until LIB-0056 §5's move is done, the older records are still files in
+`tools/docs/adr/`. That directory is frozen: never edit it.
 
 - **Older IDs stay valid and are never rewritten.**
-  - `DEV-` records are archived verbatim in `tools/docs/adr/archive/`.
+  - `DEV-` records are frozen in the **ADR Archive** category.
   - `COM-` and `RUN-` records survive as amendments whose headings carry the
     ID.
   - A bare `ADR-NNNN` in older prose is a `DEV-` alias, and `NPC-` is a `COM-`
     alias.
   - No new number is issued in any of those domains.
-- **pigeon-cli is the exception.** It keeps its own `CLI-` records in its own
-  `adr/` (LIB-0017 §5).
-- **Filing one, by hand:**
-  - The number is max+1 within `tools/docs/adr/`.
-  - The file name and the H1 agree.
+- **pigeon-cli is the exception.** It keeps its own `CLI-` records as files in
+  its own `adr/` (LIB-0017 §5).
+- **Filing one:**
+  - The title is `LIB-NNNN: <title>`, and the number is max+1 over both
+    categories' titles.
+  - The body has no H1 and no frontmatter. It opens with the `Author`, `Date`
+    and `Status` lines.
   - The author is always `Willow Graysen ([@noisypigeon](https://github.com/noisypigeon)).`
   - The sections are `## Context` / `## Decision` / `## Consequences` /
-    `## Out of scope`, then optionally `## Verification`. There is no
-    frontmatter and no index.
-  - A change after filing goes under `## Amendments`, as a dated entry.
+    `## Out of scope`, then optionally `## Verification`. There is no index.
+  - Filing, amending and accepting take no PR. The work a record decides does,
+    and its body links the discussion.
+  - A change after filing is a dated entry under `## Amendments`, made by
+    editing the body, plus a one-line comment naming it.
 - **Out of scope.** A genuinely deferred item there gets an issue in runway,
-  labelled `out-of-scope` (DEV-0031). A permanent design boundary doesn't.
+  labelled `out-of-scope` (DEV-0031), linked from the bullet. A permanent
+  design boundary doesn't.
+- **Records are public and keep their edit history.** The rules in
+  [Sensitive](#sensitive-read-this-first) apply to every edit and comment.
 
 ### Runbooks
 
@@ -199,7 +212,8 @@ each citing the record it serves:
 - `restore-terraform-state-from-b2.md` (LIB-0007 §4);
 - `release-a-stuck-state-lock.md` (LIB-0022 §4);
 - `import-a-leaf-into-a-workload.md` (LIB-0032 §3).
-- `rotate-all-secrets.md` (LIB-0054 §6).
+- `rotate-all-secrets.md` (LIB-0054 §6);
+- `file-a-decision-record.md` (LIB-0056 §2).
 
 ## Terraform
 
