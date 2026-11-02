@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-11-01
 
+- [terraform] chore: new sops age key (part 2) ([#203](https://github.com/noisypigeon/runway/pull/203))
 - [terraform] chore: new sops age key ([#202](https://github.com/noisypigeon/runway/pull/202))
 - [docs] docs(runbooks): name the dotenv input type in rotate-all-secrets' sops loops ([#201](https://github.com/noisypigeon/runway/pull/201))
 - [scaleway/job-definition] fix(terraform/scaleway/job-definition): state the retry policy, so jobs plan No changes ([#200](https://github.com/noisypigeon/runway/pull/200))
