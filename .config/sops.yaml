@@ -1,7 +1,7 @@
 creation_rules:
   - path_regex: (^|/)terraform/secrets/[a-z_]+\.enc$
-    age: age1cx0hla738df54dk9kjnecv987uwvlh6f8wjy08ps5rxh68w9zgas90l5jh
+    age: age1cx0hla738df54dk9kjnecv987uwvlh6f8wjy08ps5rxh68w9zgas90l5jh,age1yw9rdzvhr9952jy5v0z60zfvund0w6gmcs46d9k7yumqw0y8tdks92qskp
   - path_regex: (^|/)workloads/[^/]+/secrets\.yaml$
-    age: age1cx0hla738df54dk9kjnecv987uwvlh6f8wjy08ps5rxh68w9zgas90l5jh
+    age: age1cx0hla738df54dk9kjnecv987uwvlh6f8wjy08ps5rxh68w9zgas90l5jh,age1yw9rdzvhr9952jy5v0z60zfvund0w6gmcs46d9k7yumqw0y8tdks92qskp
   - path_regex: (^|/)workloads/[^/]+/[^/]+/secrets\.workload\.yaml$
-    age: age1cx0hla738df54dk9kjnecv987uwvlh6f8wjy08ps5rxh68w9zgas90l5jh
+    age: age1cx0hla738df54dk9kjnecv987uwvlh6f8wjy08ps5rxh68w9zgas90l5jh,age1yw9rdzvhr9952jy5v0z60zfvund0w6gmcs46d9k7yumqw0y8tdks92qskp
