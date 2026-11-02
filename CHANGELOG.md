@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-11-01
 
+- [terraform] chore: rotate pigeon.dev's keys as the canary (LIB-0054 §6.2) ([#204](https://github.com/noisypigeon/runway/pull/204))
 - [terraform] chore: new sops age key (part 2) ([#203](https://github.com/noisypigeon/runway/pull/203))
 - [terraform] chore: new sops age key ([#202](https://github.com/noisypigeon/runway/pull/202))
 - [docs] docs(runbooks): name the dotenv input type in rotate-all-secrets' sops loops ([#201](https://github.com/noisypigeon/runway/pull/201))
