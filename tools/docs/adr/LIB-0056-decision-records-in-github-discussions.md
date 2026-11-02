@@ -2,7 +2,7 @@
 
 - **Author**: Willow Graysen ([@noisypigeon](https://github.com/noisypigeon)).
 - **Date**: 2026-11-01.
-- **Status**: Proposed. Amends LIB-0017 (§1's filing target, §2's archive
+- **Status**: Accepted 2026-11-01. Amends LIB-0017 (§1's filing target, §2's archive
   location) and LIB-0047's placement of the records under the library. The
   last record filed as a file.
 
@@ -45,8 +45,8 @@ repository's maintainers, while anyone can comment.
 
 ### 1. A record is a discussion
 
-Every `LIB-` record is a discussion in noisypigeon/runway's **Decision
-records** category. The category uses the announcement format, so only a
+Every new `LIB-` record is a discussion in noisypigeon/runway's **ADR**
+category. The category uses the announcement format, so only a
 maintainer can file a record, and anyone can comment on one.
 
 - **The title is the record's old H1,** `LIB-NNNN: <title>`. The ID is the
@@ -55,8 +55,9 @@ maintainer can file a record, and anyone can comment on one.
   and `Status` lines, and the `## Context` / `## Decision` /
   `## Consequences` / `## Out of scope` sections, then optionally
   `## Verification` and `## Amendments`. There is still no frontmatter.
-- **The number is max+1 over the category's titles.** No `LIB-` number is
-  reused, and none is skipped.
+- **The number is max+1 over both categories' titles** (§4), so the first
+  record filed in **ADR** is LIB-0057. No `LIB-` number is reused, and none
+  is skipped.
 - **A record is linked by its discussion URL,** and cited by its ID, as
   before.
 
@@ -83,31 +84,33 @@ Its link is appended to the bullet by editing the body, and the issue's body
 links the discussion. `tools/github/scripts/adr-issue.sh` stays as it is:
 it edits files, and pigeon-cli's `CLI-` records are still files.
 
-### 4. The `DEV-` archive moves too, to its own category
+### 4. Every record filed as a file moves to **ADR Archive**
 
-The 122 `DEV-` records go to a second announcement-format category,
-**Decision records archive**, titled by their H1s. LIB-0017's rules for
-the archive still hold.
+All of `tools/docs/adr/` goes to a second announcement-format category,
+**ADR Archive**, titled by their H1s: the 56 `LIB-` records, LIB-0001 to this
+one, and the 122 `DEV-` records. **ADR** holds only records filed after the
+move, so it lists exactly what was filed under this record's process.
 
-- **Frozen.** A `DEV-` record's body is never edited after it moves.
-- **Closed.** No new `DEV-` number is issued.
-- **Archiving is not superseding** (LIB-0017 §4). A record keeps the
-  `Status` it was filed with.
+- **Archiving is not superseding** (LIB-0017 §4). Every archived record keeps
+  the `Status` it had, and stays the decision of record where nothing has
+  superseded it.
+- **An archived `LIB-` record is still amended in place.** The amendment is
+  an edit to its discussion in **ADR Archive**, by §2. It doesn't move to
+  **ADR**.
+- **`DEV-` records stay frozen and closed** (LIB-0017). A `DEV-` record's
+  body is never edited after it moves, and no new `DEV-` number is issued.
 
-`archive/README.md` becomes the category's first discussion, **The
-`DEV-` archive**, pinned. The numbers used twice (`0136`, `0138`, `0156`) stay
-told apart by their titles.
-
-Keeping the two corpora in separate categories keeps the live list to records
-that can still change.
+`archive/README.md` becomes a discussion in the same category, **The `DEV-`
+archive**, pinned. The numbers used twice (`0136`, `0138`, `0156`) stay told
+apart by their titles.
 
 ### 5. The move is mechanical and the bodies are verbatim
 
 1. **Freeze.** No PR touches `tools/docs/adr/` once the move starts. Call the
    commit on `main` at that point `F`.
-2. **Post.** A script posts every record at `F` as a discussion: the `LIB-`
-   records in number order, this one included, then the archive's README,
-   then the `DEV-` records in number order. It paces its calls to stay under
+2. **Post.** A script posts every record at `F` as a discussion in **ADR
+   Archive**: the `LIB-` records in number order, this one included, then the
+   archive's README, then the `DEV-` records in number order. It paces its calls to stay under
    GitHub's content-creation limits. For each record:
    - the title is its H1;
    - the body is the rest of the file, byte for byte, except that each
@@ -133,17 +136,17 @@ table.
 
 From this record's acceptance:
 
-- a new record is filed as a discussion, numbered max+1 over the category's
+- a new record is filed in **ADR**, numbered max+1 over both categories'
   titles and the files at `F`;
-- an amendment to a record still in `tools/docs/adr/` waits for the move, or
-  is filed on the record's discussion once it exists.
+- an amendment to a record still in `tools/docs/adr/` waits for the move,
+  then is made on the record's discussion in **ADR Archive**.
 
 ### 7. What the owner does once, by hand
 
 GitHub's API can't create a discussion category. Before the move, the owner:
 
 1. turns on Discussions (Settings → General → Features);
-2. creates **Decision records** and **Decision records archive**, both in
+2. creates **ADR** and **ADR Archive**, both in
    the announcement format;
 3. deletes, or leaves empty, the default categories, which this record
    doesn't use.
@@ -153,7 +156,7 @@ GitHub's API can't create a discussion category. Before the move, the owner:
 - **runway's `CLAUDE.md`, Decision records:** records live in the category,
   filed by the runbook.
 - **`tools/README.md`, Decision records:** the same.
-- **LIB-0017 §1, "filed here":** this repository's Decision records category,
+- **LIB-0017 §1, "filed here":** this repository's ADR category,
   not its `docs/adr/`. Recorded as an amendment on LIB-0017's discussion once
   it exists.
 - **pigeon-cli's `CLAUDE.md`:** its pointer to runway's records names the
@@ -169,6 +172,9 @@ GitHub's API can't create a discussion category. Before the move, the owner:
   branch, CI run or changelog line.
 - **A record gets a thread.** Questions and follow-ups sit under the record
   they are about.
+- **A `LIB-` record is in one of two categories,** by when it was filed:
+  LIB-0001 to LIB-0056 in **ADR Archive**, later ones in **ADR**. A search of
+  the repository's discussions by ID finds either.
 - **The records leave git.** A record is no longer in a clone, at a tag, or
   in `git log`. Its history is GitHub's edit history, not commits. It is
   lost if the repository is deleted, which would also lose its issues and
@@ -202,8 +208,9 @@ GitHub's API can't create a discussion category. Before the move, the owner:
 
 ## Verification
 
-- Each category holds exactly one discussion per file at `F`: 56 `LIB-`
-  records, and 122 `DEV-` records plus the pinned README.
+- **ADR Archive** holds exactly one discussion per file at `F`: 56 `LIB-`
+  records, 122 `DEV-` records and the pinned README, 179 in all. **ADR**
+  holds none of them.
 - Every title equals its file's H1, and every ID at `F` appears in exactly one
   title, except the three `DEV-` numbers used twice.
 - Every body, with its permalinks turned back into relative links and its

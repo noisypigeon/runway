@@ -1,7 +1,8 @@
 # File, amend or read a decision record
 
-Decision records are discussions in runway's **Decision records** category,
-and the frozen `DEV-` records are in **Decision records archive** (LIB-0056).
+New decision records are discussions in runway's **ADR** category. Every
+record filed before LIB-0056's move, LIB-0001 to LIB-0056 and the frozen
+`DEV-` records, is in **ADR Archive**.
 Each step below is a `gh` command, so it works from a terminal or an agent.
 
 Everything posted is public and permanent, and edit history keeps every
@@ -20,18 +21,18 @@ Export the results:
 
 ```sh
 export REPO_ID=<repository id>
-export CATEGORY_ID=<the "Decision records" category id>
+export CATEGORY_ID=<the "ADR" category id>
 ```
 
 ## Find the next number
 
-The number is max+1 over the category's titles (LIB-0056 §1).
+The number is max+1 over both categories' titles (LIB-0056 §1).
 
 ```sh
-gh api graphql --paginate -F categoryId="$CATEGORY_ID" -f query='
-  query($categoryId: ID!, $endCursor: String) {
+gh api graphql --paginate -f query='
+  query($endCursor: String) {
     repository(owner: "noisypigeon", name: "runway") {
-      discussions(first: 100, after: $endCursor, categoryId: $categoryId) {
+      discussions(first: 100, after: $endCursor) {
         pageInfo { hasNextPage endCursor }
         nodes { title } } } }' \
   --jq '.data.repository.discussions.nodes[].title' \
@@ -116,5 +117,5 @@ gh api graphql -f query='
 Accepting, superseding or rejecting a record is the same edit to its `Status`
 line.
 
-Never edit a record in **Decision records archive**. It is frozen
-(LIB-0017, LIB-0056 §4).
+An archived `LIB-` record in **ADR Archive** is amended the same way, in
+place. Never edit a `DEV-` record. It is frozen (LIB-0017, LIB-0056 §4).

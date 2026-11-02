@@ -123,12 +123,14 @@ its GitHub Release (LIB-0049 §7).
 ## Decision records
 
 The family's ADRs are discussions in runway's
-[Decision records](https://github.com/noisypigeon/runway/discussions) category,
-titled `LIB-NNNN: <title>` (LIB-0056), and filed by
+[ADR](https://github.com/noisypigeon/runway/discussions/categories/adr) category,
+titled `LIB-NNNN: <title>` (LIB-0056). LIB-0001 to LIB-0056 are in the
+[ADR Archive](https://github.com/noisypigeon/runway/discussions/categories/adr-archive)
+category. Records are filed by
 [`docs/runbooks/file-a-decision-record.md`](docs/runbooks/file-a-decision-record.md).
 The spokes (runway, and the shims) have none of their own, because they
 depend on the library for their design standards (LIB-0017). The older `DEV-`
-records are frozen in the Decision records archive category, and the `COM-` and
+records are frozen there too, and the `COM-` and
 `RUN-` records (`NPC-` is an alias for `COM-`) are amendments on the `LIB-`
 records they applied. `pigeon-cli` keeps its own ADRs, as `CLI-` records in its
 `adr/`. Until LIB-0056's move is done, the older records are still files in

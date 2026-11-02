@@ -168,7 +168,8 @@ A failed garden generation shows up as a released version whose short URL
 
 ### Decision records
 
-Records are discussions in runway's **Decision records** category (LIB-0056).
+New records are discussions in runway's **ADR** category (LIB-0056).
+LIB-0001 to LIB-0056 are in **ADR Archive**, and are still amended there.
 This is also where the spokes' decisions live: blog and garden are runway
 workloads, and their shims hold no records (LIB-0017). The procedure, with the
 `gh` commands, is `tools/docs/runbooks/file-a-decision-record.md`.
@@ -177,7 +178,7 @@ Until LIB-0056 §5's move is done, the older records are still files in
 `tools/docs/adr/`. That directory is frozen: never edit it.
 
 - **Older IDs stay valid and are never rewritten.**
-  - `DEV-` records are frozen in the **Decision records archive** category.
+  - `DEV-` records are frozen in the **ADR Archive** category.
   - `COM-` and `RUN-` records survive as amendments whose headings carry the
     ID.
   - A bare `ADR-NNNN` in older prose is a `DEV-` alias, and `NPC-` is a `COM-`
@@ -186,8 +187,8 @@ Until LIB-0056 §5's move is done, the older records are still files in
 - **pigeon-cli is the exception.** It keeps its own `CLI-` records as files in
   its own `adr/` (LIB-0017 §5).
 - **Filing one:**
-  - The title is `LIB-NNNN: <title>`, and the number is max+1 over the
-    category's titles.
+  - The title is `LIB-NNNN: <title>`, and the number is max+1 over both
+    categories' titles.
   - The body has no H1 and no frontmatter. It opens with the `Author`, `Date`
     and `Status` lines.
   - The author is always `Willow Graysen ([@noisypigeon](https://github.com/noisypigeon)).`
