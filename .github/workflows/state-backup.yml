@@ -1,0 +1,163 @@
+# Reusable: copies a spoke's Terraform state objects from its Cloudflare R2
+# state bucket to a versioned Backblaze B2 bucket (LIB-0007 §4).
+#
+# R2 has no object versioning, so this copy is what lets a bad state write be
+# rolled back: B2 keeps every version of a file unless a lifecycle rule says
+# otherwise. It is `rclone copy`, never `sync` -- nothing is ever deleted, and
+# the B2 key it runs with can only list and write, so it couldn't delete even if
+# asked. A restore is a manual job for an admin key.
+#
+# B2 is reached through its S3-compatible API, not rclone's b2 backend: that
+# backend authenticates with B2's v1 API, which B2 now refuses ("not currently
+# supported on API version number 1"). The S3 endpoint is per account, so it is
+# read at run time from the key's own b2_authorize_account (v4). Without
+# readFiles the key can't answer the HeadObject rclone sends for a sub-path or
+# after an upload, so the copy runs bucket root to bucket root, filtered to
+# terraform/** and workloads/** (LIB-0023), with --s3-no-head;
+# --s3-no-check-bucket keeps rclone from trying to create either bucket, which
+# neither key may do.
+#
+# A spoke on state_backend = "cloudflare" calls this from terragrunt-apply.yml
+# (a job after apply) and from a scheduled caller, which picks up local applies.
+# Since v3.0.0 (LIB-0012) it does nothing unless the caller's spoke.hcl sets
+# state_backup = true, so a caller left on a spoke without a backup is a no-op,
+# not a failure.
+#
+# Since v2.0.0 every name is fixed (LIB-0010): the R2 side reads
+# TERRAFORM_STATE_{BUCKET_NAME,ACCESS_KEY_ID,ACCESS_KEY} and builds its endpoint
+# from CLOUDFLARE_PROVIDER_ACCOUNT_ID, exactly as root.hcl's backend does, and
+# the B2 side reads TERRAFORM_STATE_BACKUP_{BUCKET_NAME,ACCESS_KEY_ID,ACCESS_KEY}.
+# There are no inputs naming them any more. Since v3.0.0 they come from the
+# spoke's terraform/secrets/terraform.enc and cloudflare.enc, and no other
+# secrets file is decrypted.
+name: State backup
+
+on:
+  workflow_call:
+    inputs:
+      secrets_files:
+        description: "Space-separated sops dotenv files (relative to the caller's repo root) to read secrets from; every value is masked. Empty (the default) means whichever of terraform/secrets/terraform.enc and cloudflare.enc exist, the only two this job needs."
+        type: string
+        required: false
+        default: ""
+    secrets:
+      SOPS_AGE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: state-backup-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # spoke.hcl is HCL, read without a parser, as check-secrets.sh does:
+      # state_backup is one `name = value` line.
+      - name: Check spoke.hcl sets state_backup
+        id: gate
+        run: |
+          # .config/spoke.hcl, or the root's for one version more (LIB-0052 §3).
+          spoke=.config/spoke.hcl
+          [ -f "$spoke" ] || spoke=spoke.hcl
+          backup=$(sed -nE 's/^[[:space:]]*state_backup[[:space:]]*=[[:space:]]*([a-z]+).*/\1/p' "$spoke" | head -n1)
+          if [ "$backup" = true ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::spoke.hcl doesn't set state_backup = true; nothing to back up (LIB-0012)"
+          fi
+
+      - uses: jdx/mise-action@v2
+        if: steps.gate.outputs.enabled == 'true'
+
+      - name: Install rclone
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rclone
+          rclone version | head -1
+
+      # Every value is masked before any is exported, and the only ones
+      # exported are the few this job needs, under rclone's env-var config
+      # names -- no config file is ever written.
+      - name: Load secrets
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETS_FILES: ${{ inputs.secrets_files }}
+        run: |
+          declare -A secrets
+          if [ -z "$SECRETS_FILES" ]; then
+            for file in terraform/secrets/terraform.enc terraform/secrets/cloudflare.enc; do
+              if [ -f "$file" ]; then SECRETS_FILES="$SECRETS_FILES $file"; fi
+            done
+          fi
+          for file in $SECRETS_FILES; do
+            while IFS='=' read -r key value; do
+              [[ -z "$key" || "$key" == \#* || "$key" == sops_* ]] && continue
+              echo "::add-mask::$value"
+              secrets["$key"]="$value"
+            done < <(sops --decrypt --input-type dotenv --output-type dotenv "$file")
+          done
+
+          for key in CLOUDFLARE_PROVIDER_ACCOUNT_ID \
+                     TERRAFORM_STATE_BUCKET_NAME TERRAFORM_STATE_ACCESS_KEY_ID TERRAFORM_STATE_ACCESS_KEY \
+                     TERRAFORM_STATE_BACKUP_BUCKET_NAME TERRAFORM_STATE_BACKUP_ACCESS_KEY_ID TERRAFORM_STATE_BACKUP_ACCESS_KEY; do
+            if [ -z "${secrets[$key]:-}" ]; then
+              echo "::error::$key is missing from $SECRETS_FILES"
+              exit 1
+            fi
+          done
+
+          b2_s3_endpoint=$(curl -fsS -u "${secrets[TERRAFORM_STATE_BACKUP_ACCESS_KEY_ID]}:${secrets[TERRAFORM_STATE_BACKUP_ACCESS_KEY]}" \
+            https://api.backblazeb2.com/b2api/v4/b2_authorize_account | jq -r '.apiInfo.storageApi.s3ApiUrl')
+          if [ -z "$b2_s3_endpoint" ] || [ "$b2_s3_endpoint" = null ]; then
+            echo "::error::Could not read the B2 S3 endpoint from b2_authorize_account"
+            exit 1
+          fi
+
+          {
+            echo "RCLONE_CONFIG_R2_TYPE=s3"
+            echo "RCLONE_CONFIG_R2_PROVIDER=Cloudflare"
+            echo "RCLONE_CONFIG_R2_ENDPOINT=https://${secrets[CLOUDFLARE_PROVIDER_ACCOUNT_ID]}.eu.r2.cloudflarestorage.com"
+            echo "RCLONE_CONFIG_R2_ACCESS_KEY_ID=${secrets[TERRAFORM_STATE_ACCESS_KEY_ID]}"
+            echo "RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=${secrets[TERRAFORM_STATE_ACCESS_KEY]}"
+            echo "RCLONE_CONFIG_B2_TYPE=s3"
+            echo "RCLONE_CONFIG_B2_PROVIDER=Other"
+            echo "RCLONE_CONFIG_B2_ENDPOINT=$b2_s3_endpoint"
+            echo "RCLONE_CONFIG_B2_ACCESS_KEY_ID=${secrets[TERRAFORM_STATE_BACKUP_ACCESS_KEY_ID]}"
+            echo "RCLONE_CONFIG_B2_SECRET_ACCESS_KEY=${secrets[TERRAFORM_STATE_BACKUP_ACCESS_KEY]}"
+            echo "STATE_BUCKET=${secrets[TERRAFORM_STATE_BUCKET_NAME]}"
+            echo "BACKUP_BUCKET=${secrets[TERRAFORM_STATE_BACKUP_BUCKET_NAME]}"
+            echo "RCLONE_S3_NO_CHECK_BUCKET=true"
+          } >> "$GITHUB_ENV"
+
+      # A .tflock is a live run's state lock (LIB-0022), not state, and this key
+      # can't delete what it copies, so one copied here would stay forever.
+      #
+      # MD5s decide what's copied, read from the listings alone: R2 and B2's
+      # S3 API both list an MD5 ETag for a single-part object. Comparing
+      # modification times instead makes rclone HEAD each B2 object and then
+      # rewrite its metadata, which a key without readFiles can't do.
+      - name: Copy state to B2
+        if: steps.gate.outputs.enabled == 'true'
+        run: rclone copy "r2:$STATE_BUCKET" "b2:$BACKUP_BUCKET" --filter "- *.tflock" --filter "+ terraform/**" --filter "+ workloads/**" --filter "- **" --checksum --s3-no-head --stats-one-line -v
+
+      - name: Check B2 holds every state file
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          src=$(rclone lsf -R --files-only --filter "- *.tflock" --filter "+ terraform/**" --filter "+ workloads/**" --filter "- **" "r2:$STATE_BUCKET" | sort)
+          dst=$(rclone lsf -R --files-only --filter "- *.tflock" --filter "+ terraform/**" --filter "+ workloads/**" --filter "- **" "b2:$BACKUP_BUCKET" | sort)
+          missing=$(comm -23 <(echo "$src") <(echo "$dst"))
+          echo "R2: $(echo "$src" | grep -c .) files, B2: $(echo "$dst" | grep -c .) files"
+          if [ -n "$missing" ]; then
+            echo "::error::Not in B2 after the copy:"
+            echo "$missing"
+            exit 1
+          fi
