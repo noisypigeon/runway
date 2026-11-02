@@ -1,0 +1,59 @@
+# Reusable: runs a Rust crate's own `mise run ci` (or another task) on a pull
+# request, so the gate a contributor runs locally is the one CI runs
+# (LIB-0055).
+#
+# Hoisted for pigeon-cli by its CLI-0165. The caller keeps what cannot live
+# here: the trigger (`pull_request`, `workflow_dispatch`), permissions
+# (contents: read) and concurrency. Its repo must have mise configured
+# (`jdx/mise-action`) with the task named by `task`.
+#
+# Binaries the suite needs beyond the toolchain are the caller's: its `setup`
+# snippet installs them (e.g. from its Dockerfile's pinned stages) and puts
+# them on $GITHUB_PATH, as container-image-release.yml's `smoke_test` leaves
+# the image's checks to the spoke (LIB-0019 §2).
+name: Rust crate CI
+
+on:
+  workflow_call:
+    inputs:
+      task:
+        description: "The mise task that is the gate."
+        type: string
+        required: false
+        default: "ci"
+      runner:
+        description: "The runner the job runs on."
+        type: string
+        required: false
+        default: "ubuntu-24.04"
+      setup:
+        description: |
+          Shell run (bash -e) from the repo root before the task, e.g. to put
+          pinned binaries on $GITHUB_PATH. Empty skips it.
+        type: string
+        required: false
+        default: ""
+
+jobs:
+  ci:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+
+      - name: Install rustfmt/clippy components
+        run: rustup component add rustfmt clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Caller setup
+        if: inputs.setup != ''
+        env:
+          SETUP: ${{ inputs.setup }}
+        run: bash -euo pipefail -c "$SETUP"
+
+      - name: mise run ${{ inputs.task }}
+        env:
+          TASK: ${{ inputs.task }}
+        run: mise run "$TASK"
