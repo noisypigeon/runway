@@ -192,7 +192,7 @@ GitHub's API can't create a discussion category. Before the move, the owner:
 
 - **A periodic export of both categories into git or object storage,** as a
   backup and an offline copy for agents. Deferred until losing GitHub is a
-  risk worth paying for.
+  risk worth paying for. ([#210](https://github.com/noisypigeon/runway/issues/210))
 - **Status labels or closing superseded records.** The `Status` line stays the
   only status. A second one would drift.
 - **Rewriting cross-links to point to discussions.** The permalinks at `F`
