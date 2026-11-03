@@ -11,14 +11,16 @@ It also holds the two public sites, as the `blog` workload (LIB-0032) and the
 - **`workloads/noisypigeon.com/blog/`** is the noisypigeon.com Zola site
   (`config.toml`, `content/`, `static/`, `CHANGELOG.md`), beside its
   `workload.yaml` (LIB-0037). It lives in its zone's project, and the zone's
-  `hosts` gives it the apex and `www`.
+  `hosts` gives it the apex and `www`. Its site is now served by
+  `noisypigeon/pigeon`'s `workloads/noisypigeon.com/blog`, so it has no
+  `deployments` here.
 - **`workloads/noisypigeon.garden/garden/`** is the noisypigeon.garden Zola
   site.
-- **Both sites are served from R2** (LIB-0051). Each workload's
+- **garden is served from R2** (LIB-0051). A workload's
   `deployments.cloudflare` implies its bucket, its apex and `www` custom
   domains, its deploy token, and its zone's `sites-root` and `sites-www`
-  rulesets. `site-r2-blog.yml` and `site-r2-garden.yml` build and deploy each
-  site on merge, and check it live. A post is a PR like any other, but only
+  rulesets. `site-r2-garden.yml` builds and deploys it on merge, and checks
+  it live. A post is a PR like any other, but only
   `workload.yaml` and `secrets.workload.yaml` changes run a plan.
 - **The Pages shims, `noisypigeon/noisypigeon.com` and
   `noisypigeon/noisypigeon.garden`, are retired** and to be archived.
@@ -143,8 +145,7 @@ merge:
 1. it bumps each changed unit's version;
 2. it writes the unit's `CHANGELOG.md` and the root line;
 3. it cuts the tag and the GitHub Release, whose notes are the PR body;
-4. it dispatches `garden-generate.yml`, and for a theme release
-   `site-r2-blog.yml`.
+4. it dispatches `garden-generate.yml`.
 
 runway writes the library tracks' tags, and no tag of its own, for a leaf, a
 workload or a site (LIB-0047 §4).

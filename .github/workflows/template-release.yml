@@ -602,9 +602,8 @@ jobs:
       # committed in this repo's workloads/noisypigeon.garden/garden/
       # (LIB-0035 §§2, 4), so every release dispatches garden-generate.yml
       # here. Its commit deploys itself, through site-r2-garden.yml; a release
-      # that changes no page commits nothing and deploys nothing. The blog
-      # only renders with the theme, so it redeploys on a theme release only
-      # (LIB-0051 amendment 9).
+      # that changes no page commits nothing and deploys nothing. The blog is
+      # now noisypigeon/pigeon's, so no release redeploys it.
       #
       # Runs *after* the tags are pushed above: the generator reads this
       # repo's tag list, so dispatching first would race the tag into
@@ -619,11 +618,3 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: gh workflow run garden-generate.yml -R "$GITHUB_REPOSITORY" --ref main
-
-      # The blog is served from R2 and deployed here (LIB-0051), no longer
-      # through its Pages shim's pages.yml.
-      - name: Trigger the blog's deploy
-        if: steps.zola_site.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
-        run: gh workflow run site-r2-blog.yml -R "$GITHUB_REPOSITORY" --ref main
