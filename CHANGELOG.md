@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-11-03
+
+- [ci] feat(workloads): hand the blog's R2 site to pigeon ([#394](https://github.com/noisypigeon/runway/pull/394))
+
 ## 2026-11-02
 
 - [repo] feat(zones): hand noisypigeon.com's Proton Mail records to pigeon ([#393](https://github.com/noisypigeon/runway/pull/393))
