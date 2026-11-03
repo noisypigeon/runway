@@ -22,6 +22,10 @@ stayed in `noisypigeon/noisypigeon`.
 
 <!-- entries below; newest first -->
 
+## 2026-11-02
+
+- [repo] feat(zones): hand noisypigeon.com's Proton Mail records to pigeon ([#393](https://github.com/noisypigeon/runway/pull/393))
+
 ## 2026-11-01
 
 - [docs] docs(lib-0056): delete tools/docs/adr/, now in the ADR Archive Discussions category ([#391](https://github.com/noisypigeon/runway/pull/391))
