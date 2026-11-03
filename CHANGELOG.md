@@ -24,6 +24,7 @@ stayed in `noisypigeon/noisypigeon`.
 
 ## 2026-11-03
 
+- [repo] fix(workloads): drop the noisypigeon.com deployers' permission pins ([#395](https://github.com/noisypigeon/runway/pull/395))
 - [ci] feat(workloads): hand the blog's R2 site to pigeon ([#394](https://github.com/noisypigeon/runway/pull/394))
 
 ## 2026-11-02
