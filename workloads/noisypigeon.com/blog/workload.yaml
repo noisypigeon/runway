@@ -5,10 +5,6 @@
 # deploys it.
 workload:
   name: blog
-  # Kept for this PR's first stage, which restores the deployers'
-  # permissions; its second stage removes it.
-  deployments:
-    cloudflare: {}
   # The deployer keeps R2 write until this PR's destroys are applied; a
   # follow-up drops this entry for the default.
   cloudflare:
