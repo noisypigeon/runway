@@ -13,8 +13,9 @@ zone:
   hosts:
     "@": blog
   services:
+    # Proton Mail moved to noisypigeon/pigeon's workloads/cloudflare/apex.
     proton:
-      enabled: true
+      enabled: false
       verification:
         pm: yulfrkphygclvbkaipymgmyhstrxuj
         protonmail: e9457a054010bbbb12cc4abfce39d67198e9abd1
