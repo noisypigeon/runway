@@ -5,3 +5,10 @@
 # deploys it.
 workload:
   name: blog
+  # The deployer keeps R2 write until this PR's destroys are applied; a
+  # follow-up drops this entry for the default.
+  cloudflare:
+    deployer:
+      policies:
+        - { permission_groups: [Zone Read, DNS Write], zones: [noisypigeon.com] }
+        - { permission_groups: [Workers R2 Storage Write], account: true }

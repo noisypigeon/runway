@@ -12,6 +12,13 @@ zone:
   # (LIB-0037).
   hosts:
     "@": blog
+  # The deployer keeps Zone Transform Rules Write until the blog's sites-root
+  # ruleset is destroyed; a follow-up drops this entry for the default.
+  cloudflare:
+    deployer:
+      policies:
+        - permission_groups: [Zone Read, DNS Write, Dynamic URL Redirects Write, Zone Transform Rules Write]
+          zones: [noisypigeon.com]
   services:
     # Proton Mail moved to noisypigeon/pigeon's workloads/cloudflare/apex.
     proton:
